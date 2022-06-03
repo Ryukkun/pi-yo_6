@@ -10,26 +10,15 @@
 - `.delete 単語` ぴーよに覚えさせた単語の読みを 忘れさせることができるよ！
 - `.黙れ` ぴーよを黙らせるよ！ ぶちぶちのおミンチに差し上げましてよ！<br>
 
-## ☆ 声帯変更マジックショー
-- `voice: <str>`
-    - open_jtalk
-    - mei
-        - mei_normal (Default)
-        - mei_angry
-        - mei_bashful
-        - mei_happy
-        - mei_sad
-    - takumi
-        - takumi_normal
-        - takumi_angry
-        - takumi_happy
-        - takumi_sad
-    -tohoku
-        - tohoku_angry
-        - tohoku_hppy
-        - tohoku_neutral
-        - tohoku_sad
+## ☆ ぴーよの賢さ
+- ローマ字を自動的に変換
+- 英単語をカタカナ読み
+- URL メンション などの不要な読み上げを省略
+- 声帯変更マジック
+- 美声 &nbsp; etc....
 
+## ☆ 声帯変更マジックショー
+- `voice: <str>` ※Voiceファイルの場所はConfigから設定
 - `speed: <int>` 読む速さ
 - `tone: <int>` 声のトーン
 - `jf: <int>` しらん
@@ -38,19 +27,21 @@
 例:
 `voice:takumi_normal speed:10 生麦生米生卵 voice:mei_happy tone:5 speed:0.5 隣の客はよくきゃき食う客だ`<br>
 
-## ☆ 開発向け
+## ☆ 開発者向け
 
-### 環境建築
+### 環境構築
 - Python 3.8.10にて制作
 - Open_Jtalk
 - ffmpeg
 
 - OS
     - ○ Linux
-    - ⬡ Windows wanakana がちょっとバグルかも  
+    - ⬡ Windows ちょっとバグルかも
     - △ Mac いけるっぽい匂いする
 
-一度起動したら作成される ｢Config.ini｣ に記載されている Pathが ほとんどLinux向けなんで、windows の人頑張って書き換えてね<br>
+### 注意
+- 一度起動したら作成される ｢Config.ini｣ にて PathやTokenなどを設定することが出来ます
+- htsvoiceは自分でダウンロードして持ってきてね<br>
 
 ## 連絡はこちらから
 [とぅいたー](https://twitter.com/Ryukkun8)
