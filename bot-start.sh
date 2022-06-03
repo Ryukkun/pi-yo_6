@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 ./read_bot.py 
+python3 ./main.py 
