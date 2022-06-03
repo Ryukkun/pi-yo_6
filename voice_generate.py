@@ -90,12 +90,10 @@ async def creat_WAV(Itext,guild_id,now_time,config):
 
     Itext = Itext.replace('\n',' ')
     Itext = re.sub(r'^\!.*','',Itext)                                                    # コマンドは読み上げない
-    Itext = re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+','URLは省略するのデス！',Itext)   # URLなら省略
-    Itext = re.sub(r'.*(\.jpg|\.jpeg|\.gif|\.png|\.bmp)','',Itext)                       # 画像なら読み上げない
-    Itext = re.sub(r'(\【VC参加ログ\】.*)','',Itext)                                         # 参加ログなら読み上げない
+    Itext = re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+','',Itext)                      # URL省略
     Itext = re.sub(r'<:.+:[0-9]+>','',Itext)                                             # 絵文字IDは読み上げない
-    Itext = re.sub(r'@&\d+|@\d+','メンションは省略するのデス！',Itext)
-    Itext = custam_text(Itext,config['DEFAULT']['Admin_dic'])                                                           # ユーザ登録した文字を読み替える
+    Itext = re.sub(r'<(@&|@)\d+>','',Itext)
+    Itext = custam_text(Itext,config['DEFAULT']['Admin_dic'])                            # ユーザ登録した文字を読み替える
     Itext = custam_text(Itext,config['DEFAULT']['User_dic'] + guild_id + '.txt')
 
 
