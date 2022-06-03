@@ -35,8 +35,8 @@
 - `jf: <int>` しらん
 - `a: <int>` わからん
 
-例
-`voice:takumi_normal speed:10 生麦生米生卵 voice:mei_happy tone:5 speed:0.5 隣の客はよくきゃき食う客だ`
+例:
+`voice:takumi_normal speed:10 生麦生米生卵 voice:mei_happy tone:5 speed:0.5 隣の客はよくきゃき食う客だ`<br>
 
 ## ☆ 開発向け
 
