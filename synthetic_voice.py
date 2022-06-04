@@ -1,5 +1,5 @@
 import asyncio
-import wanakana
+from wanakana import to_kana
 import alkana
 import re
 import os
@@ -71,7 +71,7 @@ def replace_english_kana(text):
         elif re.search(r'[A-Z]',word.group(2)):
             output += word.group(2)
         else:
-            output += wanakana.to_kana(word.group(2).lower())   # ローマ字 → カナ 変換
+            output += to_kana(word.group(2).lower())   # ローマ字 → カナ 変換
         
         if word.end() != len(temp_text) or re.compile(r'[^a-zA-Z\-]').search(temp_text[-1]):    # 文字の末尾を修復
             temp_text = temp_text[word.end()-1:]
@@ -86,7 +86,7 @@ def replace_english_kana(text):
 # ************************************************
 
 
-async def creat_WAV(Itext,guild_id,now_time,config):
+async def creat_voice(Itext,guild_id,now_time,config):
 
     Itext = Itext.replace('\n',' ')
     Itext = re.sub(r'^\!.*','',Itext)                                                    # コマンドは読み上げない
@@ -115,7 +115,7 @@ async def creat_WAV(Itext,guild_id,now_time,config):
         FileNum = 0
         gather_wav = []
         for Itext in ItextTemp:
-            gather_wav.append(split_wav(Itext,FileNum,f'{guild_id}-{now_time}'))
+            gather_wav.append(split_voice(Itext,FileNum,f'{guild_id}-{now_time}'))
             FileNum += 1
         await asyncio.gather(*gather_wav)
 
@@ -130,7 +130,7 @@ async def creat_WAV(Itext,guild_id,now_time,config):
                     os.remove(path)
 
 
-async def split_wav(Itext,FileNum,id_time):
+async def split_voice(Itext,FileNum,id_time):
     Itext,hts = costom_voice(Itext)      #voice
     Itext,speed = costom_status(Itext,['-r','1.2'],"speed:",r'speed:\S*\s|speed:\S*\Z')       #speed
     Itext,a = costom_status(Itext,['-a','auto'],"a:",r'a:\S*\s|a:\S*\Z')                      #AllPath

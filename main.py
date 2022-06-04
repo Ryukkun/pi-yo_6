@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from voice_generate import creat_WAV
+from synthetic_voice import creat_voice
 import asyncio
 import os
 import ffmpeg
@@ -108,7 +108,7 @@ async def on_message(message):
             queue_pl[message.guild.id].append([source,0])
 
             # 音声ファイル ファイル作成
-            try :await asyncio.create_task(creat_WAV(message.content,str(message.guild.id),str(now_time),config))
+            try :await asyncio.create_task(creat_voice(message.content,str(message.guild.id),str(now_time),config))
             except Exception as e:                                              # Error
                 print(f"Error : 音声ファイル作成に失敗 {e}")
                 queue_pl[message.guild.id].remove([source,0])
