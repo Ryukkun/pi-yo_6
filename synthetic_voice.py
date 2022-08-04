@@ -24,7 +24,7 @@ def custam_text(text,path):
 
 
 #------------------------------------------------------
-def costom_voice(text):
+def costom_voice(text,config):
     
     htsvoice=['-m',config['Open_Jtalk']['Voice']+'mei_normal.htsvoice']
     
@@ -89,11 +89,11 @@ def replace_english_kana(text):
 async def creat_voice(Itext,guild_id,now_time,config):
 
     Itext = Itext.replace('\n',' ')
-    Itext = re.sub(r'^\!.*','',Itext)                                                    # コマンドは読み上げない
-    Itext = re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+','',Itext)                      # URL省略
-    Itext = re.sub(r'<:.+:[0-9]+>','',Itext)                                             # 絵文字IDは読み上げない
-    Itext = re.sub(r'<(@&|@)\d+>','',Itext)
-    Itext = custam_text(Itext,config['DEFAULT']['Admin_dic'])                            # ユーザ登録した文字を読み替える
+    Itext = re.sub(r'^[,./?!].*','',Itext)                                                              # コマンドは読み上げない
+    Itext = re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+','ユーアールエルは省略するのです！ ',Itext)    # URL省略
+    Itext = re.sub(r'<:.+:[0-9]+>','',Itext)                                                            # 絵文字IDは読み上げない
+    Itext = re.sub(r'<(@&|@)\d+>','メンションは省略するのです！ ',Itext)
+    Itext = custam_text(Itext,config['DEFAULT']['Admin_dic'])                                           # ユーザ登録した文字を読み替える
     Itext = custam_text(Itext,config['DEFAULT']['User_dic'] + guild_id + '.txt')
 
 
@@ -115,7 +115,7 @@ async def creat_voice(Itext,guild_id,now_time,config):
         FileNum = 0
         gather_wav = []
         for Itext in ItextTemp:
-            gather_wav.append(split_voice(Itext,FileNum,f'{guild_id}-{now_time}'))
+            gather_wav.append(split_voice(Itext,FileNum,f'{guild_id}-{now_time}',config))
             FileNum += 1
         await asyncio.gather(*gather_wav)
 
@@ -130,8 +130,8 @@ async def creat_voice(Itext,guild_id,now_time,config):
                     os.remove(path)
 
 
-async def split_voice(Itext,FileNum,id_time):
-    Itext,hts = costom_voice(Itext)      #voice
+async def split_voice(Itext,FileNum,id_time,config):
+    Itext,hts = costom_voice(Itext,config)      #voice
     Itext,speed = costom_status(Itext,['-r','1.2'],"speed:",r'speed:\S*\s|speed:\S*\Z')       #speed
     Itext,a = costom_status(Itext,['-a','auto'],"a:",r'a:\S*\s|a:\S*\Z')                      #AllPath
     Itext,tone = costom_status(Itext,['-fm','auto'],"tone:",r'tone:\S*\s|tone:\S*\Z')           #tone
