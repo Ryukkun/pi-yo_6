@@ -132,10 +132,10 @@ async def creat_voice(Itext,guild_id,now_time,config):
 
 async def split_voice(Itext,FileNum,id_time,config):
     Itext,hts = costom_voice(Itext,config)      #voice
-    Itext,speed = costom_status(Itext,['-r','1.2'],"speed:",r'speed:\S*\s|speed:\S*\Z')       #speed
-    Itext,a = costom_status(Itext,['-a','auto'],"a:",r'a:\S*\s|a:\S*\Z')                      #AllPath
-    Itext,tone = costom_status(Itext,['-fm','auto'],"tone:",r'tone:\S*\s|tone:\S*\Z')           #tone
-    Itext,jf = costom_status(Itext,['-jf','auto'],"jf:",r'jf:\S*\s|jf:\S*\Z')                 #jf
+    Itext,speed = costom_status(Itext,['-r','1.2'],"speed:",r'speed:\S*\s|speed:\S*\Z')     #speed
+    Itext,a = costom_status(Itext,['-a','auto'],"a:",r'a:\S*\s|a:\S*\Z')                    #AllPath
+    Itext,tone = costom_status(Itext,['-fm','auto'],"tone:",r'tone:\S*\s|tone:\S*\Z')       #tone
+    Itext,jf = costom_status(Itext,['-jf','auto'],"jf:",r'jf:\S*\s|jf:\S*\Z')               #jf
 
     Itext = replace_english_kana(Itext)
     Itext = re.sub(r'ww+|ｗｗ+','わらわら',Itext)

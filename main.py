@@ -90,7 +90,7 @@ async def 黙れ(ctx):
 
 @client.event
 async def on_message(message):
-    msgclient = message.guild.voice_client
+    vc = message.guild.voice_client
 
     # 発言者がBotの場合はPass
     if message.author.bot:
@@ -100,7 +100,7 @@ async def on_message(message):
         print( message.author.name +" (",message.author.display_name,') : '+ message.content)
     
         # コマンドではなく なおかつ Joinしている場合
-        if not message.content.startswith(config['DEFAULT']['Prefix']) and msgclient:
+        if not message.content.startswith(config['DEFAULT']['Prefix']) and vc:
 
             now_time = time.time()
             source = config['Open_Jtalk']['Output']+str(message.guild.id)+"-"+str(now_time)+".wav"
@@ -108,7 +108,7 @@ async def on_message(message):
             queue_pl[message.guild.id].append([source,0])
 
             # 音声ファイル ファイル作成
-            try : await asyncio.create_task(creat_voice(message.content,str(message.guild.id),str(now_time),config))
+            try : await creat_voice(message.content,str(message.guild.id),str(now_time),config)
             except Exception as e:                                              # Error
                 print(f"Error : 音声ファイル作成に失敗 {e}")
                 queue_pl[message.guild.id].remove([source,0])
@@ -117,32 +117,36 @@ async def on_message(message):
             queue_pl[message.guild.id] = [[source,1] if i[0] == source else i for i in queue_pl[message.guild.id]]  # 音声ファイルが作成済みなのを記述
 
             # 再生されるまでループ
-            if not msgclient.is_playing():
-                play_loop(message.guild.name,message.guild.id,msgclient)
+            if not vc.is_playing():
+                await play_loop(message.guild,vc)
 
-
+    # Fin
     await client.process_commands(message)
 
+
+
 # 再生 Loop
-def play_loop(guild_name,guild_id,msgclient):
+async def play_loop(guild,vc):
     
-    if queue_pl[guild_id] ==[]: return
+    if queue_pl[guild.id] ==[]: return
 
-    while queue_pl[guild_id][0][1] == 2:                # ファイル削除
-        if os.path.isfile(queue_pl[guild_id][0][0]):
-            os.remove(queue_pl[guild_id][0][0])
-        del queue_pl[guild_id][0]
-        if queue_pl[guild_id] ==[]: return
+    while queue_pl[guild.id][0][1] == 2:                # ファイル削除
+        if os.path.isfile(queue_pl[guild.id][0][0]):
+            os.remove(queue_pl[guild.id][0][0])
+        del queue_pl[guild.id][0]
+        if queue_pl[guild.id] ==[]: return
 
-    if queue_pl[guild_id][0][1] == 1:                   # 再生
-        source_play = queue_pl[guild_id][0][0]
-        queue_pl[guild_id][0][1] = 2
-        print(f"Play  <{guild_name}>")
-        msgclient.play(discord.FFmpegPCMAudio(source_play),after=lambda e: play_loop(guild_name,guild_id,msgclient))
+    if queue_pl[guild.id][0][1] == 1:                   # 再生
+        source = queue_pl[guild.id][0][0]
+        queue_pl[guild.id][0][1] = 2
+        print(f"Play  <{guild.name}>")
+
+        source_play = discord.FFmpegOpusAudio(source,bitrate=256,options='-application voip')
+        vc.play(source_play,after=lambda e: asyncio.run(play_loop(guild,vc)))
         return
 
-    if queue_pl[guild_id][0][1] == 0:                   # Skip
-        print("作成途中かな " + str(queue_pl[guild_id]))
+    if queue_pl[guild.id][0][1] == 0:                   # Skip
+        print("作成途中かな " + str(queue_pl[guild.id]))
 
 
 client.run(config['DEFAULT']['Token'])
