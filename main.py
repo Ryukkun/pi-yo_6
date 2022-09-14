@@ -89,6 +89,14 @@ async def 黙れ(ctx):
         ctx.guild.voice_client.stop()
         await ctx.channel.send(random.choice([";w;",":(","><",";<","無限の彼方へ飛ばすぞ","😭","( ´ཫ` )"]))
         print(f'{ctx.guild.name} : #黙る;w;')
+@client.command()
+async def s(ctx):
+    if ctx.guild.voice_client.is_playing():
+        ctx.guild.voice_client.stop()
+@client.command()
+async def shutup(ctx):
+    if ctx.guild.voice_client.is_playing():
+        ctx.guild.voice_client.stop()
 
 @client.event
 async def on_message(message):
