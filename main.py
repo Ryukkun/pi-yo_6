@@ -39,7 +39,9 @@ with open(config['DEFAULT']['Admin_dic'],'a'):pass
 
 #---------------------------------
 
-client = commands.Bot(command_prefix=config['DEFAULT']['Prefix'])
+intents = discord.Intents.default()
+intents.message_content = True
+client = commands.Bot(command_prefix=config['DEFAULT']['Prefix'],intents=intents)
 voice_client = None
 queue_pl = {}
 
@@ -94,9 +96,9 @@ async def on_message(message):
 
     # 発言者がBotの場合はPass
     if message.author.bot:
-        print('\n#message.author : bot')
+        print('.\n#message.author : bot')
     else:
-        print(f'\n#message.server  : {message.guild.name} ({message.channel.name})')
+        print(f'.\n#message.server  : {message.guild.name} ({message.channel.name})')
         print( message.author.name +" (",message.author.display_name,') : '+ message.content)
     
         # コマンドではなく なおかつ Joinしている場合
