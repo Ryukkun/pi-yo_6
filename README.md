@@ -27,17 +27,13 @@
 例:
 `voice:takumi_normal speed:10 生麦生米生卵 voice:mei_happy tone:5 speed:0.5 隣の客はよくきゃき食う客だ`<br>
 
-## ☆ 開発者向け
+## ☆ 開発頑張った偉いね
 
 ### 環境構築
 - Python 3.8.10にて制作
 - Open_Jtalk
 - ffmpeg
-
-- OS
-    - ○ Linux
-    - ⬡ Windows ちょっとバグルかも
-    - △ Mac いけるっぽい匂いする
+- OS : Open_Jtalk を 入れられればなんでもいけるさきっと
 
 ### 注意
 - 一度起動したら作成される ｢Config.ini｣ にて PathやTokenなどを設定することが出来ます
