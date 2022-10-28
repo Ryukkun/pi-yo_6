@@ -1,3 +1,4 @@
 #!/bin/sh
-pip install requirements.txt
-python ./main.py 
+cd `dirname $0`
+pip install -r requirements.txt
+python3 ./main.py 
