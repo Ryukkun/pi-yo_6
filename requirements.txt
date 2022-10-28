@@ -4,3 +4,6 @@ wanakana
 wanakana-python
 discord
 discord.py[voice]
+yt_dlp
+pytube
+bs4

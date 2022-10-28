@@ -106,7 +106,8 @@ async def creat_voice(Itext,guild_id,now_time,config):
         Itext = re.sub(r'ww+|ｗｗ+','わらわら',Itext)
         print(f"変換後:{Itext}")
         
-        cmd = f"open_jtalk -x {config['Open_Jtalk']['Dic']} -m {config['Open_Jtalk']['Voice']}mei_normal.htsvoice -r 1.2 -ow {config['Open_Jtalk']['Output']}{guild_id}-{now_time}.wav"
+        cmd = f'open_jtalk -x "{config["Open_Jtalk"]["Dic"]}" -m "{config["Open_Jtalk"]["Voice"]}mei_normal.htsvoice" -r 1.2 -ow "{config["Open_Jtalk"]["Output"]}{guild_id}-{now_time}.wav"'
+
         prog = await asyncio.create_subprocess_shell(f'echo {Itext} | {cmd}',stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
         await prog.wait()
 
@@ -142,6 +143,7 @@ async def split_voice(Itext,FileNum,id_time,config):
     print(f"変換後 ({FileNum+1}) :{Itext}")
 
     FileName = config['Open_Jtalk']['Output']+id_time+"-"+str(FileNum)+".wav"
-    cmd=f"open_jtalk -x {config['Open_Jtalk']['Dic']} -ow {FileName} {hts} {speed} {tone} {jf} {a}"
+    cmd=f'open_jtalk -x "{config["Open_Jtalk"]["Dic"]}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
+    
     prog = await asyncio.create_subprocess_shell(f'echo {Itext} | {cmd}',stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
     await prog.wait()
