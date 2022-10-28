@@ -85,7 +85,7 @@ async def join(ctx):
     if vc := ctx.author.voice:
         gid = ctx.guild.id
         print(f'{ctx.guild.name} : #join')
-        await vc.channel.connect()
+        await vc.channel.connect(self_deaf=True)
         g_opts[gid] = {}
         g_opts[gid]['loop'] = 1
         g_opts[gid]['loop_playlist'] = 1
@@ -608,6 +608,8 @@ class MultiAudio():
         self.VLoop = False
         self.Music = self._Music(self)
         self.Voice = self._Voice(self)
+        self.MBytes = None
+        self.VBytes = None
         self.I = 960
         self.play_audio = self.vc.encoder = discord.opus.Encoder()
         self.play_audio = self.vc.send_audio_packet
@@ -703,30 +705,27 @@ class MultiAudio():
 
     @tasks.loop(seconds=0.02)
     async def Loop(self):
-        MBytes = self.Music.read_bytes()
-        VBytes = self.Voice.read_bytes()
+        if self.MBytes or self.VBytes:
+            self.play_audio(self.Bytes,encode=True)
+        self.MBytes = self.Music.read_bytes()
+        self.VBytes = self.Voice.read_bytes()
         VArray = None
         MArray = None
-        if MBytes == 'Fin':
+        if self.MBytes == 'Fin':
             self.MAfter()
-            MBytes = None
-        elif MBytes:
-            try:MArray = np.frombuffer(MBytes,np.int16)
-            except Exception:MArray = None
-            Bytes = MBytes
-        if VBytes == 'Fin':
+            self.MBytes = None
+        elif self.MBytes:
+            MArray = np.frombuffer(self.MBytes,np.int16)
+            self.Bytes = self.MBytes
+        if self.VBytes == 'Fin':
             self.VAfter()
-            VBytes = None
-        elif VBytes:
-            try:VArray = np.frombuffer(VBytes,np.int16)
-            except Exception:VArray = None
-            Bytes = VBytes
+            self.VBytes = None
+        elif self.VBytes:
+            VArray = np.frombuffer(self.VBytes,np.int16)
+            self.Bytes = self.VBytes
         if type(MArray) != NoneType and type(VArray) != NoneType:
-            Bytes = (MArray + VArray).astype(np.int16).tobytes()
-            #print(Bytes)
-        if MBytes or VBytes:
-            #print(Bytes)
-            self.play_audio(Bytes,encode=True)
+            self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
+
 
             
 
