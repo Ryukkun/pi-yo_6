@@ -590,10 +590,9 @@ async def play_loop(guild,played,did_time):
         print(f"{guild.name} : Play  [Now len: {str(len(g_opts[gid]['queue']))}]")
             
         Mvc = g_opts[guild.id]['Ma'].Music
-        #player = AudioPlayer(await AudioData.AudioSource(), vc, after=None)
-        #player.start()
+        
         #vc.play(await AudioData.AudioSource(),after=lambda e: client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
-        await Mvc.play(AudioData,after=lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
+        await Mvc.play(await AudioData.AudioSource(),after=lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
         Channel = g_opts[guild.id]['latest_ch']
         if late_E := g_opts[gid]['may_i_edit'].get(Channel.id):
             try: 
@@ -615,6 +614,11 @@ async def play_loop(guild,played,did_time):
 
 
 class MultiAudio(threading.Thread):
+    """
+    Discord に存在する AudioPlayer は 同時に1つまでの音源の再生にしか対応していないため
+    独自で Playerを作成 
+    self.run は制御方法知らんから、常にループしてる 0.02秒(20ms) 間隔で 
+    """
     def __init__(self,guild) -> None:
         super(MultiAudio, self).__init__()
         self.daemon = True
@@ -623,13 +627,19 @@ class MultiAudio(threading.Thread):
         self.vc = guild.voice_client
         self.MLoop = False
         self.VLoop = False
-        self.Music = self._Music(self)
-        self.Voice = self._Voice(self)
+        self.Music = self._APlayer(self,'M')
+        self.Voice = self._APlayer(self,'V')
         self.MBytes = None
         self.VBytes = None
         self.vc.encoder = discord.opus.Encoder()
         self.play_audio = self.vc.send_audio_packet
+        self.old_time = 0
 
+    """
+    これ（self._speak）がないと謎にバグる ※botがjoinしたときに居たメンツにしか 音が聞こえない
+    友達が幻聴を聞いてたら怖いよね
+    ついでにLOOPの制御も
+    """
     def speaking(self,CH,status):
         if status:
             if self.VLoop == False and self.MLoop == False:
@@ -643,46 +653,54 @@ class MultiAudio(threading.Thread):
         if CH == 'M':
             self.MLoop = status
 
-
     def _speak(self, speaking: discord.SpeakingState) -> None:
             try:
                 asyncio.run_coroutine_threadsafe(self.vc.ws.speak(speaking), self.vc.client.loop)
             except Exception:
                 pass
 
-
-
+    """
+    これずっとloopしてます 止まりません loopの悪魔
+    音声データ（Bytes）を取得し、必要があれば Numpy で読み込んで 合成しています
+    最後に音声データ送信　ドルチェ
+    """
     def run(self):
         while True:
-            self.old_time = time.time()
-            if self.MBytes or self.VBytes:
-                try:self.play_audio(self.Bytes,encode=True)
-                except OSError:
-                    break
             self.MBytes = self.Music.read_bytes()
             self.VBytes = self.Voice.read_bytes()
             VArray = None
             MArray = None
+
+            # Bytes Mix
             if self.MBytes == 'Fin':
-                self.MAfter()
+                self.Music.After()
                 self.MBytes = None
             elif self.MBytes:
                 MArray = np.frombuffer(self.MBytes,np.int16)
                 self.Bytes = self.MBytes
             if self.VBytes == 'Fin':
-                self.VAfter()
+                self.Voice.After()
                 self.VBytes = None
             elif self.VBytes:
                 VArray = np.frombuffer(self.VBytes,np.int16)
                 self.Bytes = self.VBytes
             if type(MArray) != NoneType and type(VArray) != NoneType:
                 self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
+
+            # Loop Delay
             PTime = time.time() - self.old_time
             if 0 <= PTime <= 0.02:
                 time.sleep(0.02 - PTime)
-                
             else:
                 print(PTime)
+            self.old_time = time.time()
+            print(PTime)
+            # Send Bytes
+            if self.MBytes or self.VBytes:
+                try:self.play_audio(self.Bytes,encode=True)
+                except OSError:
+                    break
+
             
 
 
@@ -717,33 +735,33 @@ class MultiAudio(threading.Thread):
 
 
 
-    class _Music():
-        def __init__(self,parent):
+    class _APlayer():
+        def __init__(self,parent,name):
             self.AudioSource = None
             self.Pausing = False
             self.Parent = parent
             self.Time = 0
             self.After = None
+            self.Name = name
             
 
         async def play(self,AudioSource,after):
-            self.AudioSource = await AudioSource.AudioSource()
+            self.AudioSource = AudioSource
             self.Timer = 0
-            self.Parent.MAfter = after
+            self.After = after
             self.resume()
 
         def stop(self):
             self.AudioSource = None
-            self.Parent.MLoop = False
-            self.Parent.Loop_Check()
+            self.Parent.speaking(self.Name,False)
 
         def resume(self):
             self.Pausing = False
-            self.Parent.speaking('M',True)
+            self.Parent.speaking(self.Name,True)
 
         def pause(self):
             self.Pausing = True
-            self.Parent.speaking('M',False)
+            self.Parent.speaking(self.Name,False)
 
         def is_playing(self):
             if self.AudioSource:
@@ -760,7 +778,7 @@ class MultiAudio(threading.Thread):
                     return Bytes
                 else:
                     self.AudioSource = None
-                    self.Parent.speaking('M',False)
+                    self.Parent.speaking(self.Name,False)
                     return 'Fin'
 
 
