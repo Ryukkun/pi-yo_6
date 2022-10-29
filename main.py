@@ -209,10 +209,11 @@ async def playing(ctx,*args):
 async def on_reaction_add(Reac,User):
     guild = Reac.message.guild
     gid = guild.id
-    Mvc = g_opts[gid]['Ma'].Music
+    vc = guild.voice_client
+    #Mvc = g_opts[gid]['Ma'].Music
     if User.bot or Reac.message.author.id != client.user.id: return
     asyncio.create_task(Reac.remove(User))
-    if Mvc.is_playing():
+    if vc:
 
         #### Setting
         # 単曲ループ
@@ -780,7 +781,9 @@ class MultiAudio(threading.Thread):
         while True:
             self.old_time = time.time()
             if self.MBytes or self.VBytes:
-                self.play_audio(self.Bytes,encode=True)
+                try:self.play_audio(self.Bytes,encode=True)
+                except OSError:
+                    break
             self.MBytes = self.Music.read_bytes()
             self.VBytes = self.Voice.read_bytes()
             VArray = None
