@@ -66,7 +66,7 @@ class StreamAudioData:
 
         FFMPEG_OPTIONS = {
             "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -analyzeduration 2147483647 -probesize 2147483647",
-            'options': f'-vn -c:a pcm_s16le -af "volume={volume}dB" -b:a 128k -application lowdelay'
+            'options': f'-vn -c:a pcm_s16le -af "volume={volume}dB" -b:a 128k -application lowdelay -loglevel error'
             }
         return FFmpegPCMAudio(self.St_Url,**FFMPEG_OPTIONS)
 

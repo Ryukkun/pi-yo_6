@@ -1034,7 +1034,7 @@ async def playV_loop(guild):
         g_opts[gid]['Voice_queue'][0][1] = 2
         print(f"Play  <{guild.name}>")
 
-        source_play = discord.FFmpegPCMAudio(source,options='-vn -c:a pcm_s16le -b:a 128k -application lowdelay')
+        source_play = discord.FFmpegPCMAudio(source,options='-vn -c:a pcm_s16le -b:a 128k -application lowdelay -loglevel error')
         await Vvc.play(source_play,lambda : client.loop.create_task(playV_loop(guild)))
         return
 
