@@ -132,11 +132,11 @@ class CreateButton(discord.ui.View):
 
     @discord.ui.button(label="<",)
     async def def_button0(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
         guild = interaction.guild
         gid = interaction.guild_id
         Mvc = g_opts[gid]['Ma'].Music
-        
+        client.loop.create_task(interaction.response.defer())
+
         if not g_opts[gid]['rewind']: return
         AudioData = g_opts[gid]['rewind'][-1]
         g_opts[gid]['queue'].insert(0,AudioData)
@@ -149,9 +149,9 @@ class CreateButton(discord.ui.View):
 
     @discord.ui.button(label="⏯",style=discord.ButtonStyle.blurple)
     async def def_button1(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
         guild = interaction.guild
         Mvc = g_opts[guild.id]['Ma'].Music
+        client.loop.create_task(interaction.response.defer())
         if Mvc.is_paused():
             print(f'{guild.name} : #resume')
             Mvc.resume()
@@ -161,9 +161,8 @@ class CreateButton(discord.ui.View):
 
     @discord.ui.button(label=">")
     async def def_button2(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
         await def_skip(interaction.message)
-
+        await interaction.response.defer()
 
 
 
@@ -694,7 +693,7 @@ class MultiAudio(threading.Thread):
             else:
                 print(PTime)
             self.old_time = time.time()
-            print(PTime)
+            #print(PTime)
             # Send Bytes
             if self.MBytes or self.VBytes:
                 try:self.play_audio(self.Bytes,encode=True)
@@ -702,38 +701,6 @@ class MultiAudio(threading.Thread):
                     break
 
             
-
-
-    class _Voice():
-        def __init__(self,parent):
-            self.AudioSource = None
-            self.Parent = parent
-            
-
-        async def play(self,AudioSource,after):
-            self.AudioSource = AudioSource
-            self.Parent.VAfter = after
-            self.Parent.speaking('V',True)
-
-        def stop(self):
-            self.AudioSource = None
-
-
-        def is_playing(self):
-            if self.AudioSource:
-                return True
-            return False
-        
-        def read_bytes(self):
-            if self.AudioSource:
-                if Bytes := self.AudioSource.read():
-                    return Bytes
-                else:
-                    self.AudioSource = None
-                    self.Parent.speaking('V',False)
-                    return 'Fin'
-
-
 
     class _APlayer():
         def __init__(self,parent,name):
