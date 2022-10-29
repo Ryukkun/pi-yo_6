@@ -1,6 +1,6 @@
 from types import NoneType
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import asyncio
 import os
 import re
@@ -162,7 +162,7 @@ class CreateButton(discord.ui.View):
     @discord.ui.button(label=">")
     async def def_button2(self, interaction: discord.Interaction, button: discord.ui.Button):
         await def_skip(interaction.message)
-        await interaction.response.defer()
+        client.loop.create_task(interaction.response.defer())
 
 
 
@@ -665,8 +665,8 @@ class MultiAudio(threading.Thread):
     """
     def run(self):
         while True:
-            self.MBytes = self.Music.read_bytes()
-            self.VBytes = self.Voice.read_bytes()
+            self.Sec, self.MBytes = self.Music.read_bytes()
+            self.Sec, self.VBytes = self.Voice.read_bytes()
             VArray = None
             MArray = None
 
@@ -745,16 +745,17 @@ class MultiAudio(threading.Thread):
                     temp = self.QBytes
                     self.QBytes = None
                     self.Timer += 1
-                    return temp
+                    return self._calc_sec(), temp
                 if Bytes := self.AudioSource.read():
                     self.Timer += 1
-                    return Bytes
+                    return self._calc_sec(), Bytes
                 else:
                     self.AudioSource = None
                     self.Parent.speaking(self.Name,False)
-                    return 'Fin'
+                    return self._calc_sec(), 'Fin'
 
-
+        def _calc_sec(self):
+            return self.Timer // 50
 
 
 
