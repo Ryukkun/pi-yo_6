@@ -713,6 +713,7 @@ class MultiAudio(threading.Thread):
             
 
         async def play(self,AudioSource,after):
+            self.QBytes = AudioSource.read()
             self.AudioSource = AudioSource
             self.Timer = 0
             self.After = after
@@ -740,6 +741,11 @@ class MultiAudio(threading.Thread):
         
         def read_bytes(self):
             if self.AudioSource and self.Pausing == False:
+                if self.QBytes:
+                    temp = self.QBytes
+                    self.QBytes = None
+                    self.Timer += 1
+                    return temp
                 if Bytes := self.AudioSource.read():
                     self.Timer += 1
                     return Bytes
