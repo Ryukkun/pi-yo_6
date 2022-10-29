@@ -95,6 +95,7 @@ async def join(ctx):
         g_opts[gid]['may_i_edit'] = {}
         g_opts[gid]['rewind'] = []
         g_opts[gid]['Ma'] = MultiAudio(ctx.guild)
+        g_opts[gid]['Ma'].start()
         with open(config['DEFAULT']['User_dic']+ str(ctx.guild.id) + '.txt', 'a'): pass
     
 
@@ -753,15 +754,19 @@ class MultiAudio(threading.Thread):
         self.vc.encoder = discord.opus.Encoder()
         self.play_audio = self.vc.send_audio_packet
 
-    def Loop_Check(self):
-        if self.VLoop or self.MLoop:
-            if not self.Loop.is_running():
-                self.Loop.start()
+    def speaking(self,CH,status):
+        if status:
+            if self.VLoop == False and self.MLoop == False:
                 self._speak(discord.SpeakingState.voice)
         else:
-            if self.Loop.is_running():
-                self.Loop.stop()
+            if self.VLoop and self.MLoop: pass
+            elif self.VLoop or self.MLoop:
                 self._speak(discord.SpeakingState.none)
+        if CH == 'V':
+            self.VLoop = status
+        if CH == 'M':
+            self.MLoop = status
+
 
     def _speak(self, speaking: discord.SpeakingState) -> None:
             try:
@@ -771,31 +776,35 @@ class MultiAudio(threading.Thread):
 
 
 
-    @tasks.loop(seconds=0.02)
-    async def Loop(self):
-        self.old_time = time.time()
-        if self.MBytes or self.VBytes:
-            self.play_audio(self.Bytes,encode=True)
-        self.MBytes = self.Music.read_bytes()
-        self.VBytes = self.Voice.read_bytes()
-        VArray = None
-        MArray = None
-        if self.MBytes == 'Fin':
-            self.MAfter()
-            self.MBytes = None
-        elif self.MBytes:
-            MArray = np.frombuffer(self.MBytes,np.int16)
-            self.Bytes = self.MBytes
-        if self.VBytes == 'Fin':
-            self.VAfter()
-            self.VBytes = None
-        elif self.VBytes:
-            VArray = np.frombuffer(self.VBytes,np.int16)
-            self.Bytes = self.VBytes
-        if type(MArray) != NoneType and type(VArray) != NoneType:
-            self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
-        if 0.02 <= (time.time() - self.old_time):
-            print(time.time() - self.old_time)
+    def run(self):
+        while True:
+            self.old_time = time.time()
+            if self.MBytes or self.VBytes:
+                self.play_audio(self.Bytes,encode=True)
+            self.MBytes = self.Music.read_bytes()
+            self.VBytes = self.Voice.read_bytes()
+            VArray = None
+            MArray = None
+            if self.MBytes == 'Fin':
+                self.MAfter()
+                self.MBytes = None
+            elif self.MBytes:
+                MArray = np.frombuffer(self.MBytes,np.int16)
+                self.Bytes = self.MBytes
+            if self.VBytes == 'Fin':
+                self.VAfter()
+                self.VBytes = None
+            elif self.VBytes:
+                VArray = np.frombuffer(self.VBytes,np.int16)
+                self.Bytes = self.VBytes
+            if type(MArray) != NoneType and type(VArray) != NoneType:
+                self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
+            PTime = time.time() - self.old_time
+            if 0 <= PTime <= 0.02:
+                time.sleep(0.02 - PTime)
+                
+            else:
+                print(PTime)
             
 
 
@@ -808,8 +817,7 @@ class MultiAudio(threading.Thread):
         async def play(self,AudioSource,after):
             self.AudioSource = AudioSource
             self.Parent.VAfter = after
-            self.Parent.VLoop = True
-            self.Parent.Loop_Check()
+            self.Parent.speaking('V',True)
 
         def stop(self):
             self.AudioSource = None
@@ -826,8 +834,7 @@ class MultiAudio(threading.Thread):
                     return Bytes
                 else:
                     self.AudioSource = None
-                    self.Parent.VLoop = False
-                    self.Parent.Loop_Check()
+                    self.Parent.speaking('V',False)
                     return 'Fin'
 
 
@@ -854,13 +861,11 @@ class MultiAudio(threading.Thread):
 
         def resume(self):
             self.Pausing = False
-            self.Parent.MLoop = True
-            self.Parent.Loop_Check()
+            self.Parent.speaking('M',True)
 
         def pause(self):
             self.Pausing = True
-            self.Parent.MLoop = False
-            self.Parent.Loop_Check()
+            self.Parent.speaking('M',False)
 
         def is_playing(self):
             if self.AudioSource:
@@ -877,8 +882,7 @@ class MultiAudio(threading.Thread):
                     return Bytes
                 else:
                     self.AudioSource = None
-                    self.Parent.MLoop = False
-                    self.Parent.Loop_Check()
+                    self.Parent.speaking('M',False)
                     return 'Fin'
 
 
