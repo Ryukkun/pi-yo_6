@@ -15,7 +15,7 @@ from audio import StreamAudioData as SAD
 from synthetic_voice import creat_voice
 import numpy as np
 import shutil
-
+import threading
 
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -557,6 +557,7 @@ async def ydl_playlist(guild):
 #---------------------------------------------------------------------------------------
 async def play_loop(guild,played,did_time):
     gid = guild.id
+    vc = guild.voice_client
 
 
     # あなたは用済みよ
@@ -587,7 +588,10 @@ async def play_loop(guild,played,did_time):
         print(f"{guild.name} : Play  [Now len: {str(len(g_opts[gid]['queue']))}]")
             
         Mvc = g_opts[guild.id]['Ma'].Music
-        await Mvc.play(AudioData,lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
+        #player = AudioPlayer(await AudioData.AudioSource(), vc, after=None)
+        #player.start()
+        #vc.play(await AudioData.AudioSource(),after=lambda e: client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
+        await Mvc.play(AudioData,after=lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
         Channel = g_opts[guild.id]['latest_ch']
         if late_E := g_opts[gid]['may_i_edit'].get(Channel.id):
             try: 
@@ -599,8 +603,144 @@ async def play_loop(guild,played,did_time):
             await playing(None,guild,Channel)
 
 
-class MultiAudio():
+
+
+
+
+
+
+
+class AudioPlayer(threading.Thread):
+    DELAY: float = discord.opus.Encoder().FRAME_LENGTH / 1000.0
+
+    def __init__(
+        self,
+        source,
+        client,
+        *,
+        after,
+    ) -> None:
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.source  = source
+        self.client  = client
+        self.after = after
+
+        self._end: threading.Event = threading.Event()
+        self._resumed: threading.Event = threading.Event()
+        self._resumed.set()  # we are not paused
+        self._current_error = None
+        self._connected: threading.Event = client._connected
+        self._lock: threading.Lock = threading.Lock()
+
+        if after is not None and not callable(after):
+            raise TypeError('Expected a callable for the "after" parameter.')
+
+    def _do_run(self) -> None:
+        self.loops = 0
+        self._start = time.perf_counter()
+
+        # getattr lookup speed ups
+        play_audio = self.client.send_audio_packet
+        #self._speak(SpeakingState.voice)
+
+        while not self._end.is_set():
+            # are we paused?
+            if not self._resumed.is_set():
+                # wait until we aren't
+                self._resumed.wait()
+                continue
+
+            # are we disconnected from voice?
+            if not self._connected.is_set():
+                # wait until we are connected
+                self._connected.wait()
+                # reset our internal data
+                self.loops = 0
+                self._start = time.perf_counter()
+
+            self.loops += 1
+            data = self.source.read()
+
+            if not data:
+                self.stop()
+                break
+
+            play_audio(data, encode=not self.source.is_opus())
+            next_time = self._start + self.DELAY * self.loops
+            delay = max(0, self.DELAY + (next_time - time.perf_counter()))
+            time.sleep(delay)
+
+    def run(self) -> None:
+        
+        self._do_run()
+        # except Exception as exc:
+        #     self._current_error = exc
+        #     self.stop()
+        # finally:
+        #     self._call_after()
+        #     self.source.cleanup()
+
+    def _call_after(self) -> None:
+        error = self._current_error
+
+        if self.after is not None:
+            try:
+                self.after(error)
+            except Exception as exc:
+                exc.__context__ = error
+                _log.exception('Calling the after function failed.', exc_info=exc)
+        elif error:
+            _log.exception('Exception in voice thread %s', self.name, exc_info=error)
+
+    def stop(self) -> None:
+        self._end.set()
+        self._resumed.set()
+        self._speak(SpeakingState.none)
+
+    def pause(self, *, update_speaking: bool = True) -> None:
+        self._resumed.clear()
+        if update_speaking:
+            self._speak(SpeakingState.none)
+
+    def resume(self, *, update_speaking: bool = True) -> None:
+        self.loops: int = 0
+        self._start: float = time.perf_counter()
+        self._resumed.set()
+        if update_speaking:
+            self._speak(SpeakingState.voice)
+
+    def is_playing(self) -> bool:
+        return self._resumed.is_set() and not self._end.is_set()
+
+    def is_paused(self) -> bool:
+        return not self._end.is_set() and not self._resumed.is_set()
+
+    def _set_source(self, source) -> None:
+        with self._lock:
+            self.pause(update_speaking=False)
+            self.source = source
+            self.resume(update_speaking=False)
+
+    def _speak(self, speaking) -> None:
+        try:
+            asyncio.run_coroutine_threadsafe(self.client.ws.speak(speaking), self.client.client.loop)
+        except Exception:
+            _log.exception("Speaking call in player failed")
+
+
+
+
+
+
+
+
+
+
+
+class MultiAudio(threading.Thread):
     def __init__(self,guild) -> None:
+        super(MultiAudio, self).__init__()
         self.guild = guild
         self.gid = guild.id
         self.vc = guild.voice_client
@@ -610,17 +750,53 @@ class MultiAudio():
         self.Voice = self._Voice(self)
         self.MBytes = None
         self.VBytes = None
-        self.I = 960
-        self.play_audio = self.vc.encoder = discord.opus.Encoder()
+        self.vc.encoder = discord.opus.Encoder()
         self.play_audio = self.vc.send_audio_packet
 
     def Loop_Check(self):
         if self.VLoop or self.MLoop:
             if not self.Loop.is_running():
                 self.Loop.start()
+                self._speak(discord.SpeakingState.voice)
         else:
             if self.Loop.is_running():
                 self.Loop.stop()
+                self._speak(discord.SpeakingState.none)
+
+    def _speak(self, speaking: discord.SpeakingState) -> None:
+            try:
+                asyncio.run_coroutine_threadsafe(self.vc.ws.speak(speaking), self.vc.client.loop)
+            except Exception:
+                pass
+
+
+
+    @tasks.loop(seconds=0.02)
+    async def Loop(self):
+        self.old_time = time.time()
+        if self.MBytes or self.VBytes:
+            self.play_audio(self.Bytes,encode=True)
+        self.MBytes = self.Music.read_bytes()
+        self.VBytes = self.Voice.read_bytes()
+        VArray = None
+        MArray = None
+        if self.MBytes == 'Fin':
+            self.MAfter()
+            self.MBytes = None
+        elif self.MBytes:
+            MArray = np.frombuffer(self.MBytes,np.int16)
+            self.Bytes = self.MBytes
+        if self.VBytes == 'Fin':
+            self.VAfter()
+            self.VBytes = None
+        elif self.VBytes:
+            VArray = np.frombuffer(self.VBytes,np.int16)
+            self.Bytes = self.VBytes
+        if type(MArray) != NoneType and type(VArray) != NoneType:
+            self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
+        if 0.02 <= (time.time() - self.old_time):
+            print(time.time() - self.old_time)
+            
 
 
     class _Voice():
@@ -668,19 +844,23 @@ class MultiAudio():
         async def play(self,AudioSource,after):
             self.AudioSource = await AudioSource.AudioSource()
             self.Timer = 0
-            self.Pausing = False
             self.Parent.MAfter = after
-            self.Parent.MLoop = True
-            self.Parent.Loop_Check()
+            self.resume()
 
         def stop(self):
             self.AudioSource = None
+            self.Parent.MLoop = False
+            self.Parent.Loop_Check()
 
         def resume(self):
             self.Pausing = False
+            self.Parent.MLoop = True
+            self.Parent.Loop_Check()
 
         def pause(self):
             self.Pausing = True
+            self.Parent.MLoop = False
+            self.Parent.Loop_Check()
 
         def is_playing(self):
             if self.AudioSource:
@@ -703,28 +883,6 @@ class MultiAudio():
 
 
 
-    @tasks.loop(seconds=0.02)
-    async def Loop(self):
-        if self.MBytes or self.VBytes:
-            self.play_audio(self.Bytes,encode=True)
-        self.MBytes = self.Music.read_bytes()
-        self.VBytes = self.Voice.read_bytes()
-        VArray = None
-        MArray = None
-        if self.MBytes == 'Fin':
-            self.MAfter()
-            self.MBytes = None
-        elif self.MBytes:
-            MArray = np.frombuffer(self.MBytes,np.int16)
-            self.Bytes = self.MBytes
-        if self.VBytes == 'Fin':
-            self.VAfter()
-            self.VBytes = None
-        elif self.VBytes:
-            VArray = np.frombuffer(self.VBytes,np.int16)
-            self.Bytes = self.VBytes
-        if type(MArray) != NoneType and type(VArray) != NoneType:
-            self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
 
 
             
