@@ -713,6 +713,7 @@ class _APlayer():
         self.Name = name
         self.QBytes = []
         self.B_loop = False
+        self.loop = asyncio.get_event_loop()
         # TH = threading.Thread(target=self._read)
         # TH.start()
         
@@ -747,8 +748,8 @@ class _APlayer():
     def read_bytes(self):
         if self.Pausing == False:
         
-            if len(self.QBytes) <= 49:
-                asyncio.get_event_loop().run_in_executor(None,self._read)
+            if len(self.QBytes) <= 49 and self.AudioSource:
+                self.loop.run_in_executor(None,self._read)
             if self.QBytes:
                 print(len(self.QBytes))
                 Bytes = self.QBytes[0]
