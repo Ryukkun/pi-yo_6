@@ -1,5 +1,3 @@
-from ast import Break
-from tkinter.ttk import Progressbar
 from types import NoneType
 import discord
 from discord.ext import commands
@@ -315,12 +313,12 @@ async def Edit_Embed(gid):
             
             return f'{Hour}{Min}:{Sec}'
         NTime = g_opts[gid]['Ma'].Music.Timer // 50
-        Duration = _SAD.St_Sec / 30
+        Duration = _SAD.St_Sec / 50
         Progress = ''
         for I in range(50):
             I = I * Duration
             if I <= NTime < (I + Duration):
-                Progress += '+'
+                Progress += '|'
             else:
                 Progress += '-'
         NTime = Calc_Time(g_opts[gid]['Ma'].Music.Timer // 50)
