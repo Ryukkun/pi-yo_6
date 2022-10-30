@@ -313,9 +313,9 @@ async def Edit_Embed(gid):
             
             return f'{Hour}{Min}:{Sec}'
         NTime = g_opts[gid]['Ma'].Music.Timer // 50
-        Duration = _SAD.St_Sec / 50
+        Duration = _SAD.St_Sec / 42
         Progress = ''
-        for I in range(50):
+        for I in range(42):
             I = I * Duration
             if I <= NTime < (I + Duration):
                 Progress += '|'
