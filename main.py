@@ -286,13 +286,18 @@ async def Edit_Embed(gid):
 
     # Embed
     if _SAD.YT:
-        # Get Channel Icom
-        async with aiohttp.ClientSession() as session:
-            async with session.get(_SAD.CH_Url) as resp:
-                text = await resp.read()
-        CH_Icon = BeautifulSoup(text.decode('utf-8'), 'html.parser')
-        CH_Icon = CH_Icon.find('link',rel="image_src").get('href')
-        
+
+        if not _SAD.CH_Icon:
+            # Get Channel Icom
+            async with aiohttp.ClientSession() as session:
+                async with session.get(_SAD.CH_Url) as resp:
+                    text = await resp.read()
+            CH_Icon = BeautifulSoup(text.decode('utf-8'), 'html.parser')
+            CH_Icon = CH_Icon.find('link',rel="image_src").get('href')
+            _SAD.CH_Icon = CH_Icon
+        else:
+            CH_Icon = _SAD.CH_Icon
+
 
         embed=discord.Embed(title=_SAD.Title, url=_SAD.Web_Url, colour=0xe1bd5b)
         embed.set_thumbnail(url=f'https://img.youtube.com/vi/{_SAD.VideoID}/mqdefault.jpg')

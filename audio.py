@@ -23,6 +23,7 @@ class StreamAudioData:
         self.St_Url = None
         self.music = None
         self.YT = None
+        self.CH_Icon = None
         
     # YT Video Load
     async def Pyt_V(self):
