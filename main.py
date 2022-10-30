@@ -695,8 +695,8 @@ class MultiAudio(threading.Thread):
                 pass
 
     def kill(self):
-        self.Music.loop = False
-        self.Voice.loop = False
+        #self.Music.loop = False
+        #self.Voice.loop = False
         self.loop = False
 
 
@@ -762,10 +762,10 @@ class _APlayer():
         self.After = None
         self.Name = name
         self.QBytes = []
-        self.loop = True
+        #self.loop = True
         self.Duration = None
-        TH = threading.Thread(target=self._read, daemon=True)
-        TH.start()
+        #TH = threading.Thread(target=self._read, daemon=True)
+        #TH.start()
         
 
     async def play(self,_SAD,after):
@@ -800,33 +800,48 @@ class _APlayer():
         return self.Pausing
     
     def read_bytes(self):
-        if self.Pausing == False:
+        if self.AudioSource and self.Pausing == False:
         
-            if self.QBytes:
-                #print(len(self.QBytes))
-                Bytes = self.QBytes[0]
-                del self.QBytes[0]
-                if Bytes == 'Fin':
-                    self.Parent.speaking(self.Name,False)
-                    self._SAD = None
+            if Bytes := self.AudioSource.read():
                 self.Timer += 1
                 return Bytes
-            
-        return None
-            
-
-    def _read(self):
-        while self.loop:
-            if not self.AudioSource or len(self.QBytes) >= 50:
-                self.B_loop = False
-                time.sleep(0.1)
-                continue
-            if Bytes := self.AudioSource.read():
-                self.QBytes.append(Bytes)
             else:
                 self.AudioSource = None
-                self.QBytes.append('Fin')
+                self._SAD = None
+                self.Parent.speaking(self.Name,False)
+                return 'Fin'
+            
+        return None
 
+
+
+    # def read_bytes(self):
+    #     if self.Pausing == False:
+        
+    #         if self.QBytes:
+    #             #print(len(self.QBytes))
+    #             Bytes = self.QBytes[0]
+    #             del self.QBytes[0]
+    #             if Bytes == 'Fin':
+    #                 self.Parent.speaking(self.Name,False)
+    #                 self._SAD = None
+    #             self.Timer += 1
+    #             return Bytes
+            
+    #     return None
+            
+
+    # def _read(self):
+    #     while self.loop:
+    #         if not self.AudioSource or len(self.QBytes) >= 50:
+    #             self.B_loop = False
+    #             time.sleep(0.1)
+    #             continue
+    #         if Bytes := self.AudioSource.read():
+    #             self.QBytes.append(Bytes)
+    #         else:
+    #             self.AudioSource = None
+    #             self.QBytes.append('Fin')
 
 
 
