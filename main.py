@@ -796,8 +796,8 @@ async def join_check(ctx):
     guild = ctx.guild
     vc = guild.voice_client
 
-    print(f'\n#message.server  : {guild.name} ({ctx.channel.name})')
-    print( ctx.author.name +" (",ctx.author.display_name,') : '+ ctx.message.content)
+    #print(f'\n#message.server  : {guild.name} ({ctx.channel.name})')
+    #print( ctx.author.name +" (",ctx.author.display_name,') : '+ ctx.message.content)
     
         # Joinしていない場合
     if not vc:
