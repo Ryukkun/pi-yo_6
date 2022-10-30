@@ -591,7 +591,7 @@ async def play_loop(guild,played,did_time):
         Mvc = g_opts[guild.id]['Ma'].Music
         
         #vc.play(await AudioData.AudioSource(),after=lambda e: client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
-        await Mvc.play(await AudioData.AudioSource(),after=lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
+        await Mvc.play(AudioData,after=lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
         Channel = g_opts[guild.id]['latest_ch']
         if late_E := g_opts[gid]['may_i_edit'].get(Channel.id):
             try: 
@@ -666,8 +666,8 @@ class MultiAudio(threading.Thread):
 
     def run(self):
         while True:
-            self.Sec, self.MBytes = self.Music.read_bytes()
-            self.Sec, self.VBytes = self.Voice.read_bytes()
+            self.MBytes = self.Music.read_bytes()
+            self.VBytes = self.Voice.read_bytes()
             VArray = None
             MArray = None
 
@@ -718,7 +718,9 @@ class _APlayer():
         TH.start()
         
 
-    async def play(self,AudioSource,after):
+    async def play(self,SAD,after):
+        self.Duration = SAD.St_Sec
+        AudioSource = SAD.AudioSource()
         self.QBytes.append(AudioSource.read())
         self.AudioSource = AudioSource
         self.Timer = 0
@@ -757,9 +759,9 @@ class _APlayer():
                 if Bytes == 'Fin':
                     self.Parent.speaking(self.Name,False)
                 self.Timer += 1
-                return self._calc_sec(), Bytes
+                return Bytes
             
-        return None, None
+        return None
 
     # async def _read(self):
     #     if self.B_loop:
@@ -938,7 +940,7 @@ async def playV_loop(guild):
         print(f"Play  <{guild.name}>")
 
         source_play = discord.FFmpegPCMAudio(source,options='-vn -c:a pcm_s16le -b:a 128k -application lowdelay -loglevel error')
-        await Vvc.play(source_play,lambda : client.loop.create_task(playV_loop(guild)))
+        await Vvc.play(SAD(source).Url_Only(),lambda : client.loop.create_task(playV_loop(guild)))
         return
 
     if g_opts[gid]['Voice_queue'][0][1] == 0:                   # Skip

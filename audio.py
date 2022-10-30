@@ -50,6 +50,12 @@ class StreamAudioData:
             self.St_Sec = info.get('duration',None)
         return self
 
+    def Url_Only(self):
+        self.St_Url = self.Url
+        self.St_Vol = None
+        self.St_Sec = None
+        self.Web_Url = None
+        return self
 
     async def _format(self):
         formats = self.Vdic['streamingData'].get('formats',[])
@@ -61,7 +67,7 @@ class StreamAudioData:
         return res[-1]['url']
 
 
-    async def AudioSource(self):
+    def AudioSource(self):
         volume = -20
         if Vol := self.St_Vol:
             if Vol <= 0:
