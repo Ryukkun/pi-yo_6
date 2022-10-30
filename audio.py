@@ -17,23 +17,21 @@ class StreamAudioData:
     def __init__(self,url):
         self.Url = url
         self.loop = asyncio.get_event_loop()
-        self.Web_Url
+        self.Web_Url = None
         self.St_Vol = None
         self.St_Sec = None
         self.St_Url = None
         self.music = None
-        self.youtube = None
+        self.YT = None
         
     # YT Video Load
     async def Pyt_V(self):
         self.Vid = re_URL_Video.match(self.Url).group(4)
         self.Vdic = await self.loop.run_in_executor(None,InnerTube().player,self.Vid)
 
-        self.Web_Url = self.Url
-        self.St_Vol = self.Vdic.get('playerConfig',{}).get('audioConfig',{}).get('loudnessDb',None)
-        self.St_Sec = self.Vdic.get('videoDetails',{}).get('lengthSeconds',None)
-        self.St_Url = await self._format()
+        self._format()
         self.music = True
+        self.YT = True
         return self
 
 
@@ -42,11 +40,10 @@ class StreamAudioData:
         pyt = pytube.Search(self.Url)
         Vdic = await self.loop.run_in_executor(None,pyt.fetch_and_parse)
         self.Vdic = await self.loop.run_in_executor(None,InnerTube().player,Vdic[0][0].video_id)
-        self.Web_Url = f"https://youtu.be/{self.Vdic['videoDetails']['videoId']}"
-        self.St_Vol = self.Vdic.get('playerConfig',{}).get('audioConfig',{}).get('loudnessDb',None)
-        self.St_Sec = self.Vdic.get('videoDetails',{}).get('lengthSeconds',None)
-        self.St_Url = await self._format()
+
+        self._format()
         self.music = True
+        self.YT = True
         return self
 
     # 汎用人型決戦兵器
@@ -55,27 +52,32 @@ class StreamAudioData:
             info = await self.loop.run_in_executor(None,ydl.extract_info,self.Url,False)
             self.St_Url = info['url']
             self.Web_Url = self.Url
-            self.St_Vol = None
             self.St_Sec = info.get('duration',None)
             self.music = True
+            self.YT = False
         return self
 
     def Url_Only(self):
         self.St_Url = self.Url
-        self.St_Vol = None
-        self.St_Sec = None
-        self.Web_Url = None
         self.music = False
+        self.YT = False
         return self
 
-    async def _format(self):
+    def _format(self):
         formats = self.Vdic['streamingData'].get('formats',[])
         formats.extend(self.Vdic['streamingData'].get('adaptiveFormats',[]))
         res = []
         for fm in formats:
             if 249 <= fm['itag'] <= 251 or 139 <= fm['itag'] <= 141:
                 res.append(fm)
-        return res[-1]['url']
+        self.St_Url = res[-1]['url']
+        self.Title = self.Vdic["videoDetails"]["title"]
+        self.CH = self.Vdic["videoDetails"]["author"]
+        self.CH_Url = f'https://www.youtube.com/channel/{self.Vdic["videoDetails"]["channelId"]}'
+        self.VideoID = self.Vdic["videoDetails"]["videoId"]
+        self.St_Vol = self.Vdic['playerConfig']['audioConfig']['loudnessDb']
+        self.St_Sec = self.Vdic['videoDetails']['lengthSeconds']
+        self.Web_Url = f"https://youtu.be/{self.VideoID}"
 
 
     def AudioSource(self):

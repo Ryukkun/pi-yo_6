@@ -1,3 +1,4 @@
+from ast import Break
 from types import NoneType
 import discord
 from discord.ext import commands
@@ -6,7 +7,6 @@ import os
 import re
 import time
 import configparser
-from pytube.innertube import InnerTube
 import random
 import aiohttp
 from bs4 import BeautifulSoup
@@ -55,7 +55,6 @@ intents.reactions = True
 client = commands.Bot(command_prefix=config['DEFAULT']['Prefix'],intents=intents)
 voice_client = None
 g_opts = {}
-Play_Loop_Embed = []
 
 re_false = re.compile(r'(f|0|ふぁlせ)')
 re_true = re.compile(r'(t|1|ｔるえ)')
@@ -109,6 +108,7 @@ async def bye(ctx):
         # 古いEmbedを削除
         if late_E := g_opts[gid].get('Embed_Message'):
             await late_E.delete()
+        g_opts[gid]['Ma'].kill()
         g_opts[gid] = {}
         await vc.disconnect()
 
@@ -132,10 +132,10 @@ class CreateButton(discord.ui.View):
 
     @discord.ui.button(label="<",)
     async def def_button0(self, interaction: discord.Interaction, button: discord.ui.Button):
+        client.loop.create_task(interaction.response.defer())
         guild = interaction.guild
         gid = interaction.guild_id
         Mvc = g_opts[gid]['Ma'].Music
-        client.loop.create_task(interaction.response.defer())
 
         if not g_opts[gid]['rewind']: return
         AudioData = g_opts[gid]['rewind'][-1]
@@ -149,9 +149,9 @@ class CreateButton(discord.ui.View):
 
     @discord.ui.button(label="⏯",style=discord.ButtonStyle.blurple)
     async def def_button1(self, interaction: discord.Interaction, button: discord.ui.Button):
+        client.loop.create_task(interaction.response.defer())
         guild = interaction.guild
         Mvc = g_opts[guild.id]['Ma'].Music
-        client.loop.create_task(interaction.response.defer())
         if Mvc.is_paused():
             print(f'{guild.name} : #resume')
             Mvc.resume()
@@ -161,8 +161,8 @@ class CreateButton(discord.ui.View):
 
     @discord.ui.button(label=">")
     async def def_button2(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await def_skip(interaction.message)
         client.loop.create_task(interaction.response.defer())
+        await def_skip(interaction.message)
 
 
 
@@ -175,10 +175,14 @@ async def playing(ctx,*args):
         channel = ctx.channel
         g_opts[gid]['latest_ch'] = channel
     else:
-        guild = args[0]
-        gid = guild.id
-        Mvc = g_opts[guild.id]['Ma'].Music
-        channel = args[1]
+        try:
+            guild = args[0]
+            gid = guild.id
+            Mvc = g_opts[gid]['Ma'].Music
+            channel = args[1]
+        except Exception as e:
+            print(f'Error Playing : {e}')
+            return
 
     if not Mvc.is_playing(): return
     
@@ -263,28 +267,20 @@ async def Edit_Embed(gid):
         if g_opts[gid]['random_playlist'] >= 1: Random_P = ':green_circle:'
 
     # Embed
-    if re_URL_YT.match(url):
-        Vid = re_URL_Video.match(url).group(4)
-        loop = asyncio.get_event_loop()
-
-        # Get Youtube Data
-        Vdic = await loop.run_in_executor(None,InnerTube().player,Vid)
-        Title = Vdic["videoDetails"]["title"]
-        CH = Vdic["videoDetails"]["author"]
-        CH_Url = f'https://www.youtube.com/channel/{Vdic["videoDetails"]["channelId"]}'
-
+    if _SAD.YT:
+        # Get Channel Icom
         async with aiohttp.ClientSession() as session:
-            async with session.get(CH_Url) as resp:
+            async with session.get(_SAD.CH_Url) as resp:
                 text = await resp.read()
         CH_Icon = BeautifulSoup(text.decode('utf-8'), 'html.parser')
         CH_Icon = CH_Icon.find('link',rel="image_src").get('href')
         
 
-        embed=discord.Embed(title=Title, url=url, colour=0xe1bd5b)
-        embed.set_thumbnail(url=f'https://img.youtube.com/vi/{Vid}/mqdefault.jpg')
-        embed.set_author(name=CH, url=CH_Url, icon_url=CH_Icon)
+        embed=discord.Embed(title=_SAD.Title, url=_SAD.Web_Url, colour=0xe1bd5b)
+        embed.set_thumbnail(url=f'https://img.youtube.com/vi/{_SAD.VideoID}/mqdefault.jpg')
+        embed.set_author(name=_SAD.CH, url=_SAD.CH_Url, icon_url=CH_Icon)
     else:
-        embed=discord.Embed(title=url, url=url, colour=0xe1bd5b)
+        embed=discord.Embed(title=_SAD.Web_Url, url=_SAD.Web_Url, colour=0xe1bd5b)
 
     if g_opts[gid].get('playlist'):
         embed.add_field(name="単曲ループ", value=f'🔁 : {V_loop}', inline=True)
@@ -598,7 +594,16 @@ async def play_loop(guild,played,did_time):
             try: 
                 await late_E.edit(embed= await Edit_Embed(gid))
             except discord.NotFound:
+                # メッセージが見つからなかったら 新しく作成
                 await playing(None,guild,Channel)
+            else:
+                # Reaction 修正
+                if g_opts[gid].get('playlist'):
+                    await late_E.add_reaction('♻')
+                    await late_E.add_reaction('🔀')
+                else:
+                    await late_E.clear_reaction('♻')
+                    await late_E.clear_reaction('🔀')
 
         else:
             await playing(None,guild,Channel)
@@ -620,8 +625,8 @@ class MultiAudio(threading.Thread):
     self.run は制御方法知らんから、常にループしてる 0.02秒(20ms) 間隔で 
     """
     def __init__(self,guild) -> None:
-        super(MultiAudio, self).__init__()
-        self.daemon = True
+        self.loop = True
+        super(MultiAudio, self).__init__(daemon=True)
         self.guild = guild
         self.gid = guild.id
         self.vc = guild.voice_client
@@ -659,14 +664,20 @@ class MultiAudio(threading.Thread):
             except Exception:
                 pass
 
+    def kill(self):
+        self.Music.loop = False
+        self.Voice.loop = False
+        self.loop = False
+
+
+
     """
     これずっとloopしてます 止まりません loopの悪魔
     音声データ（Bytes）を取得し、必要があれば Numpy で読み込んで 合成しています
     最後に音声データ送信　ドルチェ
     """
-
     def run(self):
-        while True:
+        while self.loop:
             self.MBytes = self.Music.read_bytes()
             self.VBytes = self.Voice.read_bytes()
             VArray = None
@@ -701,7 +712,8 @@ class MultiAudio(threading.Thread):
             if self.MBytes or self.VBytes:
                 try:self.play_audio(self.Bytes,encode=True)
                 except OSError:
-                    break
+                    print('Error send_audio_packet OSError')
+                    time.sleep(1)
 
             
 
@@ -715,8 +727,8 @@ class _APlayer():
         self.After = None
         self.Name = name
         self.QBytes = []
-        self.B_loop = False
-        TH = threading.Thread(target=self._read)
+        self.loop = True
+        TH = threading.Thread(target=self._read, daemon=True)
         TH.start()
         
 
@@ -768,7 +780,7 @@ class _APlayer():
             
 
     def _read(self):
-        while True:
+        while self.loop:
             if not self.AudioSource or len(self.QBytes) >= 50:
                 self.B_loop = False
                 time.sleep(0.1)
@@ -928,7 +940,6 @@ async def playV_loop(guild):
         g_opts[gid]['Voice_queue'][0][1] = 2
         print(f"Play  <{guild.name}>")
 
-        source_play = discord.FFmpegPCMAudio(source,options='-vn -c:a pcm_s16le -b:a 128k -application lowdelay -loglevel error')
         await Vvc.play(SAD(source).Url_Only(),lambda : client.loop.create_task(playV_loop(guild)))
         return
 
