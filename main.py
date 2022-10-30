@@ -692,7 +692,8 @@ class MultiAudio(threading.Thread):
             if 0 <= PTime <= 0.02:
                 time.sleep(0.02 - PTime)
             else:
-                print(PTime)
+                #print(PTime)
+                pass
             self.old_time = time.time()
             #print(PTime)
             # Send Bytes
@@ -713,9 +714,8 @@ class _APlayer():
         self.Name = name
         self.QBytes = []
         self.B_loop = False
-        self.loop = asyncio.get_event_loop()
-        # TH = threading.Thread(target=self._read)
-        # TH.start()
+        TH = threading.Thread(target=self._read)
+        TH.start()
         
 
     async def play(self,AudioSource,after):
@@ -748,10 +748,10 @@ class _APlayer():
     def read_bytes(self):
         if self.Pausing == False:
         
-            if len(self.QBytes) <= 49 and self.AudioSource:
-                self.loop.run_in_executor(None,self._read)
+            #if len(self.QBytes) <= 49 and self.AudioSource:
+            #    self.Parent.loop.create_task(self._read())
             if self.QBytes:
-                print(len(self.QBytes))
+                #print(len(self.QBytes))
                 Bytes = self.QBytes[0]
                 del self.QBytes[0]
                 if Bytes == 'Fin':
@@ -761,11 +761,23 @@ class _APlayer():
             
         return None, None
 
+    # async def _read(self):
+    #     if self.B_loop:
+    #         return
+    #     self.B_loop = True
+    #     while self.B_loop:
+    #         if not self.AudioSource or len(self.QBytes) >= 50:
+    #             self.B_loop = False
+    #             return
+    #         if Bytes := self.AudioSource.read():
+    #             self.QBytes.append(Bytes)
+    #         else:
+    #             self.AudioSource = None
+    #             self.QBytes.append('Fin')
+            
+
     def _read(self):
-        if self.B_loop:
-            return
-        self.B_loop = True
-        while self.B_loop:
+        while True:
             if not self.AudioSource or len(self.QBytes) >= 50:
                 self.B_loop = False
                 time.sleep(0.1)
@@ -775,7 +787,7 @@ class _APlayer():
             else:
                 self.AudioSource = None
                 self.QBytes.append('Fin')
-            
+
 
     def _calc_sec(self):
         return self.Timer // 50
