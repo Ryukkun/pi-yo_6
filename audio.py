@@ -24,6 +24,7 @@ class StreamAudioData:
 
         self.Web_Url = self.Url
         self.St_Vol = self.Vdic.get('playerConfig',{}).get('audioConfig',{}).get('loudnessDb',None)
+        self.St_Sec = self.Vdic.get('videoDetails',{}).get('lengthSeconds',None)
         self.St_Url = await self._format()
         return self
 
@@ -35,6 +36,7 @@ class StreamAudioData:
         self.Vdic = await self.loop.run_in_executor(None,InnerTube().player,Vdic[0][0].video_id)
         self.Web_Url = f"https://youtu.be/{self.Vdic['videoDetails']['videoId']}"
         self.St_Vol = self.Vdic.get('playerConfig',{}).get('audioConfig',{}).get('loudnessDb',None)
+        self.St_Sec = self.Vdic.get('videoDetails',{}).get('lengthSeconds',None)
         self.St_Url = await self._format()
         return self
 
@@ -45,6 +47,8 @@ class StreamAudioData:
             self.St_Url = info['url']
             self.Web_Url = self.Url
             self.St_Vol = None
+            self.St_Sec = info.get('duration',None)
+        return self
 
 
     async def _format(self):

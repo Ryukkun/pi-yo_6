@@ -626,8 +626,8 @@ class MultiAudio(threading.Thread):
         self.vc = guild.voice_client
         self.MLoop = False
         self.VLoop = False
-        self.Music = self._APlayer(self,'M')
-        self.Voice = self._APlayer(self,'V')
+        self.Music = _APlayer(self,'M')
+        self.Voice = _APlayer(self,'V')
         self.MBytes = None
         self.VBytes = None
         self.vc.encoder = discord.opus.Encoder()
@@ -663,6 +663,7 @@ class MultiAudio(threading.Thread):
     音声データ（Bytes）を取得し、必要があれば Numpy で読み込んで 合成しています
     最後に音声データ送信　ドルチェ
     """
+
     def run(self):
         while True:
             self.Sec, self.MBytes = self.Music.read_bytes()
@@ -702,60 +703,82 @@ class MultiAudio(threading.Thread):
 
             
 
-    class _APlayer():
-        def __init__(self,parent,name):
-            self.AudioSource = None
-            self.Pausing = False
-            self.Parent = parent
-            self.Time = 0
-            self.After = None
-            self.Name = name
+class _APlayer():
+    def __init__(self,parent,name):
+        self.AudioSource = None
+        self.Pausing = False
+        self.Parent = parent
+        self.Time = 0
+        self.After = None
+        self.Name = name
+        self.QBytes = []
+        self.B_loop = False
+        # TH = threading.Thread(target=self._read)
+        # TH.start()
+        
+
+    async def play(self,AudioSource,after):
+        self.QBytes.append(AudioSource.read())
+        self.AudioSource = AudioSource
+        self.Timer = 0
+        self.After = after
+        self.resume()
+
+    def stop(self):
+        self.AudioSource = None
+        self.Parent.speaking(self.Name,False)
+
+    def resume(self):
+        self.Pausing = False
+        self.Parent.speaking(self.Name,True)
+
+    def pause(self):
+        self.Pausing = True
+        self.Parent.speaking(self.Name,False)
+
+    def is_playing(self):
+        if self.AudioSource:
+            return True
+        return False
+
+    def is_paused(self):
+        return self.Pausing
+    
+    def read_bytes(self):
+        if self.Pausing == False:
+        
+            if len(self.QBytes) <= 49:
+                asyncio.get_event_loop().run_in_executor(None,self._read)
+            if self.QBytes:
+                print(len(self.QBytes))
+                Bytes = self.QBytes[0]
+                del self.QBytes[0]
+                if Bytes == 'Fin':
+                    self.Parent.speaking(self.Name,False)
+                self.Timer += 1
+                return self._calc_sec(), Bytes
+            
+        return None, None
+
+    def _read(self):
+        if self.B_loop:
+            return
+        self.B_loop = True
+        while self.B_loop:
+            if not self.AudioSource or len(self.QBytes) >= 50:
+                self.B_loop = False
+                time.sleep(0.1)
+                continue
+            if Bytes := self.AudioSource.read():
+                self.QBytes.append(Bytes)
+            else:
+                self.AudioSource = None
+                self.QBytes.append('Fin')
             
 
-        async def play(self,AudioSource,after):
-            self.QBytes = AudioSource.read()
-            self.AudioSource = AudioSource
-            self.Timer = 0
-            self.After = after
-            self.resume()
+    def _calc_sec(self):
+        return self.Timer // 50
 
-        def stop(self):
-            self.AudioSource = None
-            self.Parent.speaking(self.Name,False)
-
-        def resume(self):
-            self.Pausing = False
-            self.Parent.speaking(self.Name,True)
-
-        def pause(self):
-            self.Pausing = True
-            self.Parent.speaking(self.Name,False)
-
-        def is_playing(self):
-            if self.AudioSource:
-                return True
-            return False
-
-        def is_paused(self):
-            return self.Pausing
-        
-        def read_bytes(self):
-            if self.AudioSource and self.Pausing == False:
-                if self.QBytes:
-                    temp = self.QBytes
-                    self.QBytes = None
-                    self.Timer += 1
-                    return self._calc_sec(), temp
-                if Bytes := self.AudioSource.read():
-                    self.Timer += 1
-                    return self._calc_sec(), Bytes
-                else:
-                    self.AudioSource = None
-                    self.Parent.speaking(self.Name,False)
-                    return self._calc_sec(), 'Fin'
-
-        def _calc_sec(self):
-            return self.Timer // 50
 
 
 
