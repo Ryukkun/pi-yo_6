@@ -52,7 +52,7 @@ class StreamAudioData:
             info = await self.loop.run_in_executor(None,ydl.extract_info,self.Url,False)
             self.St_Url = info['url']
             self.Web_Url = self.Url
-            self.St_Sec = info.get('duration',None)
+            self.St_Sec = int(info.get('duration',None))
             self.music = True
             self.YT = False
         return self
@@ -76,7 +76,7 @@ class StreamAudioData:
         self.CH_Url = f'https://www.youtube.com/channel/{self.Vdic["videoDetails"]["channelId"]}'
         self.VideoID = self.Vdic["videoDetails"]["videoId"]
         self.St_Vol = self.Vdic['playerConfig']['audioConfig']['loudnessDb']
-        self.St_Sec = self.Vdic['videoDetails']['lengthSeconds']
+        self.St_Sec = int(self.Vdic['videoDetails']['lengthSeconds'])
         self.Web_Url = f"https://youtu.be/{self.VideoID}"
 
 

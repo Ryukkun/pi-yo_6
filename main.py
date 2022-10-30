@@ -1,4 +1,5 @@
 from ast import Break
+from tkinter.ttk import Progressbar
 from types import NoneType
 import discord
 from discord.ext import commands
@@ -93,7 +94,7 @@ async def join(ctx):
         g_opts[gid]['Voice_queue'] = []
         g_opts[gid]['may_i_edit'] = {}
         g_opts[gid]['rewind'] = []
-        g_opts[gid]['Ma'] = MultiAudio(ctx.guild)
+        g_opts[gid]['Ma'] = MultiAudio(ctx.guild,client.loop)
         g_opts[gid]['Ma'].start()
         with open(config['DEFAULT']['User_dic']+ str(ctx.guild.id) + '.txt', 'a'): pass
     
@@ -249,6 +250,25 @@ async def on_reaction_add(Reac,User):
         await Reac.message.edit(embed=embed)
 
 
+async def Update_Embed(guild):
+    gid = guild.id
+    Channel = g_opts[gid]['latest_ch']
+    if late_E := g_opts[gid]['may_i_edit'].get(Channel.id):
+        try: 
+            await late_E.edit(embed= await Edit_Embed(gid))
+        except discord.NotFound:
+            # メッセージが見つからなかったら 新しく作成
+            await playing(None,guild,Channel)
+        else:
+            # Reaction 修正
+            if g_opts[gid].get('playlist'):
+                await late_E.add_reaction('♻')
+                await late_E.add_reaction('🔀')
+            else:
+                await late_E.clear_reaction('♻')
+                await late_E.clear_reaction('🔀')
+    else:
+        await playing(None,guild,Channel)
 
 
 async def Edit_Embed(gid):
@@ -279,6 +299,33 @@ async def Edit_Embed(gid):
         embed=discord.Embed(title=_SAD.Title, url=_SAD.Web_Url, colour=0xe1bd5b)
         embed.set_thumbnail(url=f'https://img.youtube.com/vi/{_SAD.VideoID}/mqdefault.jpg')
         embed.set_author(name=_SAD.CH, url=_SAD.CH_Url, icon_url=CH_Icon)
+        
+        def Calc_Time(Time):
+            Sec = Time % 60
+            Min = Time // 60 % 60
+            Hour = Time // 3600
+            if Sec <= 9:
+                Sec = f'0{Sec}'
+            if Hour == 0:
+                Hour = ''
+            else:
+                Hour = f'{Hour}:'
+                if Min <= 9:
+                    Min = f'0{Min}'
+            
+            return f'{Hour}{Min}:{Sec}'
+        NTime = g_opts[gid]['Ma'].Music.Timer // 50
+        Duration = _SAD.St_Sec / 30
+        Progress = ''
+        for I in range(50):
+            I = I * Duration
+            if I <= NTime < (I + Duration):
+                Progress += '+'
+            else:
+                Progress += '-'
+        NTime = Calc_Time(g_opts[gid]['Ma'].Music.Timer // 50)
+        Duration = Calc_Time(_SAD.St_Sec)
+        embed.set_footer(text=f'{NTime} {Progress} {Duration}')
     else:
         embed=discord.Embed(title=_SAD.Web_Url, url=_SAD.Web_Url, colour=0xe1bd5b)
 
@@ -589,24 +636,7 @@ async def play_loop(guild,played,did_time):
         
         #vc.play(await AudioData.AudioSource(),after=lambda e: client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
         await Mvc.play(AudioData,after=lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
-        Channel = g_opts[guild.id]['latest_ch']
-        if late_E := g_opts[gid]['may_i_edit'].get(Channel.id):
-            try: 
-                await late_E.edit(embed= await Edit_Embed(gid))
-            except discord.NotFound:
-                # メッセージが見つからなかったら 新しく作成
-                await playing(None,guild,Channel)
-            else:
-                # Reaction 修正
-                if g_opts[gid].get('playlist'):
-                    await late_E.add_reaction('♻')
-                    await late_E.add_reaction('🔀')
-                else:
-                    await late_E.clear_reaction('♻')
-                    await late_E.clear_reaction('🔀')
 
-        else:
-            await playing(None,guild,Channel)
 
 
 
@@ -624,7 +654,7 @@ class MultiAudio(threading.Thread):
     独自で Playerを作成 
     self.run は制御方法知らんから、常にループしてる 0.02秒(20ms) 間隔で 
     """
-    def __init__(self,guild) -> None:
+    def __init__(self,guild,CLoop) -> None:
         self.loop = True
         super(MultiAudio, self).__init__(daemon=True)
         self.guild = guild
@@ -632,6 +662,7 @@ class MultiAudio(threading.Thread):
         self.vc = guild.voice_client
         self.MLoop = False
         self.VLoop = False
+        self.CLoop = CLoop
         self.Music = _APlayer(self,'M')
         self.Voice = _APlayer(self,'V')
         self.MBytes = None
@@ -640,12 +671,13 @@ class MultiAudio(threading.Thread):
         self.play_audio = self.vc.send_audio_packet
         self.old_time = 0
 
-    """
-    これ（self._speak）がないと謎にバグる ※botがjoinしたときに居たメンツにしか 音が聞こえない
-    友達が幻聴を聞いてたら怖いよね
-    ついでにLOOPの制御も
-    """
+
     def speaking(self,CH,status):
+        """
+        これ（self._speak）がないと謎にバグる ※botがjoinしたときに居たメンツにしか 音が聞こえない
+        友達が幻聴を聞いてたら怖いよね
+        ついでにLOOPの制御も
+        """
         if status:
             if self.VLoop == False and self.MLoop == False:
                 self._speak(discord.SpeakingState.voice)
@@ -671,23 +703,26 @@ class MultiAudio(threading.Thread):
 
 
 
-    """
-    これずっとloopしてます 止まりません loopの悪魔
-    音声データ（Bytes）を取得し、必要があれば Numpy で読み込んで 合成しています
-    最後に音声データ送信　ドルチェ
-    """
     def run(self):
+        """
+        これずっとloopしてます 止まりません loopの悪魔
+        音声データ（Bytes）を取得し、必要があれば Numpy で読み込んで 合成しています
+        最後に音声データ送信　ドルチェ
+        """
         while self.loop:
             self.MBytes = self.Music.read_bytes()
             self.VBytes = self.Voice.read_bytes()
             VArray = None
             MArray = None
 
-            # Bytes Mix
             if self.MBytes == 'Fin':
                 self.Music.After()
                 self.MBytes = None
             elif self.MBytes:
+                # 秒数更新のため
+                if ((self.Music.Timer - 1) % 500) == 0:
+                    self.CLoop.create_task(Update_Embed(self.guild))
+                
                 MArray = np.frombuffer(self.MBytes,np.int16)
                 self.Bytes = self.MBytes
             if self.VBytes == 'Fin':
@@ -696,6 +731,8 @@ class MultiAudio(threading.Thread):
             elif self.VBytes:
                 VArray = np.frombuffer(self.VBytes,np.int16)
                 self.Bytes = self.VBytes
+
+            # Bytes Mix
             if type(MArray) != NoneType and type(VArray) != NoneType:
                 self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
 
@@ -723,11 +760,12 @@ class _APlayer():
         self._SAD = None
         self.Pausing = False
         self.Parent = parent
-        self.Time = 0
+        self.Timer = 0
         self.After = None
         self.Name = name
         self.QBytes = []
         self.loop = True
+        self.Duration = None
         TH = threading.Thread(target=self._read, daemon=True)
         TH.start()
         
@@ -790,10 +828,6 @@ class _APlayer():
             else:
                 self.AudioSource = None
                 self.QBytes.append('Fin')
-
-
-    def _calc_sec(self):
-        return self.Timer // 50
 
 
 
