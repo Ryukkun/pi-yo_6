@@ -17,6 +17,12 @@ class StreamAudioData:
     def __init__(self,url):
         self.Url = url
         self.loop = asyncio.get_event_loop()
+        self.Web_Url
+        self.St_Vol = None
+        self.St_Sec = None
+        self.St_Url = None
+        self.music = None
+        self.youtube = None
         
     # YT Video Load
     async def Pyt_V(self):
