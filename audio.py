@@ -27,6 +27,7 @@ class StreamAudioData:
         self.St_Vol = self.Vdic.get('playerConfig',{}).get('audioConfig',{}).get('loudnessDb',None)
         self.St_Sec = self.Vdic.get('videoDetails',{}).get('lengthSeconds',None)
         self.St_Url = await self._format()
+        self.music = True
         return self
 
 
@@ -39,6 +40,7 @@ class StreamAudioData:
         self.St_Vol = self.Vdic.get('playerConfig',{}).get('audioConfig',{}).get('loudnessDb',None)
         self.St_Sec = self.Vdic.get('videoDetails',{}).get('lengthSeconds',None)
         self.St_Url = await self._format()
+        self.music = True
         return self
 
     # 汎用人型決戦兵器
@@ -49,6 +51,7 @@ class StreamAudioData:
             self.Web_Url = self.Url
             self.St_Vol = None
             self.St_Sec = info.get('duration',None)
+            self.music = True
         return self
 
     def Url_Only(self):
@@ -56,6 +59,7 @@ class StreamAudioData:
         self.St_Vol = None
         self.St_Sec = None
         self.Web_Url = None
+        self.music = False
         return self
 
     async def _format(self):
@@ -68,8 +72,8 @@ class StreamAudioData:
         return res[-1]['url']
 
 
-    def AudioSource(self,music):
-        if music:
+    def AudioSource(self):
+        if self.music:
             volume = -20
             if Vol := self.St_Vol:
                 if Vol <= 0:
