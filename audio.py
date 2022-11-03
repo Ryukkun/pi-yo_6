@@ -1,5 +1,6 @@
 import asyncio
-from pickle import BINFLOAT
+import aiohttp
+from bs4 import BeautifulSoup
 import re
 from yt_dlp import YoutubeDL
 import pytube
@@ -30,7 +31,7 @@ class StreamAudioData:
         self.Vid = re_URL_Video.match(self.Url).group(4)
         self.Vdic = await self.loop.run_in_executor(None,InnerTube().player,self.Vid)
 
-        self._format()
+        await self._format()
         self.music = True
         self.YT = True
         return self
@@ -42,7 +43,7 @@ class StreamAudioData:
         Vdic = await self.loop.run_in_executor(None,pyt.fetch_and_parse)
         self.Vdic = await self.loop.run_in_executor(None,InnerTube().player,Vdic[0][0].video_id)
 
-        self._format()
+        await self._format()
         self.music = True
         self.YT = True
         return self
@@ -64,7 +65,7 @@ class StreamAudioData:
         self.YT = False
         return self
 
-    def _format(self):
+    async def _format(self):
         formats = self.Vdic['streamingData'].get('formats',[])
         formats.extend(self.Vdic['streamingData'].get('adaptiveFormats',[]))
         res = []
@@ -79,6 +80,11 @@ class StreamAudioData:
         self.St_Vol = self.Vdic['playerConfig']['audioConfig']['loudnessDb']
         self.St_Sec = int(self.Vdic['videoDetails']['lengthSeconds'])
         self.Web_Url = f"https://youtu.be/{self.VideoID}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.CH_Url) as resp:
+                text = await resp.read()
+        CH_Icon = BeautifulSoup(text.decode('utf-8'), 'html.parser')
+        self.CH_Icon = CH_Icon.find('link',rel="image_src").get('href')
 
 
     def AudioSource(self):

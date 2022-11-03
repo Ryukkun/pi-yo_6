@@ -7,8 +7,6 @@ import re
 import time
 import configparser
 import random
-import aiohttp
-from bs4 import BeautifulSoup
 import audio as SAudio
 from audio import StreamAudioData as SAD
 from synthetic_voice import creat_voice
@@ -271,8 +269,8 @@ async def Update_Embed(guild):
 
 async def Edit_Embed(gid):
     
-    if _SAD := g_opts[gid]['Ma'].Music._SAD:
-        pass
+    if Mvc := g_opts[gid]['Ma'].Music:
+        _SAD = Mvc._SAD
     else:
         return None
 
@@ -286,22 +284,9 @@ async def Edit_Embed(gid):
 
     # Embed
     if _SAD.YT:
-
-        if not _SAD.CH_Icon:
-            # Get Channel Icom
-            async with aiohttp.ClientSession() as session:
-                async with session.get(_SAD.CH_Url) as resp:
-                    text = await resp.read()
-            CH_Icon = BeautifulSoup(text.decode('utf-8'), 'html.parser')
-            CH_Icon = CH_Icon.find('link',rel="image_src").get('href')
-            _SAD.CH_Icon = CH_Icon
-        else:
-            CH_Icon = _SAD.CH_Icon
-
-
         embed=discord.Embed(title=_SAD.Title, url=_SAD.Web_Url, colour=0xe1bd5b)
         embed.set_thumbnail(url=f'https://img.youtube.com/vi/{_SAD.VideoID}/mqdefault.jpg')
-        embed.set_author(name=_SAD.CH, url=_SAD.CH_Url, icon_url=CH_Icon)
+        embed.set_author(name=_SAD.CH, url=_SAD.CH_Url, icon_url=_SAD.CH_Icon)
         
         def Calc_Time(Time):
             Sec = Time % 60
@@ -317,16 +302,20 @@ async def Edit_Embed(gid):
                     Min = f'0{Min}'
             
             return f'{Hour}{Min}:{Sec}'
-        NTime = g_opts[gid]['Ma'].Music.Timer // 50
-        Duration = _SAD.St_Sec / 42
-        Progress = ''
-        for I in range(42):
-            I = I * Duration
-            if I <= NTime < (I + Duration):
-                Progress += '|'
-            else:
-                Progress += '-'
-        NTime = Calc_Time(g_opts[gid]['Ma'].Music.Timer // 50)
+
+        def get_progress(II):
+            NTime = Mvc.Timer // 50
+            Duration = _SAD.St_Sec / II
+            Progress = ''
+            for I in range(II):
+                I = I * Duration
+                if I <= NTime < (I + Duration):
+                    Progress += '|'
+                else:
+                    Progress += '-'
+            return Progress
+        Progress = get_progress(42)
+        NTime = Calc_Time(Mvc.Timer // 50)
         Duration = Calc_Time(_SAD.St_Sec)
         embed.set_footer(text=f'{NTime} {Progress} {Duration}')
     else:
@@ -766,7 +755,7 @@ class _APlayer():
         self.Timer = 0
         self.After = None
         self.Name = name
-        self.QBytes = []
+        self.QBytes = None
         #self.loop = True
         self.Duration = None
         #TH = threading.Thread(target=self._read, daemon=True)
@@ -777,7 +766,8 @@ class _APlayer():
         self._SAD = _SAD
         self.Duration = _SAD.St_Sec
         AudioSource = _SAD.AudioSource()
-        self.QBytes.append(AudioSource.read())
+        # 最初のロードは少し時間かかるから先にロード
+        self.QBytes = AudioSource.read()
         self.AudioSource = AudioSource
         self.Timer = 0
         self.After = after
@@ -806,7 +796,12 @@ class _APlayer():
     
     def read_bytes(self):
         if self.AudioSource and self.Pausing == False:
-        
+            
+            if self.QBytes:
+                self.Timer += 1
+                temp = self.QBytes
+                self.QBytes = None
+                return temp
             if Bytes := self.AudioSource.read():
                 self.Timer += 1
                 return Bytes
