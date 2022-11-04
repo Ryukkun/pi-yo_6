@@ -6,7 +6,7 @@ from yt_dlp import YoutubeDL
 import pytube
 from pytube.innertube import InnerTube
 from pytube.helpers import DeferredGeneratorList
-from discord import FFmpegPCMAudio, FFmpegOpusAudio
+from discord import FFmpegPCMAudio
 
 
 re_URL_Video = re.compile(r'https://((www.|)youtube.com/watch\?v=|(youtu.be/))(.+)')

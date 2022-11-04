@@ -81,7 +81,8 @@ async def join(ctx):
     if vc := ctx.author.voice:
         gid = ctx.guild.id
         print(f'{ctx.guild.name} : #join')
-        await vc.channel.connect(self_deaf=True)
+        try: await vc.channel.connect(self_deaf=True)
+        except discord.ClientException: return
         g_opts[gid] = {}
         g_opts[gid]['loop'] = 1
         g_opts[gid]['loop_playlist'] = 1
@@ -105,17 +106,9 @@ async def bye(ctx):
         # 古いEmbedを削除
         if late_E := g_opts[gid].get('Embed_Message'):
             await late_E.delete()
-        g_opts[gid]['Ma'].kill()
+        g_opts[gid]['Ma'].loop = False
         g_opts[gid] = {}
         await vc.disconnect()
-
-
-@client.command()
-async def stop(ctx):
-    Mvc = g_opts[ctx.guild.id]['Ma'].Music
-    if Mvc.is_playing():
-        print(f'{ctx.guild.name} : #stop')
-        Mvc.pause()
   
 
 
@@ -155,6 +148,7 @@ class CreateButton(discord.ui.View):
         elif Mvc.is_playing():
             print(f'{guild.name} : #stop')
             Mvc.pause()
+            await Update_Embed(guild)
 
     @discord.ui.button(label=">")
     async def def_button2(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -378,10 +372,11 @@ async def p(ctx,*args):
     await def_play(ctx,args,False)
 
 async def def_play(ctx,args,Q):
-    if not await join_check(ctx): return
     guild = ctx.guild
-    gid = guild.id
+    if not guild.voice_client:
+        await join(ctx)
     vc = guild.voice_client
+    gid = guild.id
     Mvc = g_opts[gid]['Ma'].Music
     
 
@@ -470,9 +465,9 @@ async def pl(ctx,*args):
     await def_playlist(ctx,args)
 
 async def def_playlist(ctx,args):
-    if not await join_check(ctx):
-        return
     guild = ctx.guild
+    if not guild.voice_client:
+        await join(ctx)
     vc = guild.voice_client
     gid = guild.id
     Mvc = g_opts[gid]['Ma'].Music
@@ -564,28 +559,6 @@ async def def_playlist(ctx,args):
 
 
 
-# playlistダウンロード
-async def ydl_playlist(guild):
-    gid = guild.id
-    if g_opts[gid]['playlist_index'] >= len(g_opts[gid]['playlist']):
-        g_opts[gid]['playlist_index'] = 0
-        if g_opts[gid]['loop_playlist'] == 0:
-            del g_opts[gid]['playlist']
-            del g_opts[gid]['playlist_index']
-            return
-
-    extract_url = g_opts[gid]['playlist'][g_opts[gid]['playlist_index']]
-    try :AudioData = await SAD(extract_url).Pyt_V()
-    except Exception as e:
-        print(f'Error : Playlist Extract {e}')
-        return
-
-    # Queue
-    g_opts[gid]['queue'].append(AudioData)
-
-    # Print
-    print(f"{guild.name} : Paylist add Queue  [Now len: {str(len(g_opts[gid]['queue']))}]")
-
 
 
 
@@ -616,7 +589,22 @@ async def play_loop(guild,played,did_time):
             g_opts[gid]['playlist_index'] = new_index
         else:
             g_opts[gid]['playlist_index'] += 1
-        await ydl_playlist(guild)
+        if g_opts[gid]['playlist_index'] >= len(g_opts[gid]['playlist']):
+            g_opts[gid]['playlist_index'] = 0
+            if g_opts[gid]['loop_playlist'] == 0:
+                del g_opts[gid]['playlist']
+                del g_opts[gid]['playlist_index']
+                return
+
+        extract_url = g_opts[gid]['playlist'][g_opts[gid]['playlist_index']]
+        try :AudioData = await SAD(extract_url).Pyt_V()
+        except Exception as e:
+            print(f'Error : Playlist Extract {e}')
+            return
+        # Queue
+        g_opts[gid]['queue'].append(AudioData)
+        # Print
+        print(f"{guild.name} : Paylist add Queue  [Now len: {str(len(g_opts[gid]['queue']))}]")
 
     # 再生
     if g_opts[gid]['queue'] != []:
@@ -626,7 +614,6 @@ async def play_loop(guild,played,did_time):
             
         Mvc = g_opts[guild.id]['Ma'].Music
         
-        #vc.play(await AudioData.AudioSource(),after=lambda e: client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
         await Mvc.play(AudioData,after=lambda : client.loop.create_task(play_loop(guild,AudioData.St_Url,played_time)))
 
 
@@ -687,11 +674,6 @@ class MultiAudio(threading.Thread):
                 asyncio.run_coroutine_threadsafe(self.vc.ws.speak(speaking), self.vc.client.loop)
             except Exception:
                 pass
-
-    def kill(self):
-        #self.Music.loop = False
-        #self.Voice.loop = False
-        self.loop = False
 
 
 
@@ -756,10 +738,8 @@ class _APlayer():
         self.After = None
         self.Name = name
         self.QBytes = None
-        #self.loop = True
         self.Duration = None
-        #TH = threading.Thread(target=self._read, daemon=True)
-        #TH.start()
+
         
 
     async def play(self,_SAD,after):
@@ -813,59 +793,6 @@ class _APlayer():
             
         return None
 
-
-
-    # def read_bytes(self):
-    #     if self.Pausing == False:
-        
-    #         if self.QBytes:
-    #             #print(len(self.QBytes))
-    #             Bytes = self.QBytes[0]
-    #             del self.QBytes[0]
-    #             if Bytes == 'Fin':
-    #                 self.Parent.speaking(self.Name,False)
-    #                 self._SAD = None
-    #             self.Timer += 1
-    #             return Bytes
-            
-    #     return None
-            
-
-    # def _read(self):
-    #     while self.loop:
-    #         if not self.AudioSource or len(self.QBytes) >= 50:
-    #             self.B_loop = False
-    #             time.sleep(0.1)
-    #             continue
-    #         if Bytes := self.AudioSource.read():
-    #             self.QBytes.append(Bytes)
-    #         else:
-    #             self.AudioSource = None
-    #             self.QBytes.append('Fin')
-
-
-
-            
-
-
-
-
-#--------------------------------------------------------------------------------------------
-#   居たら楽な関数達
-#--------------------------------------------------------------------------------------------
-async def join_check(ctx):
-
-    guild = ctx.guild
-    vc = guild.voice_client
-
-    #print(f'\n#message.server  : {guild.name} ({ctx.channel.name})')
-    #print( ctx.author.name +" (",ctx.author.display_name,') : '+ ctx.message.content)
-    
-        # Joinしていない場合
-    if not vc:
-        await join(ctx)
-        # Joinしてるよね！！
-    return guild.voice_client
     
 
 
@@ -936,31 +863,31 @@ async def on_message(message):
 
     # 発言者がBotの場合はPass
     if message.author.bot:
-        print('.\n#message.author : bot')
-    else:
-        print(f'.\n#message.server  : {guild.name} ({message.channel.name})')
-        print( message.author.name +" (",message.author.display_name,') : '+ message.content)
-    
-        # コマンドではなく なおかつ Joinしている場合
-        if not message.content.startswith(config['DEFAULT']['Prefix']) and vc:
+        return
 
-            Vvc = g_opts[gid]['Ma'].Voice
-            now_time = time.time()
-            source = config['Open_Jtalk']['Output']+str(message.guild.id)+"-"+str(now_time)+".wav"
-            g_opts[gid]['Voice_queue'].append([source,0])
+    print(f'.\n#message.server  : {guild.name} ({message.channel.name})')
+    print( message.author.name +" (",message.author.display_name,') : '+ message.content)
 
-            # 音声ファイル ファイル作成
-            try : await creat_voice(message.content,str(message.guild.id),str(now_time),config)
-            except Exception as e:                                              # Error
-                print(f"Error : 音声ファイル作成に失敗 {e}")
-                g_opts[gid]['Voice_queue'].remove([source,0])
+    # コマンドではなく なおかつ Joinしている場合
+    if not message.content.startswith(config['DEFAULT']['Prefix']) and vc:
 
-            print('生成時間 : '+str(time.time()-now_time))
-            g_opts[gid]['Voice_queue'] = [[source,1] if i[0] == source else i for i in g_opts[gid]['Voice_queue']]  # 音声ファイルが作成済みなのを記述
+        Vvc = g_opts[gid]['Ma'].Voice
+        now_time = time.time()
+        source = config['Open_Jtalk']['Output']+str(message.guild.id)+"-"+str(now_time)+".wav"
+        g_opts[gid]['Voice_queue'].append([source,0])
 
-            # 再生されるまでループ
-            if not Vvc.is_playing():
-                await playV_loop(guild)
+        # 音声ファイル ファイル作成
+        try : await creat_voice(message.content,str(message.guild.id),str(now_time),config)
+        except Exception as e:                                              # Error
+            print(f"Error : 音声ファイル作成に失敗 {e}")
+            g_opts[gid]['Voice_queue'].remove([source,0])
+
+        print('生成時間 : '+str(time.time()-now_time))
+        g_opts[gid]['Voice_queue'] = [[source,1] if i[0] == source else i for i in g_opts[gid]['Voice_queue']]  # 音声ファイルが作成済みなのを記述
+
+        # 再生されるまでループ
+        if not Vvc.is_playing():
+            await playV_loop(guild)
 
     # Fin
     await client.process_commands(message)
