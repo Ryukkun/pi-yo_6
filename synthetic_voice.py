@@ -108,8 +108,8 @@ async def creat_voice(Itext,guild_id,now_time,config):
         
         cmd = f'open_jtalk -x "{config["Open_Jtalk"]["Dic"]}" -m "{config["Open_Jtalk"]["Voice"]}mei_normal.htsvoice" -r 1.2 -ow "{config["Open_Jtalk"]["Output"]}{guild_id}-{now_time}.wav"'
 
-        prog = await asyncio.create_subprocess_shell(f'echo {Itext} | {cmd}',stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
-        await prog.wait()
+        prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
+        await prog.communicate(input= Itext.encode())
 
 
     else:
@@ -145,5 +145,5 @@ async def split_voice(Itext,FileNum,id_time,config):
     FileName = config['Open_Jtalk']['Output']+id_time+"-"+str(FileNum)+".wav"
     cmd=f'open_jtalk -x "{config["Open_Jtalk"]["Dic"]}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
     
-    prog = await asyncio.create_subprocess_shell(f'echo {Itext} | {cmd}',stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
-    await prog.wait()
+    prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
+    await prog.communicate(input= Itext.encode())
