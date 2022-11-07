@@ -49,6 +49,7 @@ with open(config['DEFAULT']['Admin_dic'],'a'):pass
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
+intents.voice_states = True
 client = commands.Bot(command_prefix=config['DEFAULT']['Prefix'],intents=intents)
 voice_client = None
 g_opts = {}
@@ -98,10 +99,11 @@ async def join(ctx):
 
 @client.command()
 async def bye(ctx):
-    gid = ctx.guild.id
-    vc = ctx.voice_client
+    guild = ctx.guild
+    gid = guild.id
+    vc = guild.voice_client
     if vc:
-        print(f'{ctx.guild.name} : #切断')
+        print(f'{guild.name} : #切断')
 
         # 古いEmbedを削除
         if late_E := g_opts[gid].get('Embed_Message'):
@@ -110,6 +112,21 @@ async def bye(ctx):
         g_opts[gid] = {}
         await vc.disconnect()
   
+@client.event
+async def on_voice_state_update(member, befor, after):
+    # voice channelに誰もいなくなったことを確認
+    if not befor.channel:
+        return
+    if befor.channel != after.channel:
+        if vc := befor.channel.guild.voice_client:
+            if not befor.channel == vc.channel:
+                return
+            if mems := befor.channel.members:
+                for mem in mems:
+                    if not mem.bot:
+                        return
+                await bye(befor.channel)
+
 
 
 #--------------------------------------------------
