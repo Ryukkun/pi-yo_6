@@ -65,6 +65,7 @@ class MultiAudio(threading.Thread):
         音声データ（Bytes）を取得し、必要があれば Numpy で読み込んで 合成しています
         最後に音声データ送信　ドルチェ
         """
+        _start = time.perf_counter()
         while self.loop:
             self.MBytes = self.Music.read_bytes()
             self.VBytes = self.Voice.read_bytes()
@@ -93,14 +94,10 @@ class MultiAudio(threading.Thread):
                 self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
 
             # Loop Delay
-            PTime = time.time() - self.old_time
-            if 0 <= PTime <= 0.02:
-                time.sleep(0.02 - PTime)
-            else:
-                print(PTime)
-                pass
-            self.old_time = time.time()
-            #print(PTime)
+            _start += 0.02
+            delay = max(0, _start - time.perf_counter())
+            time.sleep(delay)
+ 
             # Send Bytes
             if self.MBytes or self.VBytes:
                 try:self.play_audio(self.Bytes,encode=True)
