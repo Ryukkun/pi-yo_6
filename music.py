@@ -142,8 +142,18 @@ class MusicController():
 
             if not Parent.Rewind: return
             AudioData = Parent.Rewind[-1]
+            if len(Parent.Queue) >= 1:
+                del Parent.Queue[0]
             Parent.Queue.insert(0,AudioData)
             del Parent.Rewind[-1]
+            if Parent.PL:
+                index = None
+                for i, temp in enumerate(Parent.PL):
+                    if AudioData.VideoID in temp:
+                        index = i
+                        break
+                if index:
+                    Parent.Index_PL = index
 
             await Parent.play_loop(None,0)
             if Parent.Mvc.is_paused():
@@ -236,8 +246,13 @@ class MusicController():
 
     async def Update_Embed(self):
         if late_E := self.may_i_edit.get(self.Latest_CH.id):
-            try: 
-                await late_E.edit(embed= await self.Edit_Embed())
+            embed = await self.Edit_Embed()
+            # embedが無効だったら 古いEmbedを削除
+            if not embed:
+                try: await late_E.delete()
+                except NotFound: pass
+
+            try: await late_E.edit(embed= embed)
             except NotFound:
                 # メッセージが見つからなかったら 新しく作成
                 await self._playing()
@@ -257,7 +272,8 @@ class MusicController():
 
     async def Edit_Embed(self):
         
-        _SAD = self.Mvc._SAD
+        if _SAD := self.Mvc._SAD: pass
+        else: return
 
         # emoji
         V_loop= PL_loop= Random_P= ':red_circle:'

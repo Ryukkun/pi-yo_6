@@ -112,11 +112,15 @@ async def on_voice_state_update(member, befor, after):
 #--------------------------------------------------
 @client.command()
 async def playing(ctx):
-    await g_opts[ctx.guild.id].Music._playing()
-
+    try:
+        await g_opts[ctx.guild.id].Music._playing()
+    except KeyError:pass
+    
 @client.event
 async def on_reaction_add(Reac,User):
-    await g_opts[User.guild.id].Music.on_reaction_add(Reac,User)
+    try:
+        await g_opts[User.guild.id].Music.on_reaction_add(Reac,User)
+    except KeyError:pass
 
 #---------------------------------------------------------------------------------------------------
 #   Skip
@@ -124,8 +128,9 @@ async def on_reaction_add(Reac,User):
 
 @client.command()
 async def skip(ctx):
-    await g_opts[ctx.guild.id].Music._skip(ctx)
-
+    try:
+        await g_opts[ctx.guild.id].Music._skip(ctx)
+    except KeyError:pass
 
 
 
@@ -210,15 +215,15 @@ async def delete(ctx, arg1):
 async def s(ctx):
     if ctx.guild.voice_client:
         gid = ctx.guild.id
-        g_opts[gid].Vvc.stop()
-        await g_opts[gid].play_Vloop()
+        g_opts[gid].Voice.Vvc.stop()
+        await g_opts[gid].Voice.play_loop()
 
 @client.command()
 async def shutup(ctx):
     if ctx.guild.voice_client:
         gid = ctx.guild.id
-        g_opts[gid].Vvc.stop()
-        await g_opts[gid].play_Vloop()
+        g_opts[gid].Voice.Vvc.stop()
+        await g_opts[gid].Voice.play_loop()
 
 @client.event
 async def on_message(message):
