@@ -3,3 +3,4 @@ __pycache__
 dic
 Voice
 .DS_Store
+config.py

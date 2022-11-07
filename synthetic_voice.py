@@ -4,7 +4,6 @@ import alkana
 import re
 import os
 import wave
-import configparser
 
 
 def custam_text(text,path):
@@ -26,13 +25,13 @@ def custam_text(text,path):
 #------------------------------------------------------
 def costom_voice(text,config):
     
-    htsvoice=['-m',config['Open_Jtalk']['Voice']+'mei_normal.htsvoice']
+    htsvoice=['-m',config.OJ.Voice+'mei_normal.htsvoice']
     
     if r := re.findall(r'voice:\w*\s|voice:\w*\Z', text):
         r = re.sub(r'\s',"",r[0])
         text = re.sub(r,'',text)
         r = re.sub('voice:','',r)
-        htsvoice = ['-m',config['Open_Jtalk']['Voice']+f'{r}.htsvoice']
+        htsvoice = ['-m',config.OJ.Voice+f'{r}.htsvoice']
         
     return text,f"{htsvoice[0]} {htsvoice[1]}"
     
@@ -93,8 +92,8 @@ async def creat_voice(Itext,guild_id,now_time,config):
     Itext = re.sub(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+','ユーアールエルは省略するのです！ ',Itext)    # URL省略
     Itext = re.sub(r'<:.+:[0-9]+>','',Itext)                                                            # 絵文字IDは読み上げない
     Itext = re.sub(r'<(@&|@)\d+>','メンションは省略するのです！ ',Itext)
-    Itext = custam_text(Itext,config['DEFAULT']['Admin_dic'])                                           # ユーザ登録した文字を読み替える
-    Itext = custam_text(Itext,config['DEFAULT']['User_dic'] + guild_id + '.txt')
+    Itext = custam_text(Itext,config.Admin_dic)                                           # ユーザ登録した文字を読み替える
+    Itext = custam_text(Itext,config.User_dic + guild_id + '.txt')
 
 
     ItextTemp = re.finditer(r'(voice:\w*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|jf:\S*\s)+.+?((?= voice:\w*($|\s))|(?= speed:\S*($|\s))|(?= a:\S*($|\s))|(?= tone:\S*($|\s))|(?= jf:\S*($|\s))|$)',Itext)
@@ -106,10 +105,10 @@ async def creat_voice(Itext,guild_id,now_time,config):
         Itext = re.sub(r'ww+|ｗｗ+','わらわら',Itext)
         print(f"変換後:{Itext}")
         
-        cmd = f'open_jtalk -x "{config["Open_Jtalk"]["Dic"]}" -m "{config["Open_Jtalk"]["Voice"]}mei_normal.htsvoice" -r 1.2 -ow "{config["Open_Jtalk"]["Output"]}{guild_id}-{now_time}.wav"'
-
+        cmd = f'open_jtalk -x "{config.OJ.Dic}" -m "{config.OJ.Voice}mei_normal.htsvoice" -r 1.2 -ow "{config.OJ.Output}{guild_id}-{now_time}.wav"'
+        #print(cmd)
         prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-        await prog.communicate(input= Itext.encode())
+        await prog.communicate(input= Itext.encode('shift_jis'))
 
 
     else:
@@ -120,9 +119,9 @@ async def creat_voice(Itext,guild_id,now_time,config):
             FileNum += 1
         await asyncio.gather(*gather_wav)
 
-        with wave.open(config['Open_Jtalk']['Output']+guild_id+"-"+now_time+".wav", 'wb') as wav_out:
+        with wave.open(config.OJ.Output+guild_id+"-"+now_time+".wav", 'wb') as wav_out:
             for Num in range(FileNum):
-                path = f"{config['Open_Jtalk']['Output']}{guild_id}-{now_time}-{str(Num)}.wav"
+                path = f"{config.OJ.Output}{guild_id}-{now_time}-{str(Num)}.wav"
                 with wave.open(path, 'rb') as wav_in:
                     if not wav_out.getnframes():
                         wav_out.setparams(wav_in.getparams())
@@ -142,8 +141,8 @@ async def split_voice(Itext,FileNum,id_time,config):
     Itext = re.sub(r'ww+|ｗｗ+','わらわら',Itext)
     print(f"変換後 ({FileNum+1}) :{Itext}")
 
-    FileName = config['Open_Jtalk']['Output']+id_time+"-"+str(FileNum)+".wav"
-    cmd=f'open_jtalk -x "{config["Open_Jtalk"]["Dic"]}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
+    FileName = config.OJ.Output+id_time+"-"+str(FileNum)+".wav"
+    cmd=f'open_jtalk -x "{config.OJ.Dic}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
     
     prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
     await prog.communicate(input= Itext.encode())

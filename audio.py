@@ -8,8 +8,11 @@ from pytube.innertube import InnerTube
 from pytube.helpers import DeferredGeneratorList
 from discord import FFmpegPCMAudio
 
-
+re_URL_YT = re.compile(r'https://((www.|)youtube.com|youtu.be)/')
 re_URL_Video = re.compile(r'https://((www.|)youtube.com/watch\?v=|(youtu.be/))(.+)')
+re_URL_PL_Video = re.compile(r'https://(www.|)youtube.com/watch\?v=(.+)&list=(.+)')
+re_URL_PL = re.compile(r'https://(www.|)youtube.com/playlist\?list=')
+re_URL = re.compile(r'http')
 
 
 
@@ -105,17 +108,94 @@ class StreamAudioData:
 
         return FFmpegPCMAudio(self.St_Url,**FFMPEG_OPTIONS)
 
-# Playlist Search
-async def Pyt_P_Search(Url):
-    loop = asyncio.get_event_loop()
-    pyt = pytube.Search(Url)
-    Vdic = await loop.run_in_executor(None,pyt.fetch_and_parse)
-    return [temp.watch_url for temp in Vdic[0]]
 
-# Playlist 全体 Load
-async def Pyt_P(Url):
-    loop = asyncio.get_event_loop()
-    yt_pl = pytube.Playlist(Url)
-    try: return await loop.run_in_executor(None,DeferredGeneratorList,yt_pl.url_generator())
-    except Exception as e:
-        print(f'Error : Playlist All-List {e}')
+    async def Check_V(self):
+        """
+        .p で指定された引数を、再生可能か判別する
+
+        再生可能だった場合
+        return : StreamAudioData
+
+        不可
+        return : None
+        """
+        ### 動画+playlist
+        if re_result := re_URL_PL_Video.match(self.Url):
+            self.Url = f'https://www.youtube.com/watch?v={re_result.group(2)}'
+        
+        ### 文字指定
+        if not re_URL.match(self.Url):
+            return await self.Pyt_V_Search()
+
+        ### youtube 動画オンリー
+        elif re_URL_YT.match(self.Url):
+            try: return await self.Pyt_V()
+            except Exception as e:
+                print(f"Error : Audio only 失敗 {e}")
+                return
+
+        ### それ以外のサイト yt-dlp を使用
+        else:
+            try: return await self.Ytdlp_V()
+            except Exception as e:
+                print(f"Error : Audio + Video 失敗 {e}")
+                return
+
+
+
+    async def Check_P(self):
+        ### PlayList 本体のURL ------------------------------------------------------------------------#
+        if re_URL_PL.match(self.Url): 
+            if Pl := await self.Pyt_P(self.Url):
+                return (0, 1, Pl)
+
+        ### PlayList と 動画が一緒についてきた場合 --------------------------------------------------------------#
+        ###
+        ### ここは特別 elif の範囲だけで処理終わらせる
+        ###
+        elif result_re := re_URL_PL_Video.match(self.Url):
+            watch_id = result_re.group(2)
+            self.Url = f'https://www.youtube.com/playlist?list={result_re.group(3)}'
+
+            # Load Video in the Playlist 
+            if Pl := await self.Pyt_P(self.Url):
+
+                # Playlist Index 特定
+                index = None
+                for i, temp in enumerate(Pl):
+                    if watch_id in temp:
+                        index = i
+                        break
+                if not index:
+                    index = 0
+            
+                return (index, 1, Pl)
+            
+
+        ### URLじゃなかった場合 -----------------------------------------------------------------------#
+        elif not re_URL.match(self.Url):
+            Pl = await self.Pyt_P_Search(self.Url)
+            return (0, 0, Pl)
+
+        ### その他 例外------------------------------------------------------------------------#
+        else: 
+            print("playlistじゃないみたい")
+            return
+
+
+
+
+    # Playlist Search
+    async def Pyt_P_Search(self,Url):
+        loop = asyncio.get_event_loop()
+        pyt = pytube.Search(Url)
+        Vdic = await loop.run_in_executor(None,pyt.fetch_and_parse)
+        return [temp.watch_url for temp in Vdic[0]]
+
+    # Playlist 全体 Load
+    async def Pyt_P(self,Url):
+        loop = asyncio.get_event_loop()
+        yt_pl = pytube.Playlist(Url)
+        try: return await loop.run_in_executor(None,DeferredGeneratorList,yt_pl.url_generator())
+        except Exception as e:
+            print(f'Error : Playlist All-List {e}')
