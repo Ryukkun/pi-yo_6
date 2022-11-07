@@ -71,9 +71,9 @@ async def join(ctx):
         try: await vc.channel.connect(self_deaf=True)
         except discord.ClientException: return
         g_opts[gid] = DataInfo(ctx.guild)
-
         with open(config.User_dic+ str(ctx.guild.id) + '.txt', 'a'): pass
-    
+        return True
+
 
 @client.command()
 async def bye(ctx):
@@ -115,7 +115,7 @@ async def playing(ctx):
     try:
         await g_opts[ctx.guild.id].Music._playing()
     except KeyError:pass
-    
+
 @client.event
 async def on_reaction_add(Reac,User):
     try:
@@ -142,25 +142,29 @@ async def skip(ctx):
 @client.command()
 async def queue(ctx,*args):
     if not ctx.guild.voice_client:
-        await join(ctx)
+        if not await join(ctx):
+            return
     await g_opts[ctx.guild.id].Music._play(ctx,args,True)
 
 @client.command()
 async def q(ctx,*args):
     if not ctx.guild.voice_client:
-        await join(ctx)
+        if not await join(ctx):
+            return
     await g_opts[ctx.guild.id].Music._play(ctx,args,True)
 
 @client.command()
 async def play(ctx,*args):
     if not ctx.guild.voice_client:
-        await join(ctx)
+        if not await join(ctx):
+            return
     await g_opts[ctx.guild.id].Music._play(ctx,args,False)
 
 @client.command()
 async def p(ctx,*args):
     if not ctx.guild.voice_client:
-        await join(ctx)
+        if not await join(ctx):
+            return
     await g_opts[ctx.guild.id].Music._play(ctx,args,False)
 
 
@@ -176,13 +180,15 @@ async def p(ctx,*args):
 @client.command()
 async def playlist(ctx,*args):
     if not ctx.guild.voice_client:
-        await join(ctx)
+        if not await join(ctx):
+            return
     await g_opts[ctx.guild.id].Music._playlist(ctx,args)
 
 @client.command()
 async def pl(ctx,*args):
     if not ctx.guild.voice_client:
-        await join(ctx)
+        if not await join(ctx):
+            return
     await g_opts[ctx.guild.id].Music._playlist(ctx,args)
 
 
