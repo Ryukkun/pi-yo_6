@@ -235,7 +235,6 @@ async def shutup(ctx):
 async def on_message(message):
     gid = message.guild.id
     try:
-        await g_opts[gid].Music.on_message(message)
         await g_opts[gid].Voice.on_message(message)
     except KeyError:pass
     # Fin

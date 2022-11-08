@@ -77,9 +77,16 @@ class MultiAudio(threading.Thread):
                 self.MBytes = None
             elif self.MBytes:
                 # 秒数更新のため
-                if ((self.Music.Timer - 1) % 500) == 0:
-                    self.CLoop.create_task(self.Parent.Music.Update_Embed())
-                
+                if 0 <= self.Music.Timer < (50*60):
+                    if (self.Music.Timer % (50*5)) == 1:
+                        self.CLoop.create_task(self.Parent.Music.Update_Embed())
+                elif (50*60) <= self.Music.Timer < (50*1800):
+                    if (self.Music.Timer % (50*10)) == 1:
+                        self.CLoop.create_task(self.Parent.Music.Update_Embed())
+                elif (50*1800) <= self.Music.Timer:
+                    if (self.Music.Timer % (50*30)) == 1:
+                        self.CLoop.create_task(self.Parent.Music.Update_Embed())
+
                 MArray = np.frombuffer(self.MBytes,np.int16)
                 self.Bytes = self.MBytes
             if self.VBytes == 'Fin':

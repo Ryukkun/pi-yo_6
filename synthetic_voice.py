@@ -108,7 +108,7 @@ async def creat_voice(Itext,guild_id,now_time,config):
         cmd = f'open_jtalk -x "{config.OJ.Dic}" -m "{config.OJ.Voice}mei_normal.htsvoice" -r 1.2 -ow "{config.OJ.Output}{guild_id}-{now_time}.wav"'
         #print(cmd)
         prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-        await prog.communicate(input= Itext.encode('shift_jis'))
+        await prog.communicate(input= Itext.encode())
 
 
     else:

@@ -32,7 +32,7 @@ class MusicController():
         self.Rewind = []
         self.CLoop = Info.loop
         self.Embed_Message = None
-        self.may_i_edit = {}
+        self.sending_embed = False
 
     async def _play(self, ctx, args, Q):
         # 一時停止していた場合再生 開始
@@ -56,8 +56,8 @@ class MusicController():
 
         # playlist 再生中のお客様はお断り
         if self.PL:
-            del self.PL
-            del self.Index_PL
+            self.PL = None
+            self.Index_PL = None
 
         self.Latest_CH = ctx.channel
 
@@ -183,29 +183,28 @@ class MusicController():
 
 
     async def _playing(self):
-        if not self.Mvc.is_playing(): return
-        
-        # Get Embed
-        embed = await self.Edit_Embed()
-        if not embed: return
+        if self.sending_embed: return
+        self.sending_embed = True
+        if self.Mvc.is_playing():
+            
+            # Get Embed
+            if embed := await self.Edit_Embed():
 
-        # 古いEmbedを削除
-        if late_E := self.Embed_Message:
-            try: await late_E.delete()
-            except NotFound: pass
+                # 古いEmbedを削除
+                if late_E := self.Embed_Message:
+                    try: await late_E.delete()
+                    except NotFound: pass
 
+                # 新しいEmbed
+                Sended_Mes = await self.Latest_CH.send(embed=embed,view=self.CreateButton(self))
+                self.Embed_Message = Sended_Mes 
+                self.CLoop.create_task(Sended_Mes.add_reaction("🔁"))
+                if self.PL:
+                    self.CLoop.create_task(Sended_Mes.add_reaction("♻"))
+                    self.CLoop.create_task(Sended_Mes.add_reaction("🔀"))
 
-
-        # 新しいEmbed
-        Sended_Mes = await self.Latest_CH.send(embed=embed,view=self.CreateButton(self))
-        self.Embed_Message = Sended_Mes 
-        await Sended_Mes.add_reaction("🔁")
-        if self.PL:
-            await Sended_Mes.add_reaction("♻")
-            await Sended_Mes.add_reaction("🔀")
-
-        #print(f"{guild.name} : #再生中の曲　<{g_opts[guild.id]['queue'][0][1]}>")
-
+                #print(f"{guild.name} : #再生中の曲　<{g_opts[guild.id]['queue'][0][1]}>")
+        self.sending_embed = False
 
 
     async def on_reaction_add(self, Reac, User):
@@ -245,28 +244,30 @@ class MusicController():
 
 
     async def Update_Embed(self):
-        if late_E := self.may_i_edit.get(self.Latest_CH.id):
-            embed = await self.Edit_Embed()
-            # embedが無効だったら 古いEmbedを削除
-            if not embed:
-                try: await late_E.delete()
-                except NotFound: pass
+        if late_E := self.Latest_CH.last_message:
+            if late_E.author.id == self.Info.client.user.id:
+                embed = await self.Edit_Embed()
+                # embedが無効だったら 古いEmbedを削除
+                if not embed:
+                    try: await late_E.delete()
+                    except NotFound: pass
+                    return
 
-            try: await late_E.edit(embed= embed)
-            except NotFound:
-                # メッセージが見つからなかったら 新しく作成
-                await self._playing()
-                print('見つかりませんでした！')
-            else:
-                # Reaction 修正
-                if self.PL:
-                    await late_E.add_reaction('♻')
-                    await late_E.add_reaction('🔀')
+                try: await late_E.edit(embed= embed)
+                except NotFound:
+                    # メッセージが見つからなかったら 新しく作成
+                    print('見つかりませんでした！')
                 else:
-                    await late_E.clear_reaction('♻')
-                    await late_E.clear_reaction('🔀')
-        else:
-            await self._playing()
+                    # Reaction 修正
+                    if self.PL:
+                        await late_E.add_reaction('♻')
+                        await late_E.add_reaction('🔀')
+                    else:
+                        await late_E.clear_reaction('♻')
+                        await late_E.clear_reaction('🔀')
+                    return
+        
+        await self._playing()
 
 
 
@@ -329,20 +330,6 @@ class MusicController():
             embed.add_field(name="ループ", value=f'🔁 : {V_loop}', inline=True)
         
         return embed
-
-
-
-    async def on_message(self, message):
-        # 最新の投稿を記録
-        """ 
-        チャンネルの履歴が見れないため チャンネル毎に 投稿があったか記録していく
-        user.id で判別してるため、playing以外の投稿があったらバグる
-        """
-        if self.vc:
-            if message.author.id == self.Info.client.user.id:
-                self.may_i_edit[message.channel.id] = message
-            else:
-                self.may_i_edit[message.channel.id] = None
 
 
 
