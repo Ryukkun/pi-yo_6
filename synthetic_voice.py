@@ -4,7 +4,12 @@ import alkana
 import re
 import os
 import wave
+import platform
 
+if platform.system() == 'Windows':
+    EFormat = 'shift_jis'
+else:
+    EFormat = 'utf-8'
 
 def custam_text(text,path):
 
@@ -108,7 +113,7 @@ async def creat_voice(Itext,guild_id,now_time,config):
         cmd = f'open_jtalk -x "{config.OJ.Dic}" -m "{config.OJ.Voice}mei_normal.htsvoice" -r 1.2 -ow "{config.OJ.Output}{guild_id}-{now_time}.wav"'
         #print(cmd)
         prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-        await prog.communicate(input= Itext.encode())
+        await prog.communicate(input= Itext.encode(EFormat))
 
 
     else:
@@ -145,4 +150,4 @@ async def split_voice(Itext,FileNum,id_time,config):
     cmd=f'open_jtalk -x "{config.OJ.Dic}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
     
     prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-    await prog.communicate(input= Itext.encode())
+    await prog.communicate(input= Itext.encode(EFormat))

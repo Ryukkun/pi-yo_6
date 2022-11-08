@@ -234,9 +234,16 @@ async def shutup(ctx):
 @client.event
 async def on_message(message):
     gid = message.guild.id
-    try:
-        await g_opts[gid].Voice.on_message(message)
+    guild = message.guild
+    voice = message.author.voice
+
+    if voice.channel and not guild.voice_client:
+        if voice.mute or voice.self_mute:
+            await join(message)
+
+    try: await g_opts[gid].Voice.on_message(message)
     except KeyError:pass
+
     # Fin
     await client.process_commands(message)
 

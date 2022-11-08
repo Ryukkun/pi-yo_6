@@ -258,13 +258,15 @@ class MusicController():
                     # メッセージが見つからなかったら 新しく作成
                     print('見つかりませんでした！')
                 else:
-                    # Reaction 修正
-                    if self.PL:
-                        await late_E.add_reaction('♻')
-                        await late_E.add_reaction('🔀')
-                    else:
-                        await late_E.clear_reaction('♻')
-                        await late_E.clear_reaction('🔀')
+                    try:
+                        # Reaction 修正
+                        if self.PL:
+                            await late_E.add_reaction('♻')
+                            await late_E.add_reaction('🔀')
+                        else:
+                            await late_E.clear_reaction('♻')
+                            await late_E.clear_reaction('🔀')
+                    except Exception: pass
                     return
         
         await self._playing()
