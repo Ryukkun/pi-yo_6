@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 
+from json import load as json_load
 from discord import opus, SpeakingState
 from types import NoneType
 
@@ -20,36 +21,36 @@ class MultiAudio(threading.Thread):
         self.guild = guild
         self.gid = guild.id
         self.vc = guild.voice_client
-        self.MLoop = False
-        self.VLoop = False
         self.CLoop = client.loop
         self.Parent = parent
-        self.Music = _APlayer(self,'M')
-        self.Voice = _APlayer(self,'V')
+        self.Music = _APlayer(self)
+        self.Voice = _APlayer(self)
+        self.update_volume()
         self.MBytes = None
         self.VBytes = None
         self.vc.encoder = opus.Encoder()
         self.play_audio = self.vc.send_audio_packet
         self.old_time = 0
 
+    def update_volume(self):
+        GC_Path = f'{self.Parent.config.Guild_Config}{self.gid}.json'
+        with open(GC_Path,'r') as f:
+            GC = json_load(f)
+        self.volume =  GC['volume']
 
-    def speaking(self,CH,status):
+    def speaking(self,status):
         """
         これ（self._speak）がないと謎にバグる ※botがjoinしたときに居たメンツにしか 音が聞こえない
         友達が幻聴を聞いてたら怖いよね
         ついでにLOOPの制御も
         """
         if status:
-            if self.VLoop == False and self.MLoop == False:
+            if self.Voice.Loop == False and self.Music.Loop == False:
                 self._speak(SpeakingState.voice)
         else:
-            if self.VLoop and self.MLoop: pass
-            elif self.VLoop or self.MLoop:
+            if self.Voice.Loop and self.Music.Loop: pass
+            elif self.Voice.Loop or self.Music.Loop:
                 self._speak(SpeakingState.none)
-        if CH == 'V':
-            self.VLoop = status
-        if CH == 'M':
-            self.MLoop = status
 
     def _speak(self, speaking: SpeakingState) -> None:
             try:
@@ -57,6 +58,17 @@ class MultiAudio(threading.Thread):
             except Exception:
                 pass
 
+    def _update_embed(self):
+        # 秒数更新のため
+        if 0 <= self.Music.Timer < (50*60):
+            if (self.Music.Timer % (50*5)) == 1:
+                self.CLoop.create_task(self.Parent.Music.Update_Embed())
+        elif (50*60) <= self.Music.Timer < (50*1800):
+            if (self.Music.Timer % (50*10)) == 1:
+                self.CLoop.create_task(self.Parent.Music.Update_Embed())
+        elif (50*1800) <= self.Music.Timer:
+            if (self.Music.Timer % (50*30)) == 1:
+                self.CLoop.create_task(self.Parent.Music.Update_Embed())
 
 
     def run(self):
@@ -76,29 +88,22 @@ class MultiAudio(threading.Thread):
                 self.Music.After()
                 self.MBytes = None
             elif self.MBytes:
-                # 秒数更新のため
-                if 0 <= self.Music.Timer < (50*60):
-                    if (self.Music.Timer % (50*5)) == 1:
-                        self.CLoop.create_task(self.Parent.Music.Update_Embed())
-                elif (50*60) <= self.Music.Timer < (50*1800):
-                    if (self.Music.Timer % (50*10)) == 1:
-                        self.CLoop.create_task(self.Parent.Music.Update_Embed())
-                elif (50*1800) <= self.Music.Timer:
-                    if (self.Music.Timer % (50*30)) == 1:
-                        self.CLoop.create_task(self.Parent.Music.Update_Embed())
-
+                self._update_embed()
                 MArray = np.frombuffer(self.MBytes,np.int16)
-                self.Bytes = self.MBytes
+                MArray = MArray * (self.volume['music'] / 100)
+                self.Bytes = MArray
+
             if self.VBytes == 'Fin':
                 self.Voice.After()
                 self.VBytes = None
             elif self.VBytes:
                 VArray = np.frombuffer(self.VBytes,np.int16)
-                self.Bytes = self.VBytes
+                VArray = VArray * (self.volume['voice'] / 100)
+                self.Bytes = VArray
 
             # Bytes Mix
             if type(MArray) != NoneType and type(VArray) != NoneType:
-                self.Bytes = (MArray + VArray).astype(np.int16).tobytes()
+                self.Bytes = MArray + VArray
 
             # Loop Delay
             _start += 0.02
@@ -107,7 +112,8 @@ class MultiAudio(threading.Thread):
  
             # Send Bytes
             if self.MBytes or self.VBytes:
-                try:self.play_audio(self.Bytes,encode=True)
+                self.Bytes = self.Bytes * (self.volume['master'] / 100)
+                try:self.play_audio(self.Bytes.astype(np.int16).tobytes(), encode=True)
                 except OSError:
                     print('Error send_audio_packet OSError')
                     time.sleep(1)
@@ -115,17 +121,16 @@ class MultiAudio(threading.Thread):
             
 
 class _APlayer():
-    def __init__(self,parent,name):
+    def __init__(self,parent):
         self.AudioSource = None
         self._SAD = None
         self.Pausing = False
         self.Parent = parent
         self.Timer = 0
         self.After = None
-        self.Name = name
         self.QBytes = None
         self.Duration = None
-
+        self.Loop = False
         
 
     async def play(self,_SAD,after):
@@ -142,15 +147,18 @@ class _APlayer():
     def stop(self):
         self.AudioSource = None
         self._SAD = None
-        self.Parent.speaking(self.Name,False)
+        self.Loop = False
+        self.Parent.speaking(False)
 
     def resume(self):
         self.Pausing = False
-        self.Parent.speaking(self.Name,True)
+        self.Loop = True
+        self.Parent.speaking(True)
 
     def pause(self):
         self.Pausing = True
-        self.Parent.speaking(self.Name,False)
+        self.Loop = False
+        self.Parent.speaking(False)
 
     def is_playing(self):
         if self._SAD:
@@ -174,7 +182,8 @@ class _APlayer():
             else:
                 self.AudioSource = None
                 self._SAD = None
-                self.Parent.speaking(self.Name,False)
+                self.Loop = False
+                self.Parent.speaking(False)
                 return 'Fin'
             
         return None

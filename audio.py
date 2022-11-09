@@ -92,11 +92,11 @@ class StreamAudioData:
 
     def AudioSource(self):
         if self.music:
-            volume = -20
+            volume = -20.0
             if Vol := self.St_Vol:
                 if Vol <= 0:
                     Vol /= 2
-                volume -= int(Vol)
+                volume -= Vol
             FFMPEG_OPTIONS = {
                 "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -analyzeduration 2147483647 -probesize 2147483647",
                 'options': f'-vn -c:a pcm_s16le -af "volume={volume}dB" -b:a 128k -application lowdelay -loglevel error'

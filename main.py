@@ -99,6 +99,28 @@ async def admin_only(ctx: discord.Interaction, action: Literal['True','False']):
     embed = discord.Embed(title=f'admin_only を {action} に変更しました', colour=0xe1bd5b)
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
+
+@group.command(description="音量設定 サーバー毎でしか設定できないのごめんね")
+@discord.app_commands.describe(volume='初期設定:100  0 ~ 1000まで設定可能 %換算')
+async def volume(ctx: discord.Interaction, audio: Literal['master','voice','music'], volume: discord.app_commands.Range[int,0,1000]):
+    GC_Check(ctx.guild_id)
+    GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
+    with open(GC_Path,'r') as f:
+        GC = json.load(f)
+    if not ctx.permissions.administrator and GC['admin_only']:
+        embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
+        await ctx.response.send_message(embed=embed, ephemeral= True)
+        return
+    GC['volume'][audio] = volume
+    with open(GC_Path,'w') as f:
+        json.dump(GC, f, indent=2)
+    embed = discord.Embed(title=f'[{audio}]の音量を {volume}% に変更しました', colour=0xe1bd5b)
+    try: g_opts[ctx.guild_id].MA.update_volume()
+    except KeyError: pass
+    await ctx.response.send_message(embed=embed, ephemeral= True)
+
+
+
 tree.add_command(group)
 
 
@@ -107,7 +129,8 @@ def GC_Check(gid):
     if not os.path.isfile(GC_Path):
         GC = {
             'auto_join':False,
-            'admin_only':True
+            'admin_only':True,
+            'volume':{'master':100, 'music':100, 'voice':100}
         }
         with open(GC_Path,'w') as f:
             json.dump(GC, f, indent=2)
@@ -154,6 +177,7 @@ async def bye(ctx):
         del g_opts[gid]
         await vc.disconnect()
   
+  
 @client.event
 async def on_voice_state_update(member, befor, after):
     # voice channelに誰もいなくなったことを確認
@@ -180,11 +204,13 @@ async def playing(ctx):
         await g_opts[ctx.guild.id].Music._playing()
     except KeyError:pass
 
+
 @client.event
 async def on_reaction_add(Reac,User):
     try:
         await g_opts[User.guild.id].Music.on_reaction_add(Reac,User)
     except KeyError:pass
+
 
 #---------------------------------------------------------------------------------------------------
 #   Skip
@@ -210,6 +236,7 @@ async def queue(ctx,*args):
             return
     await g_opts[ctx.guild.id].Music._play(ctx,args,True)
 
+
 @client.command()
 async def q(ctx,*args):
     if not ctx.guild.voice_client:
@@ -217,12 +244,14 @@ async def q(ctx,*args):
             return
     await g_opts[ctx.guild.id].Music._play(ctx,args,True)
 
+
 @client.command()
 async def play(ctx,*args):
     if not ctx.guild.voice_client:
         if not await join(ctx):
             return
     await g_opts[ctx.guild.id].Music._play(ctx,args,False)
+
 
 @client.command()
 async def p(ctx,*args):
@@ -248,6 +277,7 @@ async def playlist(ctx,*args):
             return
     await g_opts[ctx.guild.id].Music._playlist(ctx,args)
 
+
 @client.command()
 async def pl(ctx,*args):
     if not ctx.guild.voice_client:
@@ -269,6 +299,7 @@ async def register(ctx, arg1, arg2):
         f.write(arg1 + ',' + arg2 + '\n')
         print(gid +'.txtに書き込み : '+ arg1 + ',' + arg2)
 
+
 @client.command()
 async def delete(ctx, arg1):
     gid = str(ctx.guild.id)
@@ -288,12 +319,14 @@ async def s(ctx):
         g_opts[gid].Voice.Vvc.stop()
         await g_opts[gid].Voice.play_loop()
 
+
 @client.command()
 async def shutup(ctx):
     if ctx.guild.voice_client:
         gid = ctx.guild.id
         g_opts[gid].Voice.Vvc.stop()
         await g_opts[gid].Voice.play_loop()
+
 
 @client.event
 async def on_message(message):
@@ -327,11 +360,11 @@ class DataInfo():
         self.gn = guild.name
         self.gid = guild.id
         self.vc = guild.voice_client
-        self.MA = MultiAudio(guild, client, self)
-        self.MA.start()
         self.loop = client.loop
         self.client = client
         self.config = config
+        self.MA = MultiAudio(guild, client, self)
+        self.MA.start()
         self.Voice = ChatReader(self)
         self.Music = MusicController(self)
 
