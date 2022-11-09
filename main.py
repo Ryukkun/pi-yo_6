@@ -65,7 +65,7 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
     with open(GC_Path,'r') as f:
         GC = json.load(f)
-    if not ctx.permissions.administrator and GC.admin_only:
+    if not ctx.permissions.administrator and GC['admin_only']:
         embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
         await ctx.response.send_message(embed=embed, ephemeral= True)
         return
