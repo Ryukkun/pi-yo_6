@@ -52,6 +52,16 @@ g_opts = {}
 
 
 
+tree = discord.app_commands.CommandTree(client)
+group = discord.app_commands.Group(name="pi-yo")
+
+@group.command(description="自意識過剰系ぴーよ")
+async def AutoJoin(ctx: discord.Interaction, action: Literal['True','False']):
+    print(action)
+    await ctx.response.defer()
+
+tree.add_command(group)
+
 
 ####  基本的コマンド
 @client.event
