@@ -2,7 +2,9 @@ import discord
 import os
 import re
 import shutil
+import json
 from discord.ext import commands
+from typing import Literal
 
 from player import MultiAudio
 from voice import ChatReader
@@ -21,6 +23,7 @@ except Exception:
         "Token = None",
         "Admin_dic = './dic/admin_dic.txt'",
         "User_dic = './dic/user_dic/'",
+        "Guild_Config = './guild_config/'"
         "",
         "class _OJ():",
         "    Dic = '/var/lib/mecab/dic/open-jtalk/naist-jdic'",
@@ -36,6 +39,7 @@ except Exception:
 try:shutil.rmtree(config.OJ.Output)
 except Exception:pass
 os.makedirs(config.User_dic, exist_ok=True)
+os.makedirs(config.Guild_Config, exist_ok=True)
 os.makedirs(config.OJ.Voice, exist_ok=True)
 os.makedirs(config.OJ.Output, exist_ok=True)
 with open(config.Admin_dic,'a'):pass
@@ -52,15 +56,62 @@ g_opts = {}
 
 
 
-tree = discord.app_commands.CommandTree(client)
-group = discord.app_commands.Group(name="pi-yo")
+tree = client.tree
+group = discord.app_commands.Group(name="pi-yo",description="ぴーよ6号設定")
 
-@group.command(description="自意識過剰系ぴーよ")
-async def AutoJoin(ctx: discord.Interaction, action: Literal['True','False']):
-    print(action)
-    await ctx.response.defer()
+@group.command(description="初期:False 呼んでないのに通話に入ってくる オフロスキー系ぴーよ")
+async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
+    GC_Check(ctx.guild_id)
+    GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
+    with open(GC_Path,'r') as f:
+        GC = json.load(f)
+    if not ctx.permissions.administrator and GC.admin_only:
+        embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
+        await ctx.response.send_message(embed=embed, ephemeral= True)
+        return
+    if action == 'True':
+        GC['auto_join'] = True
+    else:
+        GC['auto_join'] = False
+    print(GC)
+    with open(GC_Path,'w') as f:
+        json.dump(GC, f, indent=2)
+    embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=0xe1bd5b)
+    await ctx.response.send_message(embed=embed, ephemeral= True)
+
+
+@group.command(description="初期:True 管理者しかスラッシュコマンドを使えないようにするか否か")
+async def admin_only(ctx: discord.Interaction, action: Literal['True','False']):
+    GC_Check(ctx.guild_id)
+    if not ctx.permissions.administrator:
+        embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
+        await ctx.response.send_message(embed=embed, ephemeral= True)
+        return
+    GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
+    with open(GC_Path,'r') as f:
+        GC = json.load(f)
+    if action == 'True':
+        GC['admin_only'] = True
+    else:
+        GC['admin_only'] = False
+    with open(GC_Path,'w') as f:
+        json.dump(GC, f, indent=2)
+    embed = discord.Embed(title=f'admin_only を {action} に変更しました', colour=0xe1bd5b)
+    await ctx.response.send_message(embed=embed, ephemeral= True)
 
 tree.add_command(group)
+
+
+def GC_Check(gid):
+    GC_Path = f'{config.Guild_Config}{gid}.json'
+    if not os.path.isfile(GC_Path):
+        GC = {
+            'auto_join':False,
+            'admin_only':True
+        }
+        with open(GC_Path,'w') as f:
+            json.dump(GC, f, indent=2)
+
 
 
 ####  基本的コマンド
@@ -70,6 +121,7 @@ async def on_ready():
     print(client.user.name)
     print(client.user.id)
     print('----------------')
+    await tree.sync()
     
 
 
@@ -81,7 +133,9 @@ async def join(ctx):
         try: await vc.channel.connect(self_deaf=True)
         except discord.ClientException: return
         g_opts[gid] = DataInfo(ctx.guild)
-        with open(config.User_dic+ str(ctx.guild.id) + '.txt', 'a'): pass
+        Dic_Path = f'{config.User_dic}{gid}.txt'
+        with open(Dic_Path,'w'): pass
+        GC_Check(gid)
         return True
 
 
@@ -243,13 +297,19 @@ async def shutup(ctx):
 
 @client.event
 async def on_message(message):
-    gid = message.guild.id
     guild = message.guild
+    if not guild: return
+    gid = message.guild.id
     voice = message.author.voice
 
-    if voice.channel and not guild.voice_client:
-        if voice.mute or voice.self_mute:
-            await join(message)
+    GC_Check(gid)
+    GC_Path = f'{config.Guild_Config}{gid}.json'
+    with open(GC_Path,'r') as f:
+        GC = json.load(f)
+    if voice and GC['auto_join']:
+        if voice.channel and not guild.voice_client:
+            if voice.mute or voice.self_mute:
+                await join(message)
 
     try: await g_opts[gid].Voice.on_message(message)
     except KeyError:pass
@@ -274,7 +334,6 @@ class DataInfo():
         self.config = config
         self.Voice = ChatReader(self)
         self.Music = MusicController(self)
-
 
 
 
