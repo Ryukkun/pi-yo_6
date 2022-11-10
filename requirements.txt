@@ -1,7 +1,5 @@
 ffmpeg
 alkana
-wanakana
-wanakana-python
 discord
 discord.py[voice]
 yt_dlp
