@@ -80,7 +80,7 @@ class StreamAudioData:
         self.CH = self.Vdic["videoDetails"]["author"]
         self.CH_Url = f'https://www.youtube.com/channel/{self.Vdic["videoDetails"]["channelId"]}'
         self.VideoID = self.Vdic["videoDetails"]["videoId"]
-        self.St_Vol = self.Vdic['playerConfig']['audioConfig']['loudnessDb']
+        self.St_Vol = self.Vdic['playerConfig']['audioConfig'].get('loudnessDb')
         self.St_Sec = int(self.Vdic['videoDetails']['lengthSeconds'])
         self.Web_Url = f"https://youtu.be/{self.VideoID}"
         async with aiohttp.ClientSession() as session:
