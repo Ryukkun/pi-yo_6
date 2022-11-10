@@ -3,7 +3,6 @@ except ModuleNotFoundError:
     from .translation import tree
 
 
-
 def to_kana(text: str):
     siin_n = 'bcdfghjklmpqrstvwxyz'
     boin_n = 'aiueon'
@@ -13,7 +12,7 @@ def to_kana(text: str):
             if not text.read_only() in boin_n:
                 return True
 
-    def _ltsu():
+    def _ltu():
         if first_unit in siin_n:
             if text.read_only() == first_unit:
                 if text.read_only(indent=2) != first_unit:
@@ -27,11 +26,16 @@ def to_kana(text: str):
             out += 'ん'
             continue
         
-        if _ltsu():
+        if _ltu():
             out += 'っ'
             continue
 
         if _tree := tree.get(first_unit):
+            '''
+            dcit => 変換候補あり
+            str => Answer
+            None => 候補なし
+            '''
             temp_unit = ''
             while type(_tree) == dict:
                 unit = text.read()
@@ -45,9 +49,6 @@ def to_kana(text: str):
         else:
             out += first_unit
     return out
-
-
-
 
 
 
@@ -67,6 +68,8 @@ class ReadText():
         self.delete()
         return text
 
+
+
 if __name__ == '__main__':
     import time
     while True:
@@ -74,5 +77,4 @@ if __name__ == '__main__':
         ti = time.time()
         print(ts+'\n'+to_kana(ts))
         print(time.time()-ti)
-        print()
-        print()
+        print('\n')
