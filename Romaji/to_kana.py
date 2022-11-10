@@ -22,13 +22,18 @@ def to_kana(text: str):
     out = ''
     while text.text:
         first_unit = text.read()
+        ltu = None
         if _nn():
             out += 'ん'
             continue
         
-        if _ltu():
-            out += 'っ'
-            continue
+        if ltu := _ltu():
+            '''
+            この先変換候補があったら "っ" を入れる
+            無かったらこのまま 
+            '''
+            out += first_unit
+            first_unit = text.read()
 
         if _tree := tree.get(first_unit):
             '''
@@ -42,6 +47,9 @@ def to_kana(text: str):
                 _tree = _tree.get(unit)
                 temp_unit += unit
             if _tree:
+                if ltu:
+                    out = out[:-1]
+                    out += 'っ'
                 out += _tree
             else:
                 text.text = temp_unit + text.text
