@@ -73,7 +73,6 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
         GC['auto_join'] = True
     else:
         GC['auto_join'] = False
-    print(GC)
     with open(GC_Path,'w') as f:
         json.dump(GC, f, indent=2)
     embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=0xe1bd5b)

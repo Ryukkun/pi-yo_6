@@ -1,10 +1,11 @@
 import asyncio
-from wanakana import to_kana
 import alkana
 import re
 import os
 import wave
 import platform
+
+import Romaji.to_kana as Romaji
 
 if platform.system() == 'Windows':
     EFormat = 'shift_jis'
@@ -75,7 +76,7 @@ def replace_english_kana(text):
         elif re.search(r'[A-Z]',word.group(2)):
             output += word.group(2)
         else:
-            output += to_kana(word.group(2).lower())   # ローマ字 → カナ 変換
+            output += Romaji.to_kana(word.group(2).lower())   # ローマ字 → カナ 変換
         
         if word.end() != len(temp_text) or re.compile(r'[^a-zA-Z\-]').search(temp_text[-1]):    # 文字の末尾を修復
             temp_text = temp_text[word.end()-1:]
