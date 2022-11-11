@@ -382,4 +382,4 @@ class MusicController():
             played_time = time.time()
             print(f"{self.gn} : Play  [Now len: {str(len(self.Queue))}]")
                 
-            await self.Mvc.play(AudioData,after=lambda : self.CLoop.create_task(self.play_loop(AudioData.St_Url,played_time)))
+            self.Mvc.play(AudioData,after=lambda : self.CLoop.create_task(self.play_loop(AudioData.St_Url,played_time)))

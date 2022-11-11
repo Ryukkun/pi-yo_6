@@ -66,7 +66,7 @@ class ChatReader():
             self.Queue[0][1] = 2
             print(f"Play  <{self.gn}>")
 
-            await self.Vvc.play(SAD(source).Url_Only(),lambda : self.CLoop.create_task(self.play_loop()))
+            self.Vvc.play(SAD(source).Url_Only(),lambda : self.CLoop.create_task(self.play_loop()))
             return
 
         if self.Queue[0][1] == 0:                   # Skip

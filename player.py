@@ -126,7 +126,7 @@ class _APlayer():
         self.volume = 1
         
 
-    async def play(self,_SAD,after):
+    def play(self,_SAD,after):
         self._SAD = _SAD
         self.Duration = _SAD.St_Sec
         AudioSource = _SAD.AudioSource()

@@ -99,11 +99,11 @@ class StreamAudioData:
                 volume -= Vol
             FFMPEG_OPTIONS = {
                 "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -analyzeduration 2147483647 -probesize 2147483647",
-                'options': f'-vn -c:a pcm_s16le -af "volume={volume}dB" -b:a 128k -application lowdelay -loglevel error'
+                'options': f'-vn -c:a pcm_s16le -af "volume={volume}dB" -b:a 128k -application lowdelay -loglevel quiet'
                 }
         else:
             FFMPEG_OPTIONS = {
-                'options': '-vn -c:a pcm_s16le -b:a 128k -application lowdelay -loglevel error'
+                'options': '-vn -c:a pcm_s16le -b:a 128k -application lowdelay -loglevel quiet'
                 }
 
         return FFmpegPCMAudio(self.St_Url,**FFMPEG_OPTIONS)
