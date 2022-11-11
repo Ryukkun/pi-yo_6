@@ -26,9 +26,8 @@ class MultiAudio(threading.Thread):
         self.Music = _APlayer(self)
         self.Voice = _APlayer(self)
         self.update_volume()
-        self.MBytes = None
-        self.VBytes = None
         self.vc.encoder = opus.Encoder()
+        self.vc.encoder.set_expected_packet_loss_percent(0.0)
         self.play_audio = self.vc.send_audio_packet
         self.old_time = 0
 
@@ -36,7 +35,9 @@ class MultiAudio(threading.Thread):
         GC_Path = f'{self.Parent.config.Guild_Config}{self.gid}.json'
         with open(GC_Path,'r') as f:
             GC = json_load(f)
-        self.volume =  GC['volume']
+        self.Music.volume =  GC['volume']['music'] / 100
+        self.Voice.volume =  GC['volume']['voice'] / 100
+        self.master = GC['volume']['master'] / 100
 
     def speaking(self,status):
         """
@@ -79,31 +80,22 @@ class MultiAudio(threading.Thread):
         """
         _start = time.perf_counter()
         while self.loop:
-            self.MBytes = self.Music.read_bytes()
-            self.VBytes = self.Voice.read_bytes()
-            VArray = None
-            MArray = None
-
-            if self.MBytes == 'Fin':
-                self.Music.After()
-                self.MBytes = None
-            elif self.MBytes:
-                self._update_embed()
-                MArray = np.frombuffer(self.MBytes,np.int16)
-                MArray = MArray * (self.volume['music'] / 100)
-                self.Bytes = MArray
-
-            if self.VBytes == 'Fin':
-                self.Voice.After()
-                self.VBytes = None
-            elif self.VBytes:
-                VArray = np.frombuffer(self.VBytes,np.int16)
-                VArray = VArray * (self.volume['voice'] / 100)
-                self.Bytes = VArray
+            MBytes = self.Music.read_bytes()
+            VBytes = self.Voice.read_bytes()
+            Bytes = None
 
             # Bytes Mix
-            if type(MArray) != NoneType and type(VArray) != NoneType:
-                self.Bytes = MArray + VArray
+            if type(MBytes) != NoneType and type(VBytes) != NoneType:
+                Bytes = MBytes + VBytes
+
+            # 音楽音声
+            elif type(MBytes) != NoneType:
+                self._update_embed()
+                Bytes = MBytes
+            
+            # 読み上げ音声
+            elif type(VBytes) != NoneType:
+                Bytes = VBytes
 
             # Loop Delay
             _start += 0.02
@@ -111,9 +103,9 @@ class MultiAudio(threading.Thread):
             time.sleep(delay)
  
             # Send Bytes
-            if self.MBytes or self.VBytes:
-                self.Bytes = self.Bytes * (self.volume['master'] / 100)
-                try:self.play_audio(self.Bytes.astype(np.int16).tobytes(), encode=True)
+            if type(Bytes) != NoneType:
+                Bytes = Bytes * self.master
+                try:self.play_audio(Bytes.astype(np.int16).tobytes(), encode=True)
                 except OSError:
                     print('Error send_audio_packet OSError')
                     time.sleep(1)
@@ -131,6 +123,7 @@ class _APlayer():
         self.QBytes = None
         self.Duration = None
         self.Loop = False
+        self.volume = 1
         
 
     async def play(self,_SAD,after):
@@ -175,15 +168,15 @@ class _APlayer():
                 self.Timer += 1
                 temp = self.QBytes
                 self.QBytes = None
-                return temp
+                return np.frombuffer(temp,np.int16) * self.volume
             if Bytes := self.AudioSource.read():
                 self.Timer += 1
-                return Bytes
+                return np.frombuffer(Bytes,np.int16) * self.volume
             else:
                 self.AudioSource = None
                 self._SAD = None
                 self.Loop = False
                 self.Parent.speaking(False)
-                return 'Fin'
+                self.After()
             
         return None
