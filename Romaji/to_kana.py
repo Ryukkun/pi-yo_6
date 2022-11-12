@@ -29,7 +29,7 @@ def to_kana(text: str):
         
         if ltu := _ltu():
             '''
-            この先変換候補があったら "っ" を入れる
+            この先変換候補があったら out の語尾を "っ" を入れ変える
             無かったらこのまま 
             '''
             out += first_unit

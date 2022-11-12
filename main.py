@@ -2,11 +2,11 @@ import discord
 import os
 import re
 import shutil
-import json
-import gc
+import asyncio
 from discord.ext import commands
 from typing import Literal
 
+import guild_config as GC
 from voice_client import MultiAudio
 from voice import ChatReader
 from music import MusicController
@@ -63,20 +63,19 @@ group = discord.app_commands.Group(name="pi-yo",description="ぴーよ6号設定
 @group.command(description="呼んでないのに通話に入ってくる オフロスキー系ぴーよ")
 @discord.app_commands.describe(action='初期 : False')
 async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
-    GC_Check(ctx.guild_id)
-    GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
-    with open(GC_Path,'r') as f:
-        GC = json.load(f)
-    if not ctx.permissions.administrator and GC['admin_only']:
+    gid = ctx.guild_id
+    _GC = GC.Read(gid)
+
+    if not ctx.permissions.administrator and _GC['admin_only']:
         embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
         await ctx.response.send_message(embed=embed, ephemeral= True)
         return
     if action == 'True':
-        GC['auto_join'] = True
+        _GC['auto_join'] = True
     else:
-        GC['auto_join'] = False
-    with open(GC_Path,'w') as f:
-        json.dump(GC, f, indent=2)
+        _GC['auto_join'] = False
+
+    GC.Write(gid,_GC)
     embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=0xe1bd5b)
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
@@ -84,20 +83,19 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
 @group.command(description="管理者しかスラッシュコマンドを使えないようにするか否か")
 @discord.app_commands.describe(action='初期 : True')
 async def admin_only(ctx: discord.Interaction, action: Literal['True','False']):
-    GC_Check(ctx.guild_id)
+    gid = ctx.guild_id
+    _GC = GC.Read(gid)
+
     if not ctx.permissions.administrator:
         embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
         await ctx.response.send_message(embed=embed, ephemeral= True)
         return
-    GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
-    with open(GC_Path,'r') as f:
-        GC = json.load(f)
     if action == 'True':
-        GC['admin_only'] = True
+        _GC['admin_only'] = True
     else:
-        GC['admin_only'] = False
-    with open(GC_Path,'w') as f:
-        json.dump(GC, f, indent=2)
+        _GC['admin_only'] = False
+
+    GC.Write(gid,_GC)
     embed = discord.Embed(title=f'admin_only を {action} に変更しました', colour=0xe1bd5b)
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
@@ -105,17 +103,16 @@ async def admin_only(ctx: discord.Interaction, action: Literal['True','False']):
 @group.command(description="音量設定 サーバー毎でしか設定できないのごめんね")
 @discord.app_commands.describe(volume='初期設定:100  0 ~ 1000まで設定可能 %換算')
 async def volume(ctx: discord.Interaction, audio: Literal['master','voice','music'], volume: discord.app_commands.Range[int,0,1000]):
-    GC_Check(ctx.guild_id)
-    GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
-    with open(GC_Path,'r') as f:
-        GC = json.load(f)
-    if not ctx.permissions.administrator and GC['admin_only']:
+    gid = ctx.guild_id
+    _GC = GC.Read(gid)
+
+    if not ctx.permissions.administrator and _GC['admin_only']:
         embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
         await ctx.response.send_message(embed=embed, ephemeral= True)
         return
-    GC['volume'][audio] = volume
-    with open(GC_Path,'w') as f:
-        json.dump(GC, f, indent=2)
+    _GC['volume'][audio] = volume
+    
+    GC.Write(gid,_GC)
     embed = discord.Embed(title=f'[{audio}]の音量を {volume}%（x{volume/100}） に変更しました', colour=0xe1bd5b)
     try: g_opts[ctx.guild_id].MA.update_volume()
     except KeyError: pass
@@ -125,17 +122,6 @@ async def volume(ctx: discord.Interaction, audio: Literal['master','voice','musi
 
 tree.add_command(group)
 
-
-def GC_Check(gid):
-    GC_Path = f'{config.Guild_Config}{gid}.json'
-    if not os.path.isfile(GC_Path):
-        GC = {
-            'auto_join':False,
-            'admin_only':True,
-            'volume':{'master':100, 'music':100, 'voice':100}
-        }
-        with open(GC_Path,'w') as f:
-            json.dump(GC, f, indent=2)
 
 
 
@@ -160,7 +146,7 @@ async def join(ctx):
         g_opts[gid] = DataInfo(ctx.guild)
         Dic_Path = f'{config.User_dic}{gid}.txt'
         with open(Dic_Path,'w'): pass
-        GC_Check(gid)
+        GC.Check(gid)
         return True
 
 
@@ -173,12 +159,16 @@ async def bye(ctx):
         print(f'{guild.name} : #切断')
 
         # 古いEmbedを削除
-        if late_E := g_opts[gid].Music.Embed_Message:
-            await late_E.delete()
+        Old_Music = g_opts[gid].Music
+
         g_opts[gid].MA.loop = False
         del g_opts[gid]
-        gc.collect()
         await vc.disconnect()
+        
+        await asyncio.sleep(1.0)
+        if late_E := Old_Music.Embed_Message:
+            await late_E.delete()
+        del Old_Music
   
   
 @client.event
@@ -338,11 +328,8 @@ async def on_message(message):
     gid = message.guild.id
     voice = message.author.voice
 
-    GC_Check(gid)
-    GC_Path = f'{config.Guild_Config}{gid}.json'
-    with open(GC_Path,'r') as f:
-        GC = json.load(f)
-    if voice and GC['auto_join']:
+    _GC = GC.Read(gid)
+    if voice and _GC['auto_join']:
         if voice.channel and not guild.voice_client:
             if voice.mute or voice.self_mute:
                 await join(message)
