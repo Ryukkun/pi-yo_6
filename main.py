@@ -3,10 +3,11 @@ import os
 import re
 import shutil
 import json
+import gc
 from discord.ext import commands
 from typing import Literal
 
-from player import MultiAudio
+from voice_client import MultiAudio
 from voice import ChatReader
 from music import MusicController
 
@@ -59,7 +60,8 @@ g_opts = {}
 tree = client.tree
 group = discord.app_commands.Group(name="pi-yo",description="ぴーよ6号設定")
 
-@group.command(description="初期:False 呼んでないのに通話に入ってくる オフロスキー系ぴーよ")
+@group.command(description="呼んでないのに通話に入ってくる オフロスキー系ぴーよ")
+@discord.app_commands.describe(action='初期 : False')
 async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     GC_Check(ctx.guild_id)
     GC_Path = f'{config.Guild_Config}{ctx.guild_id}.json'
@@ -79,7 +81,8 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
 
-@group.command(description="初期:True 管理者しかスラッシュコマンドを使えないようにするか否か")
+@group.command(description="管理者しかスラッシュコマンドを使えないようにするか否か")
+@discord.app_commands.describe(action='初期 : True')
 async def admin_only(ctx: discord.Interaction, action: Literal['True','False']):
     GC_Check(ctx.guild_id)
     if not ctx.permissions.administrator:
@@ -113,7 +116,7 @@ async def volume(ctx: discord.Interaction, audio: Literal['master','voice','musi
     GC['volume'][audio] = volume
     with open(GC_Path,'w') as f:
         json.dump(GC, f, indent=2)
-    embed = discord.Embed(title=f'[{audio}]の音量を {volume}% に変更しました', colour=0xe1bd5b)
+    embed = discord.Embed(title=f'[{audio}]の音量を {volume}%（x{volume/100}） に変更しました', colour=0xe1bd5b)
     try: g_opts[ctx.guild_id].MA.update_volume()
     except KeyError: pass
     await ctx.response.send_message(embed=embed, ephemeral= True)
@@ -174,6 +177,7 @@ async def bye(ctx):
             await late_E.delete()
         g_opts[gid].MA.loop = False
         del g_opts[gid]
+        gc.collect()
         await vc.disconnect()
   
   
