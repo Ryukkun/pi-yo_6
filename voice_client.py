@@ -140,18 +140,15 @@ class _APlayer():
     def stop(self):
         self.AudioSource = None
         self._SAD = None
-        self.Loop = False
-        self.Parent.speaking(False)
+        self._speaking(False)
 
     def resume(self):
         self.Pausing = False
-        self.Loop = True
-        self.Parent.speaking(True)
+        self._speaking(True)
 
     def pause(self):
         self.Pausing = True
-        self.Loop = False
-        self.Parent.speaking(False)
+        self._speaking(False)
 
     def is_playing(self):
         if self._SAD:
@@ -160,7 +157,11 @@ class _APlayer():
 
     def is_paused(self):
         return self.Pausing
-    
+
+    def _speaking(self,status: bool):
+        self.Parent.speaking(status)
+        self.Loop = status
+
     def read_bytes(self):
         if self.AudioSource and self.Pausing == False:
             
@@ -175,8 +176,7 @@ class _APlayer():
             else:
                 self.AudioSource = None
                 self._SAD = None
-                self.Loop = False
-                self.Parent.speaking(False)
+                self._speaking(False)
                 self.After()
             
         return None
