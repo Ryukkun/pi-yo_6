@@ -6,9 +6,7 @@ def Check(gid):
     GC_Path = f'{Guild_Config}{gid}.json'
     if not path.isfile(GC_Path):
         GC = {
-            'auto_join':False,
-            'admin_only':True,
-            'volume':{'master':100, 'music':100, 'voice':100}
+            'auto_join':False
         }
         with open(GC_Path,'w') as f:
             json.dump(GC, f, indent=2)

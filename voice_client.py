@@ -4,9 +4,8 @@ import time
 
 import numpy as np
 
-from json import load as json_load
-from discord import opus, SpeakingState
 from types import NoneType
+from discord import SpeakingState, opus
 
 
 class MultiAudio(threading.Thread):
@@ -23,53 +22,47 @@ class MultiAudio(threading.Thread):
         self.vc = guild.voice_client
         self.CLoop = client.loop
         self.Parent = parent
-        self.Music = _APlayer(self)
-        self.Voice = _APlayer(self)
-        self.update_volume()
+        self.Players = {}
+        self.PLen = 0
         self.vc.encoder = opus.Encoder()
         self.vc.encoder.set_expected_packet_loss_percent(0.0)
         self.play_audio = self.vc.send_audio_packet
-        self.old_time = 0
+        self.Enc_bool = False
 
-    def update_volume(self):
-        GC_Path = f'{self.Parent.config.Guild_Config}{self.gid}.json'
-        with open(GC_Path,'r') as f:
-            GC = json_load(f)
-        self.Music.volume =  GC['volume']['music'] / 100
-        self.Voice.volume =  GC['volume']['voice'] / 100
-        self.master = GC['volume']['master'] / 100
+    def add_player(self ,name ,RNum ,opus=False ,def_getbyte=None):
+        self.Players[name] = _APlayer(RNum ,opus=opus ,def_getbyte=def_getbyte ,parent=self)
+        self.PLen = len(self.Players)
+        self.Enc_bool = (self.PLen != 1 or self.PLen == 1 and opus == False)
+        return self.Players[name]
 
-    def speaking(self,status):
+    def _speaking(self,status: bool):
+        temp = 0
+        for P in self.Players.values():
+            if P.Loop:
+                temp += 1
+        if status:
+            if temp == 0:
+                self.__speak(SpeakingState.voice)
+        else:
+            if temp == 1:
+                self.__speak(SpeakingState.none)
+
+
+    def __speak(self, speaking: SpeakingState) -> None:
         """
         これ（self._speak）がないと謎にバグる ※botがjoinしたときに居たメンツにしか 音が聞こえない
         友達が幻聴を聞いてたら怖いよね
-        ついでにLOOPの制御も
         """
-        if status:
-            if self.Voice.Loop == False and self.Music.Loop == False:
-                self._speak(SpeakingState.voice)
-        else:
-            if self.Voice.Loop and self.Music.Loop: pass
-            elif self.Voice.Loop or self.Music.Loop:
-                self._speak(SpeakingState.none)
+        try:
+            asyncio.run_coroutine_threadsafe(self.Parent.vc.ws.speak(speaking), self.Parent.vc.client.loop)
+        except Exception:
+            pass
 
-    def _speak(self, speaking: SpeakingState) -> None:
-            try:
-                asyncio.run_coroutine_threadsafe(self.vc.ws.speak(speaking), self.vc.client.loop)
-            except Exception:
-                pass
 
-    def _update_embed(self):
-        # 秒数更新のため
-        if 0 <= self.Music.Timer < (50*60):
-            if (self.Music.Timer % (50*5)) == 1:
-                self.CLoop.create_task(self.Parent.Music.Update_Embed())
-        elif (50*60) <= self.Music.Timer < (50*1800):
-            if (self.Music.Timer % (50*10)) == 1:
-                self.CLoop.create_task(self.Parent.Music.Update_Embed())
-        elif (50*1800) <= self.Music.Timer:
-            if (self.Music.Timer % (50*30)) == 1:
-                self.CLoop.create_task(self.Parent.Music.Update_Embed())
+    def kill(self):
+        self.loop = False
+        for P in self.Players.values():
+            P._read_bytes(False)
 
 
     def run(self):
@@ -79,68 +72,82 @@ class MultiAudio(threading.Thread):
         最後に音声データ送信　ドルチェ
         """
         _start = time.perf_counter()
+        delay = 1
         while self.loop:
-            MBytes = self.Music.read_bytes()
-            VBytes = self.Voice.read_bytes()
-            Bytes = None
+            P: _APlayer
+            if self.PLen == 1:
+                P = list(self.Players.values())[0]
+                Bytes = P.read_bytes()
+                if Bytes != NoneType and P.def_getbyte:
+                    P.def_getbyte()
+            elif self.PLen >= 2:
+                Bytes = None
+                for P in self.Players.values():
+                    _Byte = P.read_bytes(numpy=True)
+                    if _Byte != NoneType:
+                        if P.def_getbyte:
+                            P.def_getbyte()
 
-            # Bytes Mix
-            if type(MBytes) != NoneType and type(VBytes) != NoneType:
-                Bytes = MBytes + VBytes
-
-            # 音楽音声
-            elif type(MBytes) != NoneType:
-                self._update_embed()
-                Bytes = MBytes
-            
-            # 読み上げ音声
-            elif type(VBytes) != NoneType:
-                Bytes = VBytes
+                        if Bytes == NoneType:
+                            Bytes = _Byte
+                            continue
+                        Bytes += _Byte
+                Bytes = Bytes.astype(np.int16).tobytes()
 
             # Loop Delay
             _start += 0.02
             delay = max(0, _start - time.perf_counter())
             time.sleep(delay)
+            # if delay == 0:
+            #     print(time.perf_counter() - _start)
  
             # Send Bytes
-            if type(Bytes) != NoneType:
-                Bytes = Bytes * self.master
-                try:self.play_audio(Bytes.astype(np.int16).tobytes(), encode=True)
+            if Bytes:
+                #print(Bytes)
+                try:self.play_audio(Bytes, encode=self.Enc_bool)
                 except OSError:
-                    print('Error send_audio_packet OSError')
+                    #print('Error send_audio_packet OSError')
                     time.sleep(1)
 
             
 
 class _APlayer():
-    def __init__(self,parent):
+    def __init__(self ,RNum ,opus ,def_getbyte ,parent):
         self.AudioSource = None
         self._SAD = None
         self.Pausing = False
-        self.Parent = parent
+        self.Parent:MultiAudio = parent
+        self.RNum = RNum
         self.Timer = 0
+        self.TargetTimer = 0
+        self.read_fin = False
+        self.read_loop = False
         self.After = None
-        self.QBytes = None
+        self.def_getbyte = def_getbyte
+        self.opus = opus
+        self.QBytes = []
+        self.RBytes = []
         self.Duration = None
         self.Loop = False
-        self.volume = 1
         
 
-    def play(self,_SAD,after):
+    async def play(self,_SAD,after):
         self._SAD = _SAD
         self.Duration = _SAD.St_Sec
-        AudioSource = _SAD.AudioSource()
+        AudioSource = await _SAD.AudioSource(self.opus)
         # 最初のロードは少し時間かかるから先にロード
-        self.QBytes = AudioSource.read()
+        self.QBytes = []
+        self.RBytes = []
         self.AudioSource = AudioSource
         self.Timer = 0
+        self.TargetTimer = 0
+        self.read_fin = False
         self.After = after
         self.resume()
 
     def stop(self):
         self.AudioSource = None
         self._SAD = None
-        self._speaking(False)
 
     def resume(self):
         self.Pausing = False
@@ -159,24 +166,91 @@ class _APlayer():
         return self.Pausing
 
     def _speaking(self,status: bool):
-        self.Parent.speaking(status)
+        self.Parent._speaking(status=status)
         self.Loop = status
 
-    def read_bytes(self):
+
+    def read_bytes(self, numpy=False):
         if self.AudioSource and self.Pausing == False:
             
+            # n秒 進む
+            if self.Timer < self.TargetTimer:
+                Dif = self.TargetTimer - self.Timer
+                if len(self.QBytes) < Dif:
+                    if not self.QBytes and self.read_fin:
+                        self.Timer = self._SAD.St_Sec * 50
+                        self.TargetTimer = self.Timer
+                    else:
+                        self.Timer += len(self.QBytes)
+                        self.RBytes += self.QBytes
+                        self.QBytes = []
+                        self._read_bytes(True)
+                        return
+                else:
+                    self.Timer = self.TargetTimer
+                    self.RBytes += self.QBytes[:Dif]
+                    del self.QBytes[:Dif]
+
+            # n秒 前に戻る
+            if self.Timer > self.TargetTimer:
+                Dif = self.Timer - self.TargetTimer
+                if len(self.RBytes) <= Dif:
+                    self.Timer -= len(self.RBytes)
+                    self.TargetTimer = self.Timer
+                    #print(self.Timer)
+                    self.QBytes = self.RBytes + self.QBytes
+                    self.RBytes = []
+                else:
+                    self.QBytes = self.RBytes[-Dif:] + self.QBytes
+                    del self.RBytes[-Dif:]
+                    self.Timer = self.TargetTimer
+
+            # Read Bytes
+            if len(self.QBytes) <= (60 * 50) and self.read_fin == False:
+                self._read_bytes(True)
+
+            #print(len(self.QBytes))
             if self.QBytes:
+                temp = self.QBytes[0]
+                if temp == 'Fin':
+                    self.AudioSource = None
+                    self._SAD = None
+                    self._speaking(False)
+                    self.After()
+                    return
+
                 self.Timer += 1
-                temp = self.QBytes
-                self.QBytes = None
-                return np.frombuffer(temp,np.int16) * self.volume
-            if Bytes := self.AudioSource.read():
-                self.Timer += 1
-                return np.frombuffer(Bytes,np.int16) * self.volume
-            else:
-                self.AudioSource = None
-                self._SAD = None
-                self._speaking(False)
-                self.After()
+                self.TargetTimer += 1
+                del self.QBytes[0]
+                self.RBytes.append(temp)
+                if self.RNum != -1:
+                    if len(self.RBytes) > (self.RNum * 50):
+                        del self.RBytes[:len(self.RBytes) - (self.RNum * 50)]
+
+                if numpy:
+                    return np.frombuffer(temp,np.int16)
+                return temp
+
             
-        return None
+
+    def _read_bytes(self, status):
+        if status:
+            if self.read_loop or self.read_fin: return
+            self.read_loop = True
+            threading.Thread(target=self.__read_bytes, daemon=True).start()
+        
+        else:
+            self.read_loop = False
+
+
+    def __read_bytes(self):
+            while len(self.QBytes) <= (120 * 50) and self.read_loop:
+                if temp := self.AudioSource.read():
+                    #print(temp)
+                    self.QBytes.append(temp)
+                else: 
+                    self.read_fin = True
+                    self.QBytes.append('Fin')
+                    break
+
+            self.read_loop = False

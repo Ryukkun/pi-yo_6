@@ -2,7 +2,4 @@ ffmpeg
 alkana
 discord
 discord.py[voice]
-yt_dlp
-pytube
-bs4
 numpy

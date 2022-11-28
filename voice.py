@@ -8,7 +8,7 @@ class ChatReader():
     def __init__(self, Info):
         self.Info = Info
         self.MA = Info.MA
-        self.Vvc = Info.MA.Voice
+        self.Vvc = Info.MA.add_player('Voice' ,RNum=-1 ,opus=False)
         self.guild = Info.guild
         self.gid = Info.gid
         self.gn = Info.gn
@@ -66,7 +66,7 @@ class ChatReader():
             self.Queue[0][1] = 2
             print(f"Play  <{self.gn}>")
 
-            self.Vvc.play(SAD(source).Url_Only(),lambda : self.CLoop.create_task(self.play_loop()))
+            await self.Vvc.play(SAD(source).Url_Only(),lambda : self.CLoop.create_task(self.play_loop()))
             return
 
         if self.Queue[0][1] == 0:                   # Skip

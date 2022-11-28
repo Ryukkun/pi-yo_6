@@ -9,7 +9,6 @@ from typing import Literal
 import guild_config as GC
 from voice_client import MultiAudio
 from voice import ChatReader
-from music import MusicController
 
 
 
@@ -50,7 +49,6 @@ with open(config.Admin_dic,'a'):pass
 ####  起動準備 And 初期設定
 intents = discord.Intents.default()
 intents.message_content = True
-intents.reactions = True
 intents.voice_states = True
 client = commands.Bot(command_prefix=config.Prefix,intents=intents)
 g_opts = {}
@@ -58,7 +56,7 @@ g_opts = {}
 
 
 tree = client.tree
-group = discord.app_commands.Group(name="pi-yo",description="ぴーよ6号設定")
+group = discord.app_commands.Group(name="pi-yo6",description="ぴーよ6号設定")
 
 @group.command(description="呼んでないのに通話に入ってくる オフロスキー系ぴーよ")
 @discord.app_commands.describe(action='初期 : False')
@@ -66,7 +64,7 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     gid = ctx.guild_id
     _GC = GC.Read(gid)
 
-    if not ctx.permissions.administrator and _GC['admin_only']:
+    if not ctx.permissions.administrator:
         embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
         await ctx.response.send_message(embed=embed, ephemeral= True)
         return
@@ -77,45 +75,6 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
 
     GC.Write(gid,_GC)
     embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=0xe1bd5b)
-    await ctx.response.send_message(embed=embed, ephemeral= True)
-
-
-@group.command(description="管理者しかスラッシュコマンドを使えないようにするか否か")
-@discord.app_commands.describe(action='初期 : True')
-async def admin_only(ctx: discord.Interaction, action: Literal['True','False']):
-    gid = ctx.guild_id
-    _GC = GC.Read(gid)
-
-    if not ctx.permissions.administrator:
-        embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
-        await ctx.response.send_message(embed=embed, ephemeral= True)
-        return
-    if action == 'True':
-        _GC['admin_only'] = True
-    else:
-        _GC['admin_only'] = False
-
-    GC.Write(gid,_GC)
-    embed = discord.Embed(title=f'admin_only を {action} に変更しました', colour=0xe1bd5b)
-    await ctx.response.send_message(embed=embed, ephemeral= True)
-
-
-@group.command(description="音量設定 サーバー毎でしか設定できないのごめんね")
-@discord.app_commands.describe(volume='初期設定:100  0 ~ 1000まで設定可能 %換算')
-async def volume(ctx: discord.Interaction, audio: Literal['master','voice','music'], volume: discord.app_commands.Range[int,0,1000]):
-    gid = ctx.guild_id
-    _GC = GC.Read(gid)
-
-    if not ctx.permissions.administrator and _GC['admin_only']:
-        embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
-        await ctx.response.send_message(embed=embed, ephemeral= True)
-        return
-    _GC['volume'][audio] = volume
-    
-    GC.Write(gid,_GC)
-    embed = discord.Embed(title=f'[{audio}]の音量を {volume}%（x{volume/100}） に変更しました', colour=0xe1bd5b)
-    try: g_opts[ctx.guild_id].MA.update_volume()
-    except KeyError: pass
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
 
@@ -158,17 +117,10 @@ async def bye(ctx):
     if vc:
         print(f'{guild.name} : #切断')
 
-        # 古いEmbedを削除
-        Old_Music = g_opts[gid].Music
-
         g_opts[gid].MA.loop = False
         del g_opts[gid]
         await vc.disconnect()
         
-        await asyncio.sleep(1.0)
-        if late_E := Old_Music.Embed_Message:
-            await late_E.delete()
-        del Old_Music
   
   
 @client.event
@@ -188,95 +140,8 @@ async def on_voice_state_update(member, befor, after):
 
 
 
-#--------------------------------------------------
-# GUI操作
-#--------------------------------------------------
-@client.command()
-async def playing(ctx):
-    try:
-        await g_opts[ctx.guild.id].Music._playing()
-    except KeyError:pass
 
 
-@client.event
-async def on_reaction_add(Reac,User):
-    try:
-        await g_opts[User.guild.id].Music.on_reaction_add(Reac,User)
-    except KeyError:pass
-
-
-#---------------------------------------------------------------------------------------------------
-#   Skip
-#---------------------------------------------------------------------------------------------------
-
-@client.command()
-async def skip(ctx):
-    try:
-        await g_opts[ctx.guild.id].Music._skip(ctx)
-    except KeyError:pass
-
-
-
-
-##############################################################################
-# Play & Queue
-##############################################################################
-
-@client.command()
-async def queue(ctx,*args):
-    if not ctx.guild.voice_client:
-        if not await join(ctx):
-            return
-    await g_opts[ctx.guild.id].Music._play(ctx,args,True)
-
-
-@client.command()
-async def q(ctx,*args):
-    if not ctx.guild.voice_client:
-        if not await join(ctx):
-            return
-    await g_opts[ctx.guild.id].Music._play(ctx,args,True)
-
-
-@client.command()
-async def play(ctx,*args):
-    if not ctx.guild.voice_client:
-        if not await join(ctx):
-            return
-    await g_opts[ctx.guild.id].Music._play(ctx,args,False)
-
-
-@client.command()
-async def p(ctx,*args):
-    if not ctx.guild.voice_client:
-        if not await join(ctx):
-            return
-    await g_opts[ctx.guild.id].Music._play(ctx,args,False)
-
-
-
-
-
-
-
-############################################################################################
-#   Playlist
-############################################################################################
-
-@client.command()
-async def playlist(ctx,*args):
-    if not ctx.guild.voice_client:
-        if not await join(ctx):
-            return
-    await g_opts[ctx.guild.id].Music._playlist(ctx,args)
-
-
-@client.command()
-async def pl(ctx,*args):
-    if not ctx.guild.voice_client:
-        if not await join(ctx):
-            return
-    await g_opts[ctx.guild.id].Music._playlist(ctx,args)
 
 
 
@@ -356,7 +221,6 @@ class DataInfo():
         self.MA = MultiAudio(guild, client, self)
         self.MA.start()
         self.Voice = ChatReader(self)
-        self.Music = MusicController(self)
 
 
 
