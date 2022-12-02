@@ -73,15 +73,17 @@ class MultiAudio(threading.Thread):
         """
         _start = time.perf_counter()
         delay = 1
+        P: _APlayer
         while self.loop:
-            P: _APlayer
+            Bytes = None
+            
             if self.PLen == 1:
                 P = list(self.Players.values())[0]
                 Bytes = P.read_bytes()
                 if Bytes != NoneType and P.def_getbyte:
                     P.def_getbyte()
+                    
             elif self.PLen >= 2:
-                Bytes = None
                 for P in self.Players.values():
                     _Byte = P.read_bytes(numpy=True)
                     if _Byte != NoneType:
