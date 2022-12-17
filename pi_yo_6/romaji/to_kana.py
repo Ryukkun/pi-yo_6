@@ -2,7 +2,10 @@ try: from translation import tree
 except ModuleNotFoundError:
     from .translation import tree
 
-class MainSys:
+boin_n = 'aiueon'
+siin_n = 'bcdfghjklmpqrstvwxyz'
+
+class Romaji:
     @classmethod
     def to_kana(self, text: str):
         self.text = ReadText(text.lower())
@@ -50,13 +53,11 @@ class MainSys:
         return out
 
     def _nn(self):
-        boin_n = 'aiueon'
         if self.first_unit == 'n':
             if not self.text.read_only() in boin_n:
                 return True
 
     def _ltu(self):
-        siin_n = 'bcdfghjklmpqrstvwxyz'
         if self.first_unit in siin_n:
             if self.text.read_only() == self.first_unit:
                 if self.text.read_only(indent=2) != self.first_unit:
@@ -68,7 +69,7 @@ class MainSys:
 class ReadText():
 
     def __init__(self, text):
-        self.text = text
+        self.text:str = text
 
     def read_only(self, indent=1):
         return self.text[indent-1:indent]
@@ -77,9 +78,9 @@ class ReadText():
         self.text = self.text[1:]
 
     def read(self):
-        text = self.text[:1]
+        _text = self.text[:1]
         self.delete()
-        return text
+        return _text
 
 
 
@@ -88,6 +89,6 @@ if __name__ == '__main__':
     while True:
         ts = input('なんか書きたまえ いい子だから さあ:')
         ti = time.perf_counter()
-        print(ts+'\n'+MainSys.to_kana(ts))
+        print(ts+'\n'+Romaji.to_kana(ts))
         print(time.perf_counter()-ti)
         print('\n')
