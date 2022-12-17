@@ -6,9 +6,9 @@ import asyncio
 from discord.ext import commands
 from typing import Literal
 
-import guild_config as GC
-from voice_client import MultiAudio
-from voice import ChatReader
+from .pi_yo_6.guild_config import GC
+from .pi_yo_6.voice_client import MultiAudio
+from .pi_yo_6.voice import ChatReader
 
 
 

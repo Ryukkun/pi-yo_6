@@ -1,8 +1,8 @@
 import time
 import os
 
-from synthetic_voice import creat_voice
-from audio_source import StreamAudioData as SAD
+from .synthetic_voice import creat_voice
+from .audio_source import StreamAudioData as SAD
 
 class ChatReader():
     def __init__(self, Info):

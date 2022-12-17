@@ -5,7 +5,7 @@ import os
 import wave
 import platform
 
-import Romaji.to_kana as Romaji
+from .romaji.to_kana import to_kana as Romaji
 
 if platform.system() == 'Windows':
     EFormat = 'shift_jis'
