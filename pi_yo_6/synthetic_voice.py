@@ -21,6 +21,10 @@ re_a = re.compile(r'a:\S*\s|a:\S*\Z')
 re_tone = re.compile(r'tone:\S*\s|tone:\S*\Z')
 re_jf = re.compile(r'jf:\S*\s|jf:\S*\Z')
 re_voice = re.compile(r'voice:\w*\s|voice:\w*\Z')
+re_romaji_unit = re.compile(r'(^|[^a-zA-Z])([a-zA-Z\-]+)($|[^a-zA-Z])')
+re_not_romaji = re.compile(r'[^a-zA-Z\-]')
+_status = 'voice:\w*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|jf:\S*\s'
+re_text_status = re.compile(r'(^|{0})+.+?(?= ({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
 
 def custam_text(text,path):
@@ -74,29 +78,29 @@ def replace_english_kana(text):
     output = ""
 
     # 先頭から順番に英単語を検索しカタカナに変換
-    while word := re.search(r'(^|[^a-zA-Z])([a-zA-Z\-]+)($|[^a-zA-Z])', temp_text):
-        #print(f"{temp_text} : {word}")
+    while word := re_romaji_unit.search(temp_text):
+        _word = word.group(2)
+        _word_low = _word.lower()
 
-        if word.start() != 0 or re.search(r'[^a-zA-Z\-]',temp_text[0]):    # 文字のスタート位置修復
+        if word.start() != 0 or re_not_romaji.search(temp_text[0]):    # 文字のスタート位置修復
             output += temp_text[:word.start()+1]
 
-        if kana := alkana.get_kana(word.group(2).lower()):      # 英語変換
+        if kana := alkana.get_kana(_word_low):      # 英語変換
             output += kana
-        elif word.group(2).lower() == "i":
+        elif _word_low == "i":
             output += "あい"
-        elif re.search(r'[A-Z]',word.group(2)):
-            output += word.group(2)
+        elif re.search(r'[A-Z]',_word):
+            output += _word
         else:
-            output += Romaji.to_kana(word.group(2).lower())   # ローマ字 → カナ 変換
+            output += Romaji.to_kana(_word_low)   # ローマ字 → カナ 変換
         
-        if word.end() != len(temp_text) or re.search(r'[^a-zA-Z\-]',temp_text[-1]):    # 文字の末尾を修復
+        if word.end() != len(temp_text) or re_not_romaji.search(temp_text[-1]):    # 文字の末尾を修復
             temp_text = temp_text[word.end()-1:]
         else:
             temp_text = ""
 
-    output += temp_text
+    return output + temp_text
 
-    return output
 
 
 # ************************************************
@@ -117,8 +121,8 @@ async def creat_voice(Itext:str, guild_id, now_time, config):
     Itext = custam_text(Itext,config.User_dic + guild_id + '.txt')
 
 
-    ItextTemp = re.finditer(r'(voice:\w*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|jf:\S*\s)+.+?((?= voice:\w*($|\s))|(?= speed:\S*($|\s))|(?= a:\S*($|\s))|(?= tone:\S*($|\s))|(?= jf:\S*($|\s))|$)',Itext)
-    ItextTemp = [nemuii.group() for nemuii in ItextTemp]
+    ItextTemp = re_text_status.finditer(Itext)
+    ItextTemp = [_.group() for _ in ItextTemp]
 
     if ItextTemp == []:
 
