@@ -26,7 +26,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 from ctypes import *
 import platform
 import os
-from pathlib import Path
 import numpy
 try: from ...config import Config as Con
 except Exception: pass

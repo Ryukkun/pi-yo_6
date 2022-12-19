@@ -89,6 +89,10 @@ speaker_id = [
 
 
 def get_speaker_id(hts):
+    try: hts = int(hts)
+    except Exception: pass
+    else: return hts
+    
     res = None
     for names, speakers in zip(speaker_user, speaker_id):
         for name in names:

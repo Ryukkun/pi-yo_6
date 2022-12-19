@@ -193,7 +193,6 @@ class GenerateVoice:
 
         else:
             speaker_id = get_speaker_id(hts[1])
-            print(speaker_id)
             if speaker_id == None: 
                 return
             loop = asyncio.get_event_loop()
