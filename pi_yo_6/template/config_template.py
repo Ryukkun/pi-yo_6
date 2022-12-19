@@ -4,7 +4,9 @@ class Open_Jtalk:
     Output = './Output/'
 
 class VOICEVOX:
-    
+    # https://github.com/VOICEVOX/voicevox_core/releases
+    core_windows = ''
+    core_linux = ''
 
 class Config:
     Prefix = '.'
@@ -12,4 +14,5 @@ class Config:
     Admin_dic = './dic/admin_dic.txt'
     User_dic = './dic/user_dic/'
     Guild_Config = './guild_config/'
-    OJ = Open_Jtalk()
+    OJ = Open_Jtalk
+    VVOX = VOICEVOX

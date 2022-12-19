@@ -34,10 +34,10 @@ class ChatReader():
             self.Queue.append([source,0])
 
             # 音声ファイル ファイル作成
-            try : await creat_voice(message.content,str(self.gid),str(now_time),self.config)
-            except Exception as e:                                              # Error
-                print(f"Error : 音声ファイル作成に失敗 {e}")
-                self.Queue.remove([source,0])
+            await creat_voice(message.content,str(self.gid),str(now_time),self.config)
+            # except Exception as e:                                              # Error
+            #     print(f"Error : 音声ファイル作成に失敗 {e}")
+            #     self.Queue.remove([source,0])
 
             print(f'生成時間 : {time.time()-now_time}')
             self.Queue = [[source,1] if i[0] == source else i for i in self.Queue]  # 音声ファイルが作成済みなのを記述

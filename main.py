@@ -6,9 +6,9 @@ import asyncio
 from discord.ext import commands
 from typing import Literal
 
-from .pi_yo_6.guild_config import GC
-from .pi_yo_6.voice_client import MultiAudio
-from .pi_yo_6.voice import ChatReader
+from pi_yo_6.guild_config import GC
+from pi_yo_6.voice_client import MultiAudio
+from pi_yo_6.voice import ChatReader
 
 
 
@@ -16,7 +16,7 @@ from .pi_yo_6.voice import ChatReader
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 ####  Config
-try: import config
+try: from config import Config
 except Exception:
     CLines= [
         "Prefix = '.'",
@@ -33,16 +33,16 @@ except Exception:
     ]
     with open('config.py','w') as f:
         f.write('\n'.join(CLines))
-    import config
+    from config import Config
 
 
-try:shutil.rmtree(config.OJ.Output)
+try:shutil.rmtree(Config.OJ.Output)
 except Exception:pass
-os.makedirs(config.User_dic, exist_ok=True)
-os.makedirs(config.Guild_Config, exist_ok=True)
-os.makedirs(config.OJ.Voice, exist_ok=True)
-os.makedirs(config.OJ.Output, exist_ok=True)
-with open(config.Admin_dic,'a'):pass
+os.makedirs(Config.User_dic, exist_ok=True)
+os.makedirs(Config.Guild_Config, exist_ok=True)
+os.makedirs(Config.OJ.Voice, exist_ok=True)
+os.makedirs(Config.OJ.Output, exist_ok=True)
+with open(Config.Admin_dic,'a'):pass
 
 
 
@@ -50,7 +50,7 @@ with open(config.Admin_dic,'a'):pass
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
-client = commands.Bot(command_prefix=config.Prefix,intents=intents)
+client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts = {}
 
 
@@ -103,7 +103,7 @@ async def join(ctx):
         try: await vc.channel.connect(self_deaf=True)
         except discord.ClientException: return
         g_opts[gid] = DataInfo(ctx.guild)
-        Dic_Path = f'{config.User_dic}{gid}.txt'
+        Dic_Path = f'{Config.User_dic}{gid}.txt'
         with open(Dic_Path,'w'): pass
         GC.Check(gid)
         return True
@@ -153,7 +153,7 @@ async def on_voice_state_update(member, befor, after):
 @client.command()
 async def register(ctx, arg1, arg2):
     gid = str(ctx.guild.id)
-    with open(config.User_dic+ gid +'.txt', mode='a') as f:
+    with open(Config.User_dic+ gid +'.txt', mode='a') as f:
         f.write(arg1 + ',' + arg2 + '\n')
         print(gid +'.txtに書き込み : '+ arg1 + ',' + arg2)
 
@@ -161,11 +161,11 @@ async def register(ctx, arg1, arg2):
 @client.command()
 async def delete(ctx, arg1):
     gid = str(ctx.guild.id)
-    with open(config.User_dic+ gid +'.txt', mode='r') as f:
+    with open(Config.User_dic+ gid +'.txt', mode='r') as f:
         text = f.read()
         replaced_text = re.sub(rf'{arg1},[^\n]+\n','',text)
     if re.search(rf'{arg1},[^\n]+\n',text):
-        with open(config.User_dic+ gid +'.txt', mode='w') as f:
+        with open(Config.User_dic+ gid +'.txt', mode='w') as f:
             f.write(replaced_text)
         print(f'{gid}.txtから削除 : {arg1}')
 
@@ -217,11 +217,11 @@ class DataInfo():
         self.vc = guild.voice_client
         self.loop = client.loop
         self.client = client
-        self.config = config
+        self.config = Config
         self.MA = MultiAudio(guild, client, self)
         self.MA.start()
         self.Voice = ChatReader(self)
 
 
 
-client.run(config.Token)
+client.run(Config.Token)
