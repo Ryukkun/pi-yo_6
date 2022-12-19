@@ -32,69 +32,66 @@ _status = 'voice:\w*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|jf:\S*\s'
 re_text_status = re.compile(r'(^|{0})+.+?(?= ({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
 class GenerateVoice:
-    def __init__(self, Config) -> None:
+    def __init__(self, Config, VVox) -> None:
         try:
             self.Config:Config
         except Exception: pass
         self.Config = Config
-        
-        # VOICEVOX 初期設定
-        core.initialize(use_gpu=False)
+        self.VVox = VVox
 
 
-    def custam_text(text,path):
-        text_out = text
+    def custam_text(self, path):
+        text_out = self.Itext
         format_num = 0
         replace_list = []
 
         with open(path, 'r') as f:
             while (line := f.readline().strip().split(',')) != [""]:
-                if line[0] in text:
+                if line[0] in self.Itext:
                     text_out = text_out.replace(line[0], '{0['+str(format_num)+']}')
                     format_num += 1
                     replace_list.append(line[1])
 
-        return text_out.format(replace_list)
+        self.Itext = text_out.format(replace_list)
 
 
     #------------------------------------------------------
-    def costom_voice(text,config):
+    def costom_voice(self):
         
-        hts=['-m', config.OJ.Voice+'mei_normal.htsvoice']
+        hts=['-m', self.Config.OJ.Voice+'mei_normal.htsvoice']
         
-        if r := re_voice.findall(text):
+        if r := re_voice.findall(self.Itext):
             r = re.sub(r'\s',"",r[0])
-            text = re.sub(r,'',text)
+            self.Itext = re.sub(r,'',self.Itext)
             r = re.sub('voice:','',r)
 
-            _hts = config.OJ.Voice+f'{r}.htsvoice'
+            _hts = self.Config.OJ.Voice+f'{r}.htsvoice'
             if os.path.isfile(_hts):
                 hts = ['-m', _hts]
             else:
                 hts = ['voicevox', r]
             
             
-        return text, hts
+        return hts
         
     #------------------------------------------------------
 
-    def costom_status(text, default, prefix, _re:re.Pattern):
+    def costom_status(self, default, prefix, _re:re.Pattern):
         
-        if r := _re.findall(text):
+        if r := _re.findall(self.Itext):
             r = re.sub(r'\s',"",r[0])
-            text = re.sub(r,'',text)
+            self.Itext = re.sub(r,'',self.Itext)
             default[1] = re.sub(prefix,'',r)
         
         if default[1] == "auto":
-            return text,""
+            return ""
         else:
-            return text,f"{default[0]} {default[1]}"
+            return f"{default[0]} {default[1]}"
 
 
     #-----------------------------------------------------------
-    def replace_english_kana(text):
-
-        temp_text = text
+    def replace_english_kana(self):
+        temp_text = self.Itext
         output = ""
 
         # 先頭から順番に英単語を検索しカタカナに変換
@@ -119,38 +116,37 @@ class GenerateVoice:
             else:
                 temp_text = ""
 
-        return output + temp_text
+        self.Itext = output + temp_text
 
 
 
     # ************************************************
-    def replace_w(Itext):
-        Itext = re.sub(r'(ww+|ｗｗ+)','わらわら',Itext)
-        Itext = re.sub(r'(w|ｗ)','わら',Itext)
-        return Itext
+    def replace_w(self):
+        self.Itext = re.sub(r'(ww+|ｗｗ+)','わらわら',self.Itext)
+        self.Itext = re.sub(r'(w|ｗ)','わら',self.Itext)
 
 
-    async def creat_voice(Itext:str, guild_id, now_time, config):
+    async def creat_voice(self, Itext:str, guild_id, now_time):
 
         Itext = Itext.replace('\n',' ')
         Itext = re.sub(re_bot_prefix,'',Itext)                                                              # コマンドは読み上げない
         Itext = re.sub(re_url,'ユーアールエルは省略するのです！ ',Itext)    # URL省略
         Itext = re.sub(re_emoji,'',Itext)                                                            # 絵文字IDは読み上げない
-        Itext = re.sub(re_mention,'メンションは省略するのです！ ',Itext)
-        Itext = custam_text(Itext,config.Admin_dic)                                           # ユーザ登録した文字を読み替える
-        Itext = custam_text(Itext,config.User_dic + guild_id + '.txt')
+        self.Itext = re.sub(re_mention,'メンションは省略するのです！ ',Itext)
+        self.custam_text(self.Config.Admin_dic)                                           # ユーザ登録した文字を読み替える
+        self.custam_text(self.Config.User_dic + guild_id + '.txt')
 
 
-        ItextTemp = re_text_status.finditer(Itext)
+        ItextTemp = re_text_status.finditer(self.Itext)
         ItextTemp = [_.group() for _ in ItextTemp]
 
         if ItextTemp == []:
 
-            Itext = replace_english_kana(Itext)
-            Itext = replace_w(Itext)
-            print(f"変換後:{Itext}")
+            self.replace_english_kana()
+            self.replace_w()
+            print(f"変換後:{self.Itext}")
             
-            cmd = f'open_jtalk -x "{config.OJ.Dic}" -m "{config.OJ.Voice}mei_normal.htsvoice" -r 1.2 -ow "{config.OJ.Output}{guild_id}-{now_time}.wav"'
+            cmd = f'open_jtalk -x "{self.Config.OJ.Dic}" -m "{self.Config.OJ.Voice}mei_normal.htsvoice" -r 1.2 -ow "{self.Config.OJ.Output}{guild_id}-{now_time}.wav"'
             #print(cmd)
             prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
             await prog.communicate(input= Itext.encode(EFormat))
@@ -160,13 +156,13 @@ class GenerateVoice:
             FileNum = 0
             gather_wav = []
             for Itext in ItextTemp:
-                gather_wav.append(split_voice(Itext,FileNum,f'{guild_id}-{now_time}',config))
+                gather_wav.append(self.split_voice(FileNum,f'{guild_id}-{now_time}'))
                 FileNum += 1
             await asyncio.gather(*gather_wav)
 
-            with wave.open(config.OJ.Output+guild_id+"-"+now_time+".wav", 'wb') as wav_out:
+            with wave.open(self.Config.OJ.Output+guild_id+"-"+now_time+".wav", 'wb') as wav_out:
                 for Num in range(FileNum):
-                    path = f"{config.OJ.Output}{guild_id}-{now_time}-{str(Num)}.wav"
+                    path = f"{self.Config.OJ.Output}{guild_id}-{now_time}-{str(Num)}.wav"
                     with wave.open(path, 'rb') as wav_in:
                         if not wav_out.getnframes():
                             wav_out.setparams(wav_in.getparams())
@@ -175,25 +171,25 @@ class GenerateVoice:
                         os.remove(path)
 
 
-    async def split_voice(Itext,FileNum,id_time,config):
-        Itext,hts = costom_voice(Itext,config)                              #voice
-        Itext,speed = costom_status(Itext,['-r','1.2'],"speed:",re_speed)   #speed
-        Itext,a = costom_status(Itext,['-a','auto'],"a:",re_a)              #AllPath
-        Itext,tone = costom_status(Itext,['-fm','auto'],"tone:",re_tone)    #tone
-        Itext,jf = costom_status(Itext,['-jf','auto'],"jf:",re_jf)          #jf
+    async def split_voice(self, FileNum, id_time):
+        hts = self.costom_voice()                                   #voice
+        speed = self.costom_status(['-r','1.2'],"speed:",re_speed)  #speed
+        a = self.costom_status(['-a','auto'],"a:",re_a)             #AllPath
+        tone = self.costom_status(['-fm','auto'],"tone:",re_tone)   #tone
+        jf = self.costom_status(['-jf','auto'],"jf:",re_jf)         #jf
 
-        Itext = replace_english_kana(Itext)
-        Itext = replace_w(Itext)
-        print(f"変換後 ({FileNum+1}) :{Itext}")
-        FileName = config.OJ.Output+id_time+"-"+str(FileNum)+".wav"
+        self.replace_english_kana()
+        self.replace_w()
+        print(f"変換後 ({FileNum+1}) :{self.Itext}")
+        FileName = self.Config.OJ.Output+id_time+"-"+str(FileNum)+".wav"
 
         if hts[0] == '-m':
             hts = ' '.join(hts)
             
-            cmd=f'open_jtalk -x "{config.OJ.Dic}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
+            cmd=f'open_jtalk -x "{self.Config.OJ.Dic}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
             
             prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-            await prog.communicate(input= Itext.encode(EFormat))
+            await prog.communicate(input= self.Itext.encode(EFormat))
 
         else:
             speaker_id = get_speaker_id(hts[1])
@@ -201,7 +197,7 @@ class GenerateVoice:
             if speaker_id == None: 
                 return
             loop = asyncio.get_event_loop()
-            wavefmt = core.voicevox_tts(Itext, speaker_id)
+            wavefmt = await loop.run_in_executor(None, self.VVox.voicevox_tts, self.Itext, speaker_id)
             with open(FileName, 'wb')as f:
                 f.write(wavefmt)
             

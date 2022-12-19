@@ -1,41 +1,27 @@
 import discord
 import os
+import sys
 import re
 import shutil
 import asyncio
 from discord.ext import commands
 from typing import Literal
 
-from pi_yo_6.guild_config import GC
-from pi_yo_6.voice_client import MultiAudio
-from pi_yo_6.voice import ChatReader
-
-
-
-
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+_my_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(_my_dir)
 
 ####  Config
 try: from config import Config
 except Exception:
-    CLines= [
-        "Prefix = '.'",
-        "Token = None",
-        "Admin_dic = './dic/admin_dic.txt'",
-        "User_dic = './dic/user_dic/'",
-        "Guild_Config = './guild_config/'"
-        "",
-        "class _OJ():",
-        "    Dic = '/var/lib/mecab/dic/open-jtalk/naist-jdic'",
-        "    Voice = './Voice/'",
-        "    Output = './Output/'",
-        "OJ = _OJ()"
-    ]
-    with open('config.py','w') as f:
-        f.write('\n'.join(CLines))
+    shutil.copyfile('pi_yo_6/template/_config.py', 'config.py')
     from config import Config
 
+from pi_yo_6.guild_config import GC as _GC
+from pi_yo_6.voice_client import MultiAudio
+from pi_yo_6.voice import ChatReader
+from pi_yo_6.voicevox.core import VOICEVOX
 
+GC = _GC(Config.Guild_Config)
 try:shutil.rmtree(Config.OJ.Output)
 except Exception:pass
 os.makedirs(Config.User_dic, exist_ok=True)
@@ -52,6 +38,7 @@ intents.message_content = True
 intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts = {}
+VVox = VOICEVOX(Config, use_gpu=False)
 
 
 
@@ -217,11 +204,11 @@ class DataInfo():
         self.vc = guild.voice_client
         self.loop = client.loop
         self.client = client
-        self.config = Config
+        self.Config = Config
+        self.VVox = VVox
         self.MA = MultiAudio(guild, client, self)
         self.MA.start()
         self.Voice = ChatReader(self)
-
 
 
 client.run(Config.Token)

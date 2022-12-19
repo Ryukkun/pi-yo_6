@@ -1,21 +1,26 @@
 import time
 import os
 
-from .synthetic_voice import creat_voice
+from .synthetic_voice import GenerateVoice
 from .audio_source import StreamAudioData as SAD
+try: from ..main import DataInfo
+except Exception: pass
 
 class ChatReader():
     def __init__(self, Info):
+        try: self.Info:DataInfo
+        except Exception: pass
         self.Info = Info
-        self.MA = Info.MA
-        self.Vvc = Info.MA.add_player('Voice' ,RNum=-1 ,opus=False)
-        self.guild = Info.guild
-        self.gid = Info.gid
-        self.gn = Info.gn
+        self.MA = self.Info.MA
+        self.Vvc = self.Info.MA.add_player('Voice' ,RNum=-1 ,opus=False)
+        self.guild = self.Info.guild
+        self.gid = self.Info.gid
+        self.gn = self.Info.gn
         self.vc = self.guild.voice_client
         self.Queue = []
-        self.config = Info.config
+        self.Config = Info.Config
         self.CLoop = Info.loop
+        self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
     async def on_message(self, message):
         # 読み上げ
@@ -27,17 +32,17 @@ class ChatReader():
         print( message.author.name +" (",message.author.display_name,') : '+ message.content)
 
         # コマンドではなく なおかつ Joinしている場合
-        if not message.content.startswith(self.config.Prefix) and self.vc:
+        if not message.content.startswith(self.Config.Prefix) and self.vc:
 
             now_time = time.time()
-            source = f"{self.config.OJ.Output}{self.gid}-{now_time}.wav"
+            source = f"{self.Config.OJ.Output}{self.gid}-{now_time}.wav"
             self.Queue.append([source,0])
 
             # 音声ファイル ファイル作成
-            await creat_voice(message.content,str(self.gid),str(now_time),self.config)
-            # except Exception as e:                                              # Error
-            #     print(f"Error : 音声ファイル作成に失敗 {e}")
-            #     self.Queue.remove([source,0])
+            try: await self.creat_voice(message.content,str(self.gid),str(now_time))
+            except Exception as e:                                              # Error
+                print(f"Error : 音声ファイル作成に失敗 {e}")
+                self.Queue.remove([source,0])
 
             print(f'生成時間 : {time.time()-now_time}')
             self.Queue = [[source,1] if i[0] == source else i for i in self.Queue]  # 音声ファイルが作成済みなのを記述
