@@ -193,8 +193,8 @@ class GenerateVoice:
 
         else:
             speaker_id = get_speaker_id(hts[1])
-            if speaker_id == None: 
-                return
+            if speaker_id == None: return
+            elif not 0 <= speaker_id <= 38: return
             loop = asyncio.get_event_loop()
             wavefmt = await loop.run_in_executor(None, self.VVox.voicevox_tts, self.Itext, speaker_id)
             with open(FileName, 'wb')as f:
