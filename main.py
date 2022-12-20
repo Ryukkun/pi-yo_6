@@ -202,7 +202,6 @@ class DataInfo():
         self.Config = Config
         self.VVox = VVox
         self.MA = MultiAudio(guild, client, self)
-        self.MA.start()
         self.Voice = ChatReader(self)
 
 

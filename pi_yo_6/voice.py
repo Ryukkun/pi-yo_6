@@ -27,13 +27,6 @@ class ChatReader():
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
     async def on_message(self, message:Message):
-        # 読み上げ
-        # 発言者がBotの場合はPass
-        if message.author.bot:
-            return
-
-        print(f'.\n#message.server  : {self.gn} ({message.channel.name})')
-        print( message.author.name +" (",message.author.display_name,') : '+ message.content)
 
         # コマンドではなく なおかつ Joinしている場合
         if not message.content[0] in bot_prefix and self.vc:
@@ -65,8 +58,8 @@ class ChatReader():
 
         while self.Queue[0][1] == 2:                # ファイル削除
             voice_data = self.Queue[0]
-            if os.path.isfile(voice_data[0]):
-                os.remove(voice_data[0])
+            # if os.path.isfile(voice_data[0]):
+            #     os.remove(voice_data[0])
             del self.Queue[0]
             if not self.Queue: return
 
