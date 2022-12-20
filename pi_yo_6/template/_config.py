@@ -5,8 +5,8 @@ class Open_Jtalk:
 
 class VOICEVOX:
     # https://github.com/VOICEVOX/voicevox_core/releases
-    core_windows = ''
-    core_linux = ''
+    core_windows = './pi_yo_6/voicevox/voicevox_core-windows-x64-cpu/core.dll'
+    core_linux = './pi_yo_6/voicevox/voicevox_core-linux-x64-cpu/libcore.so'
 
 class Config:
     Prefix = '.'

@@ -1,9 +1,7 @@
 import discord
 import os
-import sys
 import re
 import shutil
-import asyncio
 from discord.ext import commands
 from typing import Literal
 
@@ -19,7 +17,7 @@ except Exception:
 from pi_yo_6.guild_config import GC as _GC
 from pi_yo_6.voice_client import MultiAudio
 from pi_yo_6.voice import ChatReader
-from pi_yo_6.voicevox.core import VOICEVOX
+from pi_yo_6.voicevox.core import CreateVOICEVOX
 
 GC = _GC(Config.Guild_Config)
 try:shutil.rmtree(Config.OJ.Output)
@@ -38,7 +36,7 @@ intents.message_content = True
 intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts = {}
-VVox = VOICEVOX(Config, use_gpu=False)
+VVox = CreateVOICEVOX(Config, use_gpu=False)
 
 
 

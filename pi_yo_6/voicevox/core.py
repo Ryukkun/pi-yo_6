@@ -27,8 +27,48 @@ from ctypes import *
 import platform
 import os
 import numpy
+import time
+import asyncio
 try: from ...config import Config as Con
 except Exception: pass
+
+
+# 何故かバグるからタイミング調整なのだ
+# その他上限設定
+class CreateVOICEVOX:
+    def __init__(self, _Config, use_gpu: bool, cpu_num_threads=0, load_all_models=True) -> None:
+        self.queue = []
+        self.last = time.perf_counter()
+        self.VVox = VOICEVOX(_Config, use_gpu, cpu_num_threads, load_all_models)
+        self.loop = None
+        self.doing = 0
+        self.PROCESS_LIMIT = 2
+        self.TEXT_LIMIT = 100
+
+    async def create_voicevox(self, Itext, speaker_id, id):
+        # 文字数上限
+        if len(Itext) > self.TEXT_LIMIT:
+            Itext = Itext [:self.TEXT_LIMIT]
+
+        # タイミング調節 0.1秒以上のdelay
+        if self.loop == None:
+            self.loop = asyncio.get_event_loop()
+        id = (Itext,speaker_id,id)
+        if (time.perf_counter() - self.last) < 0.1 or self.doing >= self.PROCESS_LIMIT:
+            self.queue.append(id)
+            await asyncio.sleep(0.1)
+            while self.queue[0] != id or self.doing >= self.PROCESS_LIMIT:
+                await asyncio.sleep(0.5)
+            del self.queue[0]
+            self.last = time.perf_counter()
+
+        self.doing += 1
+        data = None
+        try: data = await self.loop.run_in_executor(None, self.VVox.voicevox_tts, Itext, speaker_id)
+        except Exception: pass
+        self.doing -= 1
+        return data
+
 
 class VOICEVOX:
     def __init__(self,_Config, use_gpu: bool, cpu_num_threads=0, load_all_models=True):
@@ -168,8 +208,8 @@ class VOICEVOX:
         output_binary_size = c_int()
         output_wav = POINTER(c_uint8)()
         errno = self.lib.voicevox_tts(text.encode(), speaker_id, byref(output_binary_size), byref(output_wav))
-        # if errno != 0:
-        #     raise Exception(self.lib.voicevox_error_result_to_message(errno).decode())
+        if errno != 0:
+            raise Exception(self.lib.voicevox_error_result_to_message(errno).decode())
         output = create_string_buffer(output_binary_size.value * sizeof(c_uint8))
         memmove(output, output_wav, output_binary_size.value * sizeof(c_uint8))
         self.lib.voicevox_wav_free(output_wav)
