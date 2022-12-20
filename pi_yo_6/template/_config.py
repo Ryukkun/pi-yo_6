@@ -17,5 +17,6 @@ class Config:
     Admin_dic = './dic/admin_dic.txt'
     User_dic = './dic/user_dic/'
     Guild_Config = './guild_config/'
+    User_Config = './user_config/'
     OJ = Open_Jtalk
     VVOX = VOICEVOX

@@ -14,16 +14,17 @@ except Exception:
     shutil.copyfile('pi_yo_6/template/_config.py', 'config.py')
     from config import Config
 
-from pi_yo_6.guild_config import GC as _GC
+from pi_yo_6.load_config import GC, UC
 from pi_yo_6.voice_client import MultiAudio
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.voicevox.core import CreateVOICEVOX
+import pi_yo_6.voicevox.speaker_id as Speaker
 
-GC = _GC(Config.Guild_Config)
 try:shutil.rmtree(Config.OJ.Output)
 except Exception:pass
 os.makedirs(Config.User_dic, exist_ok=True)
 os.makedirs(Config.Guild_Config, exist_ok=True)
+os.makedirs(Config.User_Config, exist_ok=True)
 os.makedirs(Config.OJ.Voice, exist_ok=True)
 os.makedirs(Config.OJ.Output, exist_ok=True)
 with open(Config.Admin_dic,'a'):pass
@@ -35,7 +36,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
-g_opts = {}
+g_opts:dict[int, 'DataInfo'] = {}
 VVox = CreateVOICEVOX(Config, use_gpu=False)
 
 
@@ -47,22 +48,50 @@ group = discord.app_commands.Group(name="pi-yo6",description="ぴーよ6号設�
 @discord.app_commands.describe(action='初期 : False')
 async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     gid = ctx.guild_id
-    _GC = GC.Read(gid)
-
+    _GC = GC(Config.Guild_Config, gid)
+    GConfig = _GC.Read()
     if not ctx.permissions.administrator:
         embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
         await ctx.response.send_message(embed=embed, ephemeral= True)
         return
     if action == 'True':
-        _GC['auto_join'] = True
+        GConfig['auto_join'] = True
     else:
-        _GC['auto_join'] = False
+        GConfig['auto_join'] = False
 
-    GC.Write(gid,_GC)
+    _GC.Write(GConfig)
     embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=0xe1bd5b)
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
 
+@group.command(description="自分の声帯設定")
+@discord.app_commands.describe(voice='好きな声帯を入力するのじゃ 無効="-1" \n例) "ずんだもん_ささやき", "25", "四国"')
+@discord.app_commands.describe(voice='サーバー反映')
+#@discord.app_commands.choices(voice=Speaker.speaker_list())
+@discord.app_commands.choices(only=[discord.app_commands.Choice(name='このサーバーにだけ反映',value='True'),discord.app_commands.Choice(name='他のサーバーでも反映',value='False')])
+async def my_voice(ctx: discord.Interaction, voice: str, only:Literal['このサーバーにだけ反映','他のサーバーにも反映']):
+    gid = ctx.guild_id
+    _voice = Speaker.get_speaker_id(voice)
+    if type(_voice) != int: 
+        embed = discord.Embed(title=f'失敗 ;w;', colour=0xe1bd5b)
+
+    else:
+        uid = ctx.user.id
+        if only == 'True':
+            _GC = GC(Config.Guild_Config, gid)
+            GConfig = _GC.Read()
+            GConfig['voice'][str(uid)] = _voice
+            _GC.Write(GConfig)
+
+        else:
+            _UC = UC(Config.User_Config)
+            UConfig = _UC.Read(uid)
+            UConfig['voice'] = _voice
+            _UC.Write(uid, UConfig)
+
+        embed = discord.Embed(title=f'voice を {voice}({_voice}) に変更しました   [このサーバーにだけ反映:{only}]', colour=0xe1bd5b)
+
+    await ctx.response.send_message(embed=embed, ephemeral= True)
 
 tree.add_command(group)
 
@@ -81,7 +110,7 @@ async def on_ready():
 
 
 @client.command()
-async def join(ctx):
+async def join(ctx:commands.Context):
     if vc := ctx.author.voice:
         gid = ctx.guild.id
         print(f'{ctx.guild.name} : #join')
@@ -90,12 +119,12 @@ async def join(ctx):
         g_opts[gid] = DataInfo(ctx.guild)
         Dic_Path = f'{Config.User_dic}{gid}.txt'
         with open(Dic_Path,'w'): pass
-        GC.Check(gid)
+        GC(Config.Guild_Config,gid).Read()
         return True
 
 
 @client.command()
-async def bye(ctx):
+async def bye(ctx:commands.Context):
     guild = ctx.guild
     gid = guild.id
     vc = guild.voice_client
@@ -109,7 +138,7 @@ async def bye(ctx):
   
   
 @client.event
-async def on_voice_state_update(member, befor, after):
+async def on_voice_state_update(member:discord.Member, befor:discord.VoiceState, after:discord.VoiceState):
     # voice channelに誰もいなくなったことを確認
     if not befor.channel:
         return
@@ -133,7 +162,7 @@ async def on_voice_state_update(member, befor, after):
 
 
 @client.command()
-async def register(ctx, arg1, arg2):
+async def register(ctx:commands.Context, arg1, arg2):
     gid = str(ctx.guild.id)
     with open(Config.User_dic+ gid +'.txt', mode='a') as f:
         f.write(arg1 + ',' + arg2 + '\n')
@@ -141,7 +170,7 @@ async def register(ctx, arg1, arg2):
 
 
 @client.command()
-async def delete(ctx, arg1):
+async def delete(ctx:commands.Context, arg1):
     gid = str(ctx.guild.id)
     with open(Config.User_dic+ gid +'.txt', mode='r') as f:
         text = f.read()
@@ -174,8 +203,7 @@ async def on_message(message:discord.Message):
     print(f'.\n#message.server  : {guild.name} ({message.channel.name})')
     print( message.author.name +" (",message.author.display_name,') : '+ message.content)
 
-
-    _GC = GC.Read(gid)
+    _GC = GC(Config.Guild_Config, gid).Read()
     if voice and _GC['auto_join']:
         if voice.channel and not guild.voice_client:
             if voice.mute or voice.self_mute:

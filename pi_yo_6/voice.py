@@ -1,18 +1,20 @@
 import time
 import os
-import re
 from discord import Message
 
+from .load_config import GC, UC
 from .synthetic_voice import GenerateVoice
 from .audio_source import StreamAudioData as SAD
-try: from ..main import DataInfo
-except Exception: pass
 
 bot_prefix = r',./?!'
 
 class ChatReader():
     def __init__(self, Info):
-        try: self.Info:DataInfo
+        try:
+            from ..main import DataInfo
+            from ..config import Config
+            self.Info:DataInfo
+            self.Config:Config
         except Exception: pass
         self.Info = Info
         self.MA = self.Info.MA
@@ -24,6 +26,8 @@ class ChatReader():
         self.Queue = []
         self.Config = Info.Config
         self.CLoop = Info.loop
+        self.GC = GC(self.Config.Guild_Config, self.gid)
+        self.UC = UC(self.Config.User_Config)
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
     async def on_message(self, message:Message):
@@ -35,8 +39,22 @@ class ChatReader():
             source = f"{self.Config.OJ.Output}{self.gid}-{now_time}.wav"
             self.Queue.append([source,0])
 
+            # ボイス初期設定
+            mess = message.content
+            uid = str(message.author.id)
+            g_config = self.GC.Read()
+            g_config = g_config['voice'].get(uid,-1)
+            u_config = self.UC.Read(uid)['voice']
+            speaker_id = -1
+            if g_config != -1:
+                speaker_id = g_config
+            elif u_config != -1:
+                speaker_id = u_config
+            if speaker_id != -1:
+                mess = f'voice:{speaker_id} {mess}'
+
             # 音声ファイル ファイル作成
-            try: await self.creat_voice(message.content,str(self.gid),str(now_time))
+            try: await self.creat_voice(mess ,str(self.gid),str(now_time))
             except Exception as e:                                              # Error
                 print(f"Error : 音声ファイル作成に失敗 {e}")
                 self.Queue.remove([source,0])
@@ -58,8 +76,8 @@ class ChatReader():
 
         while self.Queue[0][1] == 2:                # ファイル削除
             voice_data = self.Queue[0]
-            # if os.path.isfile(voice_data[0]):
-            #     os.remove(voice_data[0])
+            if os.path.isfile(voice_data[0]):
+                os.remove(voice_data[0])
             del self.Queue[0]
             if not self.Queue: return
 

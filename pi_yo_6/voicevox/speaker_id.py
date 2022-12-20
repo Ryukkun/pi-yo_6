@@ -1,3 +1,5 @@
+
+
 speaker_user = [
     ["四国","めたん"],
     ["ずんだ"],
@@ -86,6 +88,18 @@ speaker_id = [
         {"id":30,"name":"アナウンス"},
         {"id":31,"name":"読み聞かせ"}
         ],"version":"0.13.2"}]
+
+
+# from discord.app_commands import Choice
+# def speaker_list():
+#     res = []
+#     for name_dic in speaker_id:
+#         name = name_dic['name']
+#         for style_dic in name_dic['styles']:
+#             style = style_dic['name']
+#             id = style_dic['id']
+#             res.append(Choice(name=f'{name}_{style}', value=str(id)))
+#     return res
 
 
 def get_speaker_id(hts):
