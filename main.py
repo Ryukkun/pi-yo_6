@@ -129,9 +129,6 @@ async def on_voice_state_update(member, befor, after):
 
 
 
-
-
-
 #---------------------------------
 
 
@@ -155,16 +152,8 @@ async def delete(ctx, arg1):
         print(f'{gid}.txtから削除 : {arg1}')
 
 
-@client.command()
-async def s(ctx):
-    if ctx.guild.voice_client:
-        gid = ctx.guild.id
-        g_opts[gid].Voice.Vvc.stop()
-        await g_opts[gid].Voice.play_loop()
-
-
-@client.command()
-async def shutup(ctx):
+@client.command(aliases=['s'])
+async def shutup(ctx:commands.Context):
     if ctx.guild.voice_client:
         gid = ctx.guild.id
         g_opts[gid].Voice.Vvc.stop()
@@ -172,11 +161,19 @@ async def shutup(ctx):
 
 
 @client.event
-async def on_message(message):
+async def on_message(message:discord.Message):
     guild = message.guild
     if not guild: return
     gid = message.guild.id
     voice = message.author.voice
+
+    # 読み上げ
+    # 発言者がBotの場合はPass
+    if message.author.bot:
+        return
+    print(f'.\n#message.server  : {guild.name} ({message.channel.name})')
+    print( message.author.name +" (",message.author.display_name,') : '+ message.content)
+
 
     _GC = GC.Read(gid)
     if voice and _GC['auto_join']:
@@ -195,7 +192,7 @@ async def on_message(message):
 
 
 class DataInfo():
-    def __init__(self, guild):
+    def __init__(self, guild:discord.Guild):
         self.guild = guild
         self.gn = guild.name
         self.gid = guild.id

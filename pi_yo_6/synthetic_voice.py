@@ -4,12 +4,9 @@ import re
 import os
 import wave
 import platform
-import time
 
 from .romaji.to_kana import Romaji
 from .voicevox.speaker_id import get_speaker_id
-try: from ..config import Config
-except Exception: pass
 
 _os = platform.system().lower()
 if _os == 'windows':
@@ -20,7 +17,6 @@ else:
 re_mention = re.compile(r'<(@&|@)\d+>')
 re_emoji = re.compile(r'<:.+:[0-9]+>')
 re_url = re.compile(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+')
-re_bot_prefix = re.compile(r'^[,./?!].*')
 re_speed = re.compile(r'(^|\s)speed:([\d.]*)(\s|$)')
 re_a = re.compile(r'(^|\s)a:([\d.]*)(\s|$)')
 re_tone = re.compile(r'(^|\s)tone:([\d.]*)(\s|$)')
@@ -32,11 +28,14 @@ _status = 'voice:\w*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|jf:\S*\s'
 re_text_status = re.compile(r'(^|{0})+.+?(?=\s({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
 class GenerateVoice:
-    def __init__(self, Config, VVox) -> None:
-        try:
+    def __init__(self, config, VVox) -> None:
+        try: 
+            from ..config import Config
+            from .voicevox.core import CreateVOICEVOX
             self.Config:Config
+            self.VVox: CreateVOICEVOX
         except Exception: pass
-        self.Config = Config
+        self.Config = config
         self.VVox = VVox
 
 
@@ -127,8 +126,7 @@ class GenerateVoice:
 
     async def creat_voice(self, Itext:str, guild_id, now_time):
 
-        Itext = Itext.replace('\n',' ')
-        Itext = re_bot_prefix.sub('',Itext)                                         # コマンドは読み上げない
+        Itext = Itext.replace('\n',' ')                                       # コマンドは読み上げない
         Itext = re_url.sub('ユーアールエルは省略するのです！ ',Itext)               # URL省略
         Itext = re_emoji.sub('',Itext)                                              # 絵文字IDは読み上げない
         Itext = re_mention.sub('メンションは省略するのです！ ',Itext)

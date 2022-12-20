@@ -1,10 +1,14 @@
 import time
 import os
+import re
+from discord import Message
 
 from .synthetic_voice import GenerateVoice
 from .audio_source import StreamAudioData as SAD
 try: from ..main import DataInfo
 except Exception: pass
+
+bot_prefix = r',./?!'
 
 class ChatReader():
     def __init__(self, Info):
@@ -22,7 +26,7 @@ class ChatReader():
         self.CLoop = Info.loop
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
-    async def on_message(self, message):
+    async def on_message(self, message:Message):
         # 読み上げ
         # 発言者がBotの場合はPass
         if message.author.bot:
@@ -32,7 +36,7 @@ class ChatReader():
         print( message.author.name +" (",message.author.display_name,') : '+ message.content)
 
         # コマンドではなく なおかつ Joinしている場合
-        if not message.content.startswith(self.Config.Prefix) and self.vc:
+        if not message.content[0] in bot_prefix and self.vc:
 
             now_time = time.time()
             source = f"{self.Config.OJ.Output}{self.gid}-{now_time}.wav"
