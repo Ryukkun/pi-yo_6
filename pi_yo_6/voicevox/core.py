@@ -140,7 +140,7 @@ class VOICEVOX:
         self.lib.voicevox_error_result_to_message.argtypes = (c_int,)
         self.lib.voicevox_load_openjtalk_dict.argtypes = (c_char_p,)
 
-        self.voicevox_load_openjtalk_dict(self.Config.OJ.Dic)
+        self.voicevox_load_openjtalk_dict(self.Config.OJ.Dic_utf_8)
         success = self.lib.initialize(use_gpu, cpu_num_threads, load_all_models)
         if not success:
             raise Exception(self.lib.last_error_message().decode())

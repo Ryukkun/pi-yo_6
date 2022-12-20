@@ -1,10 +1,13 @@
 class Open_Jtalk:
-    Dic = '/var/lib/mecab/dic/open-jtalk/naist-jdic'
+    # windowsで起動するときだけ Dic_shift_jis 必須
+    Dic_utf_8 = '/var/lib/mecab/dic/open-jtalk/naist-jdic'
+    Dic_shift_jis = '/var/lib/mecab/dic/open-jtalk/naist-jdic'
     Voice = './Voice/'
     Output = './Output/'
 
 class VOICEVOX:
     # https://github.com/VOICEVOX/voicevox_core/releases
+    # onnxruntime https://github.com/microsoft/onnxruntime/releases
     core_windows = './pi_yo_6/voicevox/voicevox_core-windows-x64-cpu/core.dll'
     core_linux = './pi_yo_6/voicevox/voicevox_core-linux-x64-cpu/libcore.so'
 

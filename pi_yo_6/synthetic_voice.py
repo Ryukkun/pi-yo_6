@@ -11,8 +11,8 @@ from .voicevox.speaker_id import get_speaker_id
 try: from ..config import Config
 except Exception: pass
 
-
-if platform.system() == 'Windows':
+_os = platform.system().lower()
+if _os == 'windows':
     EFormat = 'shift_jis'
 else:
     EFormat = 'utf-8'
@@ -173,7 +173,11 @@ class GenerateVoice:
         if hts[0] == '-m':
             hts = ' '.join(hts)
             
-            cmd=f'open_jtalk -x "{self.Config.OJ.Dic}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
+            if _os == 'windows':
+                dic = self.Config.OJ.Dic_shift_jis
+            else:
+                dic = self.Config.OJ.Dic_utf_8
+            cmd=f'open_jtalk -x "{dic}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
             
             prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
             await prog.communicate(input= Itext.encode(EFormat))
