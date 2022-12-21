@@ -65,7 +65,7 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
 
 
 @group.command(description="自分の声帯設定")
-@discord.app_commands.describe(voice='好きな声帯を入力するのじゃ 無効="-1" \n例) "ずんだもん_ささやき", "25", "四国"')
+@discord.app_commands.describe(voice='声帯設定　 　無効＝"-1"　 　例 >> "ずんだもん_ささやき"、"25"、"四国"')
 @discord.app_commands.describe(voice='サーバー反映')
 #@discord.app_commands.choices(voice=Speaker.speaker_list())
 @discord.app_commands.choices(only=[discord.app_commands.Choice(name='このサーバーにだけ反映',value='True'),discord.app_commands.Choice(name='他のサーバーでも反映',value='False')])
