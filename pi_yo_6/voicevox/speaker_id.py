@@ -101,6 +101,20 @@ speaker_id = [
 #             res.append(Choice(name=f'{name}_{style}', value=str(id)))
 #     return res
 
+def speaker_list():
+    res = []
+    for name_dic in speaker_id:
+        name = name_dic['name']
+        _res = [name]
+        for style_dic in name_dic['styles']:
+            style = style_dic['name']
+            id = style_dic['id']
+            _res.append(f'{style}[{id}]')
+        res.append(_res)
+
+    return res
+
+
 
 def get_speaker_id(hts):
     try: hts = int(hts)

@@ -4,6 +4,8 @@ import re
 import shutil
 from discord.ext import commands
 from typing import Literal
+import tabulate
+import glob
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_my_dir)
@@ -187,6 +189,27 @@ async def shutup(ctx:commands.Context):
         gid = ctx.guild.id
         g_opts[gid].Voice.Vvc.stop()
         await g_opts[gid].Voice.play_loop()
+
+
+@client.command(aliases=['sp'])
+async def speaker(ctx:commands.Context, *args):
+    if args:
+        await ctx.send(file=discord.File('./pi_yo_6/template/_speakers.png'))
+        return
+
+    sp_list = Speaker.speaker_list()
+    hts_list = [os.path.split(_)[1].replace('.htsvoice','') for _ in glob.glob(f'{Config.OJ.Voice}*.htsvoice')]
+    hts_dic = {}
+    for hts in hts_list:
+        _hts = hts.split('_')
+        hts_name = _hts[0]
+        if not hts_dic.get(hts_name): hts_dic[hts_name] = [hts_name]
+        hts_dic[hts_name].append(hts)
+
+    [sp_list.append(_) for _ in list(hts_dic.values())]
+    
+    sp_list = tabulate.tabulate(tabular_data=sp_list, tablefmt='github')
+    await ctx.send(content=f'```{sp_list}```')
 
 
 @client.event

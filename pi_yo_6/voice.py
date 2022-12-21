@@ -31,7 +31,6 @@ class ChatReader():
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
     async def on_message(self, message:Message):
-
         # コマンドではなく なおかつ Joinしている場合
         if not message.content[0] in bot_prefix and self.vc:
 
