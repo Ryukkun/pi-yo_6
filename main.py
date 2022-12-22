@@ -53,7 +53,7 @@ async def not_perm(ctx:discord.Interaction, com_name, com_bool, GConfig):
 tree = client.tree
 group = discord.app_commands.Group(name="pi-yo6",description="ぴーよ6号設定")
 
-@group.command(description="ファンタスティック自動接続 要権限")
+@group.command(description="自動接続 要権限")
 @discord.app_commands.describe(action='初期 : False')
 async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     gid = ctx.guild_id
@@ -98,9 +98,9 @@ async def admin_only(ctx: discord.Interaction, command:Literal['auto_join','my_v
 
 
 @group.command(description="自分のボイス設定")
-@discord.app_commands.describe(voice='ボイス設定　・　無効＝"-1"　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
+@discord.app_commands.describe(voice='ボイス設定　・　未入力 >> 初期設定　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
 @discord.app_commands.choices(only=[discord.app_commands.Choice(name='このサーバーにだけ反映',value='True'),discord.app_commands.Choice(name='他のサーバーでも反映',value='False')])
-async def my_voice(ctx: discord.Interaction, voice:str, only:str):
+async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
     gid = ctx.guild_id
     _voice = Speaker.get_speaker_id(voice)
     _GC = GC(Config.Guild_Config, gid)
@@ -133,8 +133,8 @@ async def my_voice(ctx: discord.Interaction, voice:str, only:str):
 
 
 @group.command(description="他人のボイス設定 要権限")
-@discord.app_commands.describe(voice='ボイス設定　・　無効＝"-1"　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
-async def another_voice(ctx: discord.Interaction,user:discord.User, voice: str):
+@discord.app_commands.describe(voice='ボイス設定　・　未入力 >> 初期設定　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
+async def another_voice(ctx: discord.Interaction,user:discord.User, voice:str='-1'):
     gid = ctx.guild_id
     _voice = Speaker.get_speaker_id(voice)
     _GC = GC(Config.Guild_Config, gid)
@@ -158,8 +158,8 @@ async def another_voice(ctx: discord.Interaction,user:discord.User, voice: str):
 
 
 @group.command(description="サーバーの初期設定ボイス 要権限")
-@discord.app_commands.describe(voice='ボイス設定　・　無効＝"-1"　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
-async def server_voice(ctx: discord.Interaction, voice: str):
+@discord.app_commands.describe(voice='ボイス設定　・　未入力 >> 初期設定　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
+async def server_voice(ctx: discord.Interaction, voice:str='-1'):
     gid = ctx.guild_id
     _voice = Speaker.get_speaker_id(voice)
     _GC = GC(Config.Guild_Config, gid)
@@ -171,7 +171,7 @@ async def server_voice(ctx: discord.Interaction, voice: str):
 
     if type(_voice) != int: 
         embed = discord.Embed(title=f'失敗 🤯', colour=0xe1bd5b)
-
+    
     else:
         GConfig['server_voice'] = _voice
         _GC.Write(GConfig)
