@@ -125,6 +125,7 @@ async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
             UConfig['voice'] = _voice
             _UC.Write(uid, UConfig)
 
+        if _voice == -1: _voice = 'N/A'
         embed = discord.Embed(title=f'反映完了', colour=0xe1bd5b)
         embed.add_field(name='Speaker_Id',value=str(_voice))
         embed.add_field(name='このサーバーにだけ反映',value=str(only))
@@ -151,6 +152,7 @@ async def another_voice(ctx: discord.Interaction,user:discord.User, voice:str='-
         GConfig['voice'][str(user.id)] = _voice
         _GC.Write(GConfig)
 
+        if _voice == -1: _voice = 'N/A'
         embed = discord.Embed(title=f'反映完了({user.name})', colour=0xe1bd5b)
         embed.add_field(name='Speaker_Id',value=str(_voice))
     await ctx.response.send_message(embed=embed, ephemeral= True)
@@ -176,6 +178,7 @@ async def server_voice(ctx: discord.Interaction, voice:str='-1'):
         GConfig['server_voice'] = _voice
         _GC.Write(GConfig)
 
+        if _voice == -1: _voice = 'N/A'
         embed = discord.Embed(title=f'反映完了', colour=0xe1bd5b)
         embed.add_field(name='Speaker_Id',value=str(_voice))
     await ctx.response.send_message(embed=embed, ephemeral= True)
