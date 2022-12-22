@@ -231,27 +231,6 @@ async def _bye(guild:discord.Guild):
     del g_opts[gid]
     try: await vc.disconnect()
     except Exception: pass
-  
-  
-# @client.event
-# async def on_voice_state_update(member:discord.Member, befor:discord.VoiceState, after:discord.VoiceState):
-#     # voice channelに誰もいなくなったことを確認
-#     if not befor.channel:
-#         return
-#     if befor.channel != after.channel:
-#         if vc := befor.channel.guild.voice_client:
-#             if not befor.channel == vc.channel:
-#                 return
-#             if mems := befor.channel.members:
-#                 for mem in mems:
-#                     if not mem.bot:
-#                         return
-#                 await bye(befor.channel)
-
-
-
-
-
 
 
 #---------------------------------
