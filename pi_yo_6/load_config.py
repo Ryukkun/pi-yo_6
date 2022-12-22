@@ -6,11 +6,10 @@ class GC:
         self.GConfig = GConfig
         self.gid = gid
         self.GC_Path = f'{self.GConfig}{self.gid}.json'
-
-    def Read(self):
         if not path.isfile(self.GC_Path):
             GC = {
                 'auto_join':False,
+                'admin_only':{},
                 'voice':{}
             }
         else:
@@ -18,8 +17,13 @@ class GC:
                 GC = json.load(f)
         if not GC.get('voice'):
             GC['voice'] = {}
+        if not GC.get('admin_only'):
+            GC['admin_only'] = {}
         self.Write(GC)
-        return GC
+
+    def Read(self) -> dict:
+        with open(self.GC_Path,'r') as f:
+            return json.load(f)
 
 
     def Write(self, GC):

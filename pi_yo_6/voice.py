@@ -6,7 +6,7 @@ from .load_config import GC, UC
 from .synthetic_voice import GenerateVoice
 from .audio_source import StreamAudioData as SAD
 
-bot_prefix = r',./?!'
+bot_prefix = r',./?!;>'
 
 class ChatReader():
     def __init__(self, Info):
@@ -18,7 +18,7 @@ class ChatReader():
         except Exception: pass
         self.Info = Info
         self.MA = self.Info.MA
-        self.Vvc = self.Info.MA.add_player('Voice' ,RNum=-1 ,opus=False)
+        self.Vvc = self.Info.MA.add_player(RNum=-1 ,opus=False)
         self.guild = self.Info.guild
         self.gid = self.Info.gid
         self.gn = self.Info.gn
@@ -42,13 +42,13 @@ class ChatReader():
             mess = message.content
             uid = str(message.author.id)
             g_config = self.GC.Read()
-            g_config = g_config['voice'].get(uid,-1)
-            u_config = self.UC.Read(uid)['voice']
             speaker_id = -1
-            if g_config != -1:
-                speaker_id = g_config
-            elif u_config != -1:
-                speaker_id = u_config
+            if (speaker_id := g_config['voice'].get(uid,-1)) != -1:
+                pass
+            elif (speaker_id := self.UC.Read(uid)['voice']) != -1:
+                pass
+            elif (speaker_id := g_config.get('server_voice',-1)) != -1:
+                pass
             if speaker_id != -1:
                 mess = f'voice:{speaker_id} {mess}'
 

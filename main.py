@@ -2,7 +2,7 @@ import discord
 import os
 import re
 import shutil
-from discord.ext import commands
+from discord.ext import commands, tasks
 from typing import Literal
 import tabulate
 import glob
@@ -40,21 +40,28 @@ intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts:dict[int, 'DataInfo'] = {}
 VVox = CreateVOICEVOX(Config, use_gpu=False)
+no_perm_embed = embed = discord.Embed(title=f'権限がありません 🥲', colour=0xe1bd5b)
 
+
+
+async def not_perm(ctx:discord.Interaction, com_name, com_bool, GConfig):
+    if not ctx.permissions.administrator and GConfig['admin_only'].setdefault(com_name,com_bool):
+        await ctx.response.send_message(embed=no_perm_embed, ephemeral= True)
+        return GConfig
 
 
 tree = client.tree
 group = discord.app_commands.Group(name="pi-yo6",description="ぴーよ6号設定")
 
-@group.command(description="呼んでないのに通話に入ってくる オフロスキー系ぴーよ")
+@group.command(description="ファンタスティック自動接続 要権限")
 @discord.app_commands.describe(action='初期 : False')
 async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     gid = ctx.guild_id
     _GC = GC(Config.Guild_Config, gid)
     GConfig = _GC.Read()
-    if not ctx.permissions.administrator:
-        embed = discord.Embed(title=f'権限がありません', colour=0xe1bd5b)
-        await ctx.response.send_message(embed=embed, ephemeral= True)
+
+    if _ := await not_perm(ctx, 'auto_join', True, GConfig):
+        _GC.Write(_)
         return
     if action == 'True':
         GConfig['auto_join'] = True
@@ -66,22 +73,49 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
 
-@group.command(description="自分の声帯設定")
-@discord.app_commands.describe(voice='声帯設定　 　無効＝"-1"　 　例 >> "ずんだもん_ささやき"、"25"、"四国"')
-@discord.app_commands.describe(voice='サーバー反映')
-#@discord.app_commands.choices(voice=Speaker.speaker_list())
+
+@group.command(description="特定のコマンドを管理者しか使えないようにするか否か 要権限")
+@discord.app_commands.describe(action='初期 : True')
+async def admin_only(ctx: discord.Interaction, command:Literal['auto_join','my_voice','server_voice','another_voice'], action: Literal['True','False']):
+    gid = ctx.guild_id
+    _GC = GC(Config.Guild_Config, gid)
+    GConfig = _GC.Read()
+
+    if not ctx.permissions.administrator:
+        await ctx.response.send_message(embed=no_perm_embed, ephemeral= True)
+        return
+    if action == 'True':
+        GConfig['admin_only'][command] = True
+    else:
+        GConfig['admin_only'][command] = False
+
+    _GC.Write(GConfig)
+    embed = discord.Embed(title='権限状況', colour=0xe1bd5b)
+    for k, v in GConfig['admin_only'].items():
+        embed.add_field(name=k,value=str(v),inline=True)
+    await ctx.response.send_message(embed=embed, ephemeral= True)
+
+
+
+@group.command(description="自分のボイス設定")
+@discord.app_commands.describe(voice='ボイス設定　・　無効＝"-1"　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
 @discord.app_commands.choices(only=[discord.app_commands.Choice(name='このサーバーにだけ反映',value='True'),discord.app_commands.Choice(name='他のサーバーでも反映',value='False')])
-async def my_voice(ctx: discord.Interaction, voice: str, only:Literal['このサーバーにだけ反映','他のサーバーにも反映']):
+async def my_voice(ctx: discord.Interaction, voice:str, only:str):
     gid = ctx.guild_id
     _voice = Speaker.get_speaker_id(voice)
+    _GC = GC(Config.Guild_Config, gid)
+    GConfig = _GC.Read()
+
+    if _ := await not_perm(ctx, 'my_voice', False, GConfig):
+        _GC.Write(_)
+        return
+
     if type(_voice) != int: 
-        embed = discord.Embed(title=f'失敗 ;w;', colour=0xe1bd5b)
+        embed = discord.Embed(title=f'失敗 🤯', colour=0xe1bd5b)
 
     else:
         uid = ctx.user.id
         if only == 'True':
-            _GC = GC(Config.Guild_Config, gid)
-            GConfig = _GC.Read()
             GConfig['voice'][str(uid)] = _voice
             _GC.Write(GConfig)
 
@@ -91,8 +125,59 @@ async def my_voice(ctx: discord.Interaction, voice: str, only:Literal['このサ
             UConfig['voice'] = _voice
             _UC.Write(uid, UConfig)
 
-        embed = discord.Embed(title=f'voice を {voice}({_voice}) に変更しました   [このサーバーにだけ反映:{only}]', colour=0xe1bd5b)
+        embed = discord.Embed(title=f'反映完了', colour=0xe1bd5b)
+        embed.add_field(name='Speaker_Id',value=str(_voice))
+        embed.add_field(name='このサーバーにだけ反映',value=str(only))
+    await ctx.response.send_message(embed=embed, ephemeral= True)
 
+
+
+@group.command(description="他人のボイス設定 要権限")
+@discord.app_commands.describe(voice='ボイス設定　・　無効＝"-1"　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
+async def another_voice(ctx: discord.Interaction,user:discord.User, voice: str):
+    gid = ctx.guild_id
+    _voice = Speaker.get_speaker_id(voice)
+    _GC = GC(Config.Guild_Config, gid)
+    GConfig = _GC.Read()
+
+    if _ := await not_perm(ctx, 'another_voice', True, GConfig):
+        _GC.Write(_)
+        return
+
+    if type(_voice) != int: 
+        embed = discord.Embed(title=f'失敗 🤯', colour=0xe1bd5b)
+
+    else:
+        GConfig['voice'][str(user.id)] = _voice
+        _GC.Write(GConfig)
+
+        embed = discord.Embed(title=f'反映完了({user.name})', colour=0xe1bd5b)
+        embed.add_field(name='Speaker_Id',value=str(_voice))
+    await ctx.response.send_message(embed=embed, ephemeral= True)
+
+
+
+@group.command(description="サーバーの初期設定ボイス 要権限")
+@discord.app_commands.describe(voice='ボイス設定　・　無効＝"-1"　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
+async def server_voice(ctx: discord.Interaction, voice: str):
+    gid = ctx.guild_id
+    _voice = Speaker.get_speaker_id(voice)
+    _GC = GC(Config.Guild_Config, gid)
+    GConfig = _GC.Read()
+
+    if _ := await not_perm(ctx, 'server_voice', True, GConfig):
+        _GC.Write(_)
+        return
+
+    if type(_voice) != int: 
+        embed = discord.Embed(title=f'失敗 🤯', colour=0xe1bd5b)
+
+    else:
+        GConfig['server_voice'] = _voice
+        _GC.Write(GConfig)
+
+        embed = discord.Embed(title=f'反映完了', colour=0xe1bd5b)
+        embed.add_field(name='Speaker_Id',value=str(_voice))
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
 tree.add_command(group)
@@ -121,38 +206,44 @@ async def join(ctx:commands.Context):
         g_opts[gid] = DataInfo(ctx.guild)
         Dic_Path = f'{Config.User_dic}{gid}.txt'
         with open(Dic_Path,'w'): pass
-        GC(Config.Guild_Config,gid).Read()
+        GC(Config.Guild_Config,gid)
         return True
 
 
 @client.command()
 async def bye(ctx:commands.Context):
     guild = ctx.guild
-    gid = guild.id
     vc = guild.voice_client
     if vc:
         print(f'{guild.name} : #切断')
+        await _bye(guild)
 
-        g_opts[gid].MA.loop = False
-        del g_opts[gid]
-        await vc.disconnect()
-        
+
+async def _bye(guild:discord.Guild):
+    gid = guild.id
+    vc = guild.voice_client
+
+    g_opts[gid].loop_5.cancel()
+    g_opts[gid].MA.kill()
+    del g_opts[gid]
+    try: await vc.disconnect()
+    except Exception: pass
   
   
-@client.event
-async def on_voice_state_update(member:discord.Member, befor:discord.VoiceState, after:discord.VoiceState):
-    # voice channelに誰もいなくなったことを確認
-    if not befor.channel:
-        return
-    if befor.channel != after.channel:
-        if vc := befor.channel.guild.voice_client:
-            if not befor.channel == vc.channel:
-                return
-            if mems := befor.channel.members:
-                for mem in mems:
-                    if not mem.bot:
-                        return
-                await bye(befor.channel)
+# @client.event
+# async def on_voice_state_update(member:discord.Member, befor:discord.VoiceState, after:discord.VoiceState):
+#     # voice channelに誰もいなくなったことを確認
+#     if not befor.channel:
+#         return
+#     if befor.channel != after.channel:
+#         if vc := befor.channel.guild.voice_client:
+#             if not befor.channel == vc.channel:
+#                 return
+#             if mems := befor.channel.members:
+#                 for mem in mems:
+#                     if not mem.bot:
+#                         return
+#                 await bye(befor.channel)
 
 
 
@@ -192,11 +283,7 @@ async def shutup(ctx:commands.Context):
 
 
 @client.command(aliases=['sp'])
-async def speaker(ctx:commands.Context, *args):
-    if args:
-        await ctx.send(file=discord.File('./pi_yo_6/template/_speakers.png'))
-        return
-
+async def speaker(ctx:commands.Context):
     sp_list = Speaker.speaker_list()
     hts_list = [os.path.split(_)[1].replace('.htsvoice','') for _ in glob.glob(f'{Config.OJ.Voice}*.htsvoice')]
     hts_dic = {}
@@ -209,7 +296,7 @@ async def speaker(ctx:commands.Context, *args):
     [sp_list.append(_) for _ in list(hts_dic.values())]
     
     sp_list = tabulate.tabulate(tabular_data=sp_list, tablefmt='github')
-    await ctx.send(content=f'```{sp_list}```')
+    await ctx.send(content=f'```{sp_list}```',file=discord.File('./pi_yo_6/template/_speakers.png'))
 
 
 @client.event
@@ -242,7 +329,7 @@ async def on_message(message:discord.Message):
 
 
 
-class DataInfo():
+class DataInfo:
     def __init__(self, guild:discord.Guild):
         self.guild = guild
         self.gn = guild.name
@@ -254,6 +341,30 @@ class DataInfo():
         self.VVox = VVox
         self.MA = MultiAudio(guild, client, self)
         self.Voice = ChatReader(self)
+        self.count_loop = 0
+        self.loop_5.start()
+
+
+    @tasks.loop(seconds=5.0)
+    async def loop_5(self):
+        mems = self.vc.channel.members
+        # 強制切断検知
+        if not client.user.id in [_.id for _ in mems]:
+            self.count_loop += 1
+            if 2 <= self.count_loop:
+                print(f'{self.gn} : #強制切断')
+                await _bye(self.guild)
+
+        # voice channelに誰もいなくなったことを確認
+        elif not False in [_.bot for _ in mems]:
+            self.count_loop += 1
+            if 2 <= self.count_loop:
+                print(f'{self.gn} : #誰もいなくなったため 切断')
+                await _bye(self.guild)
+
+        # Reset Count
+        else:
+            self.count_loop = 0
 
 
 client.run(Config.Token)
