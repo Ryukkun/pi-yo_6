@@ -2,10 +2,11 @@ import discord
 import os
 import re
 import shutil
-from discord.ext import commands, tasks
-from typing import Literal
+import asyncio
 import tabulate
 import glob
+from discord.ext import commands, tasks
+from typing import Literal
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_my_dir)
@@ -226,11 +227,14 @@ async def _bye(guild:discord.Guild):
     gid = guild.id
     vc = guild.voice_client
 
-    g_opts[gid].loop_5.cancel()
+    g_opts[gid].loop_5.stop()
     g_opts[gid].MA.kill()
     del g_opts[gid]
+    
+    await asyncio.sleep(0.1)
     try: await vc.disconnect()
     except Exception: pass
+
 
 
 #---------------------------------
