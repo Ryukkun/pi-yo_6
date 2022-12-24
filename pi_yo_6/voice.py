@@ -35,8 +35,8 @@ class ChatReader():
         if not message.content[0] in bot_prefix and self.vc:
 
             now_time = time.time()
-            source = f"{self.Config.OJ.Output}{self.gid}-{now_time}.wav"
-            self.Queue.append([source,0])
+            _id = f"{self.gid}{now_time}"
+            self.Queue.append([_id,0])
 
             # ボイス初期設定
             mess = message.content
@@ -53,13 +53,15 @@ class ChatReader():
                 mess = f'voice:{speaker_id} {mess}'
 
             # 音声ファイル ファイル作成
-            try: await self.creat_voice(mess ,str(self.gid),str(now_time))
+            try: source = await self.creat_voice(mess ,str(self.gid),str(now_time))
             except Exception as e:                                              # Error
                 print(f"Error : 音声ファイル作成に失敗 {e}")
-                self.Queue.remove([source,0])
+                self.Queue.remove([id,0])
+                return
 
             print(f'生成時間 : {time.time()-now_time}')
-            self.Queue = [[source,1] if i[0] == source else i for i in self.Queue]  # 音声ファイルが作成済みなのを記述
+            i = self.Queue.index([id,0])
+            self.Queue[i:i+1] = [[_,1] for _ in source]
 
             # 再生されるまでループ
             if not self.Vvc.is_playing():

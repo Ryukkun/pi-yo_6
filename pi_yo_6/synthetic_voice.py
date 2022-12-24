@@ -145,15 +145,10 @@ class GenerateVoice:
             FileNum += 1
         await asyncio.gather(*gather_wav)
 
-        with wave.open(self.Config.OJ.Output+guild_id+"-"+now_time+".wav", 'wb') as wav_out:
-            for Num in range(FileNum):
-                path = f"{self.Config.OJ.Output}{guild_id}-{now_time}-{str(Num)}.wav"
-                with wave.open(path, 'rb') as wav_in:
-                    if not wav_out.getnframes():
-                        wav_out.setparams(wav_in.getparams())
-                    wav_out.writeframes(wav_in.readframes(wav_in.getnframes()))
-                if os.path.isfile(path):
-                    os.remove(path)
+        path = []
+        for Num in range(FileNum):
+            path.append(f"{self.Config.OJ.Output}{guild_id}-{now_time}-{Num}.wav")
+        return path
 
 
     async def split_voice(self, Itext, FileNum, id_time):
