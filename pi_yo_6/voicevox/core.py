@@ -44,6 +44,8 @@ class CreateVOICEVOX:
         self.doing = 0
         self.PROCESS_LIMIT = 2
         self.TEXT_LIMIT = 100
+        # 未だに挙動がよくわかんない エラーログ無しで強制終了したら数値増やして
+        self.DELAY = 1.0
 
     async def create_voicevox(self, Itext, speaker_id, id):
         # 文字数上限
@@ -54,13 +56,13 @@ class CreateVOICEVOX:
         if self.loop == None:
             self.loop = asyncio.get_event_loop()
         id = (Itext,speaker_id,id)
-        if (time.perf_counter() - self.last) < 0.1 or self.doing >= self.PROCESS_LIMIT:
+        if (time.perf_counter() - self.last) < self.DELAY or self.doing >= self.PROCESS_LIMIT:
             self.queue.append(id)
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(self.DELAY)
             while self.queue[0] != id or self.doing >= self.PROCESS_LIMIT:
                 await asyncio.sleep(0.5)
             del self.queue[0]
-            self.last = time.perf_counter()
+        self.last = time.perf_counter()
 
         self.doing += 1
         data = None

@@ -132,7 +132,8 @@ class GenerateVoice:
         Itext = self.custam_text(Itext, self.Config.Admin_dic)                      # ユーザ登録した文字を読み替える
         Itext = self.custam_text(Itext, f'{self.Config.User_dic}{message.guild.id}.txt')
 
-        out_wav = gather_wav = []
+        out_wav = []
+        gather_wav = []
         for num, Itext in enumerate(re_text_status.finditer(Itext)):
             Itext = Itext.group()
             out = f'{self.Config.OJ.Output}{message.id}-{num}.wav'
