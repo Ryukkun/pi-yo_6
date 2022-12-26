@@ -31,15 +31,16 @@ class ChatReader():
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
     async def on_message(self, message:Message):
+        if not message.content:
+            return
         # コマンドではなく なおかつ Joinしている場合
         if not message.content[0] in bot_prefix and self.vc:
 
-            now_time = time.time()
-            _id = f"{self.gid}{now_time}"
-            self.Queue.append([_id,0])
+            now_time = time.perf_counter()
+            self.Queue.append([message.id, 0])
 
             # ボイス初期設定
-            mess = message.content
+            text = message.content
             uid = str(message.author.id)
             g_config = self.GC.Read()
             speaker_id = -1
@@ -50,17 +51,17 @@ class ChatReader():
             elif (speaker_id := g_config.get('server_voice',-1)) != -1:
                 pass
             if speaker_id != -1:
-                mess = f'voice:{speaker_id} {mess}'
+                text = f'voice:{speaker_id} {text}'
 
             # 音声ファイル ファイル作成
-            try: source = await self.creat_voice(mess ,str(self.gid),str(now_time))
+            try: source = await self.creat_voice(text, message)
             except Exception as e:                                              # Error
                 print(f"Error : 音声ファイル作成に失敗 {e}")
-                self.Queue.remove([_id,0])
+                self.Queue.remove([message.id, 0])
                 return
 
-            print(f'生成時間 : {time.time()-now_time}')
-            i = self.Queue.index([_id,0])
+            print(f'生成時間 : {time.perf_counter()-now_time}')
+            i = self.Queue.index([message.id, 0])
             self.Queue[i:i+1] = [[_,1] for _ in source]
 
             # 再生されるまでループ

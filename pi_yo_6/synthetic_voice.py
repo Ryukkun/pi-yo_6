@@ -2,13 +2,13 @@ import asyncio
 import alkana
 import re
 import os
-import wave
-import platform
+from discord import Message
+from platform import system
 
 from .romaji.to_kana import Romaji
 from .voicevox.speaker_id import get_speaker_id
 
-_os = platform.system().lower()
+_os = system().lower()
 if _os == 'windows':
     EFormat = 'shift_jis'
 else:
@@ -124,41 +124,36 @@ class GenerateVoice:
         return re.sub(r'(w|ｗ)','わら', Itext)
 
 
-    async def creat_voice(self, Itext:str, guild_id, now_time):
-
-        Itext = Itext.replace('\n',' ')                                       # コマンドは読み上げない
-        Itext = re_url.sub('ユーアールエルは省略するのです！ ',Itext)               # URL省略
+    async def creat_voice(self, Itext:str, message:Message):
+        Itext = Itext.replace('\n',' ')                                             # コマンドは読み上げない
+        Itext = re_url.sub('ユーアールエルは省略するのです！ ',Itext)                    # URL省略
         Itext = re_emoji.sub('',Itext)                                              # 絵文字IDは読み上げない
         Itext = re_mention.sub('メンションは省略するのです！ ',Itext)
         Itext = self.custam_text(Itext, self.Config.Admin_dic)                      # ユーザ登録した文字を読み替える
-        Itext = self.custam_text(Itext, self.Config.User_dic + guild_id + '.txt')
+        Itext = self.custam_text(Itext, f'{self.Config.User_dic}{message.guild.id}.txt')
 
+        out_wav = gather_wav = []
+        for num, Itext in enumerate(re_text_status.finditer(Itext)):
+            Itext = Itext.group()
+            out = f'{self.Config.OJ.Output}{message.id}-{num}.wav'
+            gather_wav.append(self.split_voice(Itext, out))
+            out_wav.append(out)
 
-        ItextTemp = re_text_status.finditer(Itext)
-        ItextTemp = [_.group() for _ in ItextTemp]
-
-
-        FileNum = 0
-        gather_wav = []
-        for Itext in ItextTemp:
-            gather_wav.append(self.split_voice(Itext, FileNum,f'{guild_id}-{now_time}'))
-            FileNum += 1
         await asyncio.gather(*gather_wav)
+        return out_wav
 
-        return [f"{self.Config.OJ.Output}{guild_id}-{now_time}-{_}.wav" for _ in range(FileNum)]
 
-
-    async def split_voice(self, Itext, FileNum, id_time):
+    async def split_voice(self, Itext, out_name):
         Itext, hts = self.costom_voice(Itext)                               #voice
         Itext, speed = self.costom_status(Itext, ['-r','1.2'], re_speed)    #speed
         Itext, a = self.costom_status(Itext, ['-a','auto'], re_a)           #AllPath
         Itext, tone = self.costom_status(Itext, ['-fm','auto'], re_tone)    #tone
         Itext, jf = self.costom_status(Itext, ['-jf','auto'], re_jf)        #jf
+        Itext = re.sub(r'^\s+', '', Itext)
 
         Itext = self.replace_english_kana(Itext)
         Itext = self.replace_w(Itext)
         #print(f"変換後 ({FileNum+1}) :") #{Itext}
-        FileName = self.Config.OJ.Output+id_time+"-"+str(FileNum)+".wav"
 
         if hts[0] == '-m':
             hts = ' '.join(hts)
@@ -167,7 +162,7 @@ class GenerateVoice:
                 dic = self.Config.OJ.Dic_shift_jis
             else:
                 dic = self.Config.OJ.Dic_utf_8
-            cmd=f'open_jtalk -x "{dic}" -ow "{FileName}" {hts} {speed} {tone} {jf} {a}'
+            cmd=f'open_jtalk -x "{dic}" -ow "{out_name}" {hts} {speed} {tone} {jf} {a}'
             
             prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
             await prog.communicate(input= Itext.encode(EFormat))
@@ -177,9 +172,5 @@ class GenerateVoice:
             if speaker_id == None: return
             elif not 0 <= speaker_id <= 38: return
             
-            await asyncio.sleep(int(FileNum))
-            wavefmt = await self.VVox.create_voicevox(Itext, speaker_id, FileName+str(FileNum))
-            with open(FileName, 'wb')as f:
-                f.write(wavefmt)
-                print(f'{FileNum+1} Fin')
-
+            with open(out_name, 'wb')as f:
+                f.write( await self.VVox.create_voicevox(Itext, speaker_id, out_name))
