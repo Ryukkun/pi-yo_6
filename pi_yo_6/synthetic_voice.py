@@ -30,7 +30,7 @@ re_text_status = re.compile(r'({0}|^)+.+?(?=\s({0})|$)'.format(_status)) # [(^|_
 class GenerateVoice:
     def __init__(self, config, VVox) -> None:
         try: 
-            from ..config import Config
+            from .template._config import Config
             from .voicevox.core import CreateVOICEVOX
             self.Config:Config
             self.VVox: CreateVOICEVOX

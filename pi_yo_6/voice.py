@@ -12,7 +12,7 @@ class ChatReader():
     def __init__(self, Info):
         try:
             from ..main import DataInfo
-            from ..config import Config
+            from .template._config import Config
             self.Info:DataInfo
             self.Config:Config
         except Exception: pass
