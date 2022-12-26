@@ -192,7 +192,7 @@ class VOICEVOX:
         return output
 
 
-    def decode_forward(self, ength: int, phoneme_size: int, f0, phoneme, speaker_id):
+    def decode_forward(self, length: int, phoneme_size: int, f0, phoneme, speaker_id):
         output = numpy.empty((length*256,), dtype=numpy.float32)
         success = self.lib.decode_forward(
             length, phoneme_size, f0, phoneme, speaker_id, output
