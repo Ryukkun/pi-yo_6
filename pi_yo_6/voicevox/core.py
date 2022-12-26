@@ -58,9 +58,8 @@ class CreateVOICEVOX:
         id = (Itext,speaker_id,id)
         if (time.perf_counter() - self.last) < self.DELAY or self.doing >= self.PROCESS_LIMIT:
             self.queue.append(id)
-            await asyncio.sleep(self.DELAY)
-            while self.queue[0] != id or self.doing >= self.PROCESS_LIMIT:
-                await asyncio.sleep(0.5)
+            while (time.perf_counter() - self.last) < self.DELAY or self.queue[0] != id or self.doing >= self.PROCESS_LIMIT:
+                await asyncio.sleep(self.DELAY)
             del self.queue[0]
         self.last = time.perf_counter()
 
