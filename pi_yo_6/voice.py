@@ -56,11 +56,11 @@ class ChatReader():
             try: source = await self.creat_voice(mess ,str(self.gid),str(now_time))
             except Exception as e:                                              # Error
                 print(f"Error : 音声ファイル作成に失敗 {e}")
-                self.Queue.remove([id,0])
+                self.Queue.remove([_id,0])
                 return
 
             print(f'生成時間 : {time.time()-now_time}')
-            i = self.Queue.index([id,0])
+            i = self.Queue.index([_id,0])
             self.Queue[i:i+1] = [[_,1] for _ in source]
 
             # 再生されるまでループ
