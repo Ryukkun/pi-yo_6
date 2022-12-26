@@ -25,7 +25,7 @@ re_voice = re.compile(r'(^|\s)voice:([\w.]*)(\s|$)')
 re_romaji_unit = re.compile(r'(^|[^a-zA-Z])([a-zA-Z\-]+)($|[^a-zA-Z])')
 re_not_romaji = re.compile(r'[^a-zA-Z\-]')
 _status = 'voice:\w*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|jf:\S*\s'
-re_text_status = re.compile(r'(^|{0})+.+?(?=\s({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
+re_text_status = re.compile(r'({0}|^)+.+?(?=\s({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
 class GenerateVoice:
     def __init__(self, config, VVox) -> None:
