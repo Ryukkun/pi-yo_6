@@ -24,7 +24,7 @@ class MultiAudio:
         self.vc = guild.voice_client
         self.CLoop = client.loop
         self.Parent = parent
-        self.Players:list['_APlayer'] = []
+        self.Players:list['_AudioTrack'] = []
         self.PLen = 0
         self.vc.encoder = opus.Encoder()
         self.vc.encoder.set_expected_packet_loss_percent(0.0)
@@ -38,8 +38,8 @@ class MultiAudio:
             P._read_bytes(False)
 
 
-    def add_player(self ,RNum=0 ,opus=False) -> '_APlayer':
-        player = _APlayer(RNum ,opus=opus ,parent=self)
+    def add_player(self ,RNum=0 ,opus=False) -> '_AudioTrack':
+        player = _AudioTrack(RNum ,opus=opus ,parent=self)
         self.Players.append(player)
         self.P1_read_bytes = player.read_bytes
         self.PLen = len(self.Players)
@@ -112,7 +112,7 @@ class MultiAudio:
 
             
 
-class _APlayer:
+class _AudioTrack:
     def __init__(self ,RNum ,opus ,parent:'MultiAudio'):
         self.AudioSource = None
         self._SAD = None

@@ -12,20 +12,17 @@ class ChatReader():
     def __init__(self, Info):
         try:
             from ..main import DataInfo
-            from .template._config import Config
             self.Info:DataInfo
-            self.Config:Config
         except Exception: pass
         self.Info = Info
         self.MA = self.Info.MA
-        self.Vvc = self.Info.MA.add_player(RNum=-1 ,opus=False)
+        self.Vvc = self.MA.add_player(opus=False)
         self.guild = self.Info.guild
         self.gid = self.Info.gid
-        self.gn = self.Info.gn
         self.vc = self.guild.voice_client
         self.Queue = []
-        self.Config = Info.Config
-        self.CLoop = Info.loop
+        self.Config = self.Info.Config
+        self.CLoop = self.Info.loop
         self.GC = GC(self.Config.Guild_Config, self.gid)
         self.UC = UC(self.Config.User_Config)
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
@@ -86,7 +83,7 @@ class ChatReader():
         if self.Queue[0][1] == 1:                   # 再生
             source = self.Queue[0][0]
             self.Queue[0][1] = 2
-            print(f"Play  <{self.gn}>")
+            print(f"Play  <{self.guild.name}>")
 
             await self.Vvc.play(SAD(source).Url_Only(),lambda : self.CLoop.create_task(self.play_loop()))
             return

@@ -21,6 +21,7 @@ from pi_yo_6.load_config import GC, UC
 from pi_yo_6.voice_client import MultiAudio
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.voicevox.core import CreateVOICEVOX
+from pi_yo_6.embeds import EmBase
 import pi_yo_6.voicevox.speaker_id as Speaker
 
 try:shutil.rmtree(Config.OJ.Output)
@@ -41,13 +42,12 @@ intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts:dict[int, 'DataInfo'] = {}
 VVox = CreateVOICEVOX(Config, use_gpu=False)
-no_perm_embed = embed = discord.Embed(title=f'権限がありません 🥲', colour=0xe1bd5b)
 
 
 
 async def not_perm(ctx:discord.Interaction, com_name, com_bool, GConfig):
     if not ctx.permissions.administrator and GConfig['admin_only'].setdefault(com_name,com_bool):
-        await ctx.response.send_message(embed=no_perm_embed, ephemeral= True)
+        await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral= True)
         return GConfig
 
 
@@ -70,7 +70,7 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
         GConfig['auto_join'] = False
 
     _GC.Write(GConfig)
-    embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=0xe1bd5b)
+    embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=EmBase.main_color())
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
 
@@ -83,7 +83,7 @@ async def admin_only(ctx: discord.Interaction, command:Literal['auto_join','my_v
     GConfig = _GC.Read()
 
     if not ctx.permissions.administrator:
-        await ctx.response.send_message(embed=no_perm_embed, ephemeral= True)
+        await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral= True)
         return
     if action == 'True':
         GConfig['admin_only'][command] = True
@@ -91,7 +91,7 @@ async def admin_only(ctx: discord.Interaction, command:Literal['auto_join','my_v
         GConfig['admin_only'][command] = False
 
     _GC.Write(GConfig)
-    embed = discord.Embed(title='権限状況', colour=0xe1bd5b)
+    embed = discord.Embed(title='権限状況', colour=EmBase.main_color())
     for k, v in GConfig['admin_only'].items():
         embed.add_field(name=k,value=str(v),inline=True)
     await ctx.response.send_message(embed=embed, ephemeral= True)
@@ -112,7 +112,8 @@ async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
         return
 
     if type(_voice) != int: 
-        embed = discord.Embed(title=f'失敗 🤯', colour=0xe1bd5b)
+        await ctx.response.send_message(embed=EmBase.failed(), ephemeral= True)
+        return
 
     else:
         uid = ctx.user.id
@@ -127,10 +128,10 @@ async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
             _UC.Write(uid, UConfig)
 
         if _voice == -1: _voice = 'N/A'
-        embed = discord.Embed(title=f'反映完了', colour=0xe1bd5b)
+        embed = discord.Embed(title=f'反映完了', colour=EmBase.main_color())
         embed.add_field(name='Speaker_Id',value=str(_voice))
         embed.add_field(name='このサーバーにだけ反映',value=str(only))
-    await ctx.response.send_message(embed=embed, ephemeral= True)
+        await ctx.response.send_message(embed=embed, ephemeral= True)
 
 
 
@@ -147,14 +148,15 @@ async def another_voice(ctx: discord.Interaction,user:discord.User, voice:str='-
         return
 
     if type(_voice) != int: 
-        embed = discord.Embed(title=f'失敗 🤯', colour=0xe1bd5b)
-
+        await ctx.response.send_message(embed=EmBase.failed(), ephemeral= True)
+        return
+        
     else:
         GConfig['voice'][str(user.id)] = _voice
         _GC.Write(GConfig)
 
         if _voice == -1: _voice = 'N/A'
-        embed = discord.Embed(title=f'反映完了({user.name})', colour=0xe1bd5b)
+        embed = discord.Embed(title=f'反映完了({user.name})', colour=EmBase.main_color())
         embed.add_field(name='Speaker_Id',value=str(_voice))
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
@@ -173,14 +175,15 @@ async def server_voice(ctx: discord.Interaction, voice:str='-1'):
         return
 
     if type(_voice) != int: 
-        embed = discord.Embed(title=f'失敗 🤯', colour=0xe1bd5b)
-    
+        await ctx.response.send_message(embed=EmBase.failed(), ephemeral= True)
+        return
+
     else:
         GConfig['server_voice'] = _voice
         _GC.Write(GConfig)
 
         if _voice == -1: _voice = 'N/A'
-        embed = discord.Embed(title=f'反映完了', colour=0xe1bd5b)
+        embed = discord.Embed(title=f'反映完了', colour=EmBase.main_color())
         embed.add_field(name='Speaker_Id',value=str(_voice))
     await ctx.response.send_message(embed=embed, ephemeral= True)
 
