@@ -200,6 +200,8 @@ async def on_ready():
     print(client.user.id)
     print('----------------')
     await tree.sync()
+    activity = discord.Activity(name='華麗なる美声', type=discord.ActivityType.listening)
+    await client.change_presence(activity=activity)
     
 
 
