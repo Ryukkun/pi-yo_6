@@ -29,8 +29,6 @@ import os
 import numpy
 import time
 import asyncio
-try: from ...config import Config as Con
-except Exception: pass
 
 
 # 何故かバグるからタイミング調整なのだ
@@ -73,7 +71,9 @@ class CreateVOICEVOX:
 
 class VOICEVOX:
     def __init__(self,_Config, use_gpu: bool, cpu_num_threads=0, load_all_models=True):
-        try: self.Config:Con
+        try: 
+            from ..template._config import Config as Con
+            self.Config:Con
         except Exception: pass
         self.Config = _Config
 
@@ -88,7 +88,7 @@ class VOICEVOX:
         if get_os == "Windows":
             lib_file = self.Config.VVOX.core_windows
         elif get_os == "Darwin":
-            lib_file = "libcore.dylib"  # だれこれ
+            lib_file = self.Config.VVOX.core_darwin
         elif get_os == "Linux":
             lib_file = self.Config.VVOX.core_linux
 

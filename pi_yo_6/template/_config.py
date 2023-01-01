@@ -8,8 +8,9 @@ class Open_Jtalk:
 class VOICEVOX:
     # https://github.com/VOICEVOX/voicevox_core/releases
     # onnxruntime https://github.com/microsoft/onnxruntime/releases
-    core_windows = './pi_yo_6/voicevox/voicevox_core-windows-x64-cpu/core.dll'
-    core_linux = './pi_yo_6/voicevox/voicevox_core-linux-x64-cpu/libcore.so'
+    core_windows = './pi_yo_6/voicevox/voicevox_core-windows/core.dll'
+    core_linux = './pi_yo_6/voicevox/voicevox_core-linux/libcore.so'
+    core_darwin = './pi_yo_6/voicevox/voicevox_core-darwin/libcore.dylib'
 
 class Config:
     Prefix = '.'
