@@ -15,6 +15,7 @@ class CreateView(ui.View):
         self.add_item(self.select)
         self.add_item(self.select2)
         self.add_item(CreateButton(g_opts, self))
+        self.add_item(CreateButton2())
 
 
 
@@ -92,3 +93,14 @@ class CreateButton(ui.Button):
             # 再生されるまでループ
             if not Voice.Vvc.is_playing():
                 await Voice.play_loop()
+
+
+
+
+class CreateButton2(ui.Button):
+    def __init__(self) -> None:
+        super().__init__(label='Delete', style=ButtonStyle.red, row=2)
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.message.delete()

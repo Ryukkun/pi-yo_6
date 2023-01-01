@@ -45,8 +45,8 @@ g_opts:dict[int, 'DataInfo'] = {}
 
 try:
     VVox:Optional[CreateVOICEVOX] = CreateVOICEVOX(Config, use_gpu=False)
-except Exception:
-    print('VoiceVoxの読み込みに失敗しました。')
+except Exception as e:
+    print(f'\033[31m Error \033[35mpi-yo6 \033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
     VVox = None
 
 
@@ -301,23 +301,27 @@ async def speaker(ctx:commands.Context, *args):
 
 
 
-@client.command(name='list')
-async def _list(ctx:commands.Context):
+@client.command(aliases=['vl'])
+async def voice_list(ctx:commands.Context):
     _GC = GC(Config.Guild_Config, ctx.guild.id)
     g_config = _GC.Read()
 
-    g_config = g_config['voice']
+    g_voice = g_config['voice']
     res = ''
-    for k, v in g_config.items():
-        k = ctx.guild.get_member(int(k)).name
-        res += f'{k} : {v}\n'
+    for k, v in g_voice.items():
+        if v == -1: continue
+        if k := await ctx.guild.fetch_member(int(k)):
+            res += f'{k.name} : {v}\n'
     res = res.removesuffix('\n')
     if not res: res = 'N/A'
-    embed = discord.Embed()
+    embed = discord.Embed(colour=EmBase.main_color())
     embed.add_field(name='みんなのボイス', value=f'```{res}```')
 
+    res = g_config.get('server_voice', -1)
+    if res == -1:
+        res = 'N/A'
 
-
+    embed.add_field(name='サーバーボイス', value=res)
     await ctx.send(embed=embed, view=CreateView(g_opts=g_opts))
 
 
