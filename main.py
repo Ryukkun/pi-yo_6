@@ -307,8 +307,7 @@ async def voice_list(ctx:commands.Context):
     g_config = _GC.Read()
 
     g_voice = g_config['voice']
-    res = ''
-    res2 = ''
+    res = res2 = ''
     for k, v in g_voice.items():
         if v == -1: continue
         if k := await ctx.guild.fetch_member(int(k)):
@@ -321,7 +320,8 @@ async def voice_list(ctx:commands.Context):
     embed = discord.Embed(colour=EmBase.main_color())
     embed.add_field(name='みんなのボイス', value=f'```{res}```')
     if res2:
-        embed.add_field(name="'", value=f'```{res2}```')
+        # なんで\n必要なん？？？
+        embed.add_field(name="'", value=f'```\n{res2}```')
 
     res = g_config.get('server_voice', -1)
     if res == -1:
