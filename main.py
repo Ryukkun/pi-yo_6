@@ -294,6 +294,22 @@ async def speaker(ctx:commands.Context, *args):
         await ctx.send(file=discord.File('./pi_yo_6/template/_speakers.png'))
 
 
+
+@client.command(aliases=['vl'])
+async def voice_list(ctx:commands.Context):
+    _GC = GC(Config.Guild_Config, ctx.guild.id)
+    g_config = _GC.Read()
+
+    g_config = g_config['voice']
+    res = ''
+    for k, v in g_config.items():
+        k = client.get_user(int(k)).name
+        res += f'{k} : {v}\n'
+    res = res.removesuffix('\n')
+
+
+
+
 @client.event
 async def on_message(message:discord.Message):
     guild = message.guild

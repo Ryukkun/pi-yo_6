@@ -27,6 +27,7 @@ class ChatReader():
         self.UC = UC(self.Config.User_Config)
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
+
     async def on_message(self, message:Message):
         if not message.content:
             return
@@ -64,6 +65,7 @@ class ChatReader():
             # 再生されるまでループ
             if not self.Vvc.is_playing():
                 await self.play_loop()
+
 
 
 
