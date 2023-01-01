@@ -307,7 +307,8 @@ async def voice_list(ctx:commands.Context):
     g_config = _GC.Read()
 
     g_voice = g_config['voice']
-    res = res2 = ''
+    res = ''
+    res2 = ''
     for k, v in g_voice.items():
         if v == -1: continue
         if k := await ctx.guild.fetch_member(int(k)):
