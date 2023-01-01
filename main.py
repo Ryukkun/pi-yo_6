@@ -6,7 +6,7 @@ import asyncio
 import tabulate
 import glob
 from discord.ext import commands, tasks
-from typing import Literal
+from typing import Literal, Optional
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_my_dir)
@@ -22,6 +22,7 @@ from pi_yo_6.voice_client import MultiAudio
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.voicevox.core import CreateVOICEVOX
 from pi_yo_6.embeds import EmBase
+from pi_yo_6.view import CreateView
 import pi_yo_6.voicevox.speaker_id as Speaker
 
 try:shutil.rmtree(Config.OJ.Output)
@@ -41,7 +42,12 @@ intents.message_content = True
 intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts:dict[int, 'DataInfo'] = {}
-VVox = CreateVOICEVOX(Config, use_gpu=False)
+
+try:
+    VVox:Optional[CreateVOICEVOX] = CreateVOICEVOX(Config, use_gpu=False)
+except Exception:
+    print('VoiceVoxの読み込みに失敗しました。')
+    VVox = None
 
 
 
@@ -303,9 +309,16 @@ async def voice_list(ctx:commands.Context):
     g_config = g_config['voice']
     res = ''
     for k, v in g_config.items():
-        k = client.get_user(int(k)).name
+        k = ctx.guild.get_member(int(k)).name
         res += f'{k} : {v}\n'
     res = res.removesuffix('\n')
+    if not res: res = 'N/A'
+    embed = discord.Embed()
+    embed.add_field(name='みんなのボイス', value=f'```{res}```')
+
+
+
+    await ctx.send(embed=embed, view=CreateView(g_opts=g_opts))
 
 
 
