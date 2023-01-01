@@ -301,8 +301,8 @@ async def speaker(ctx:commands.Context, *args):
 
 
 
-@client.command(aliases=['vl'])
-async def voice_list(ctx:commands.Context):
+@client.command(name='list')
+async def _list(ctx:commands.Context):
     _GC = GC(Config.Guild_Config, ctx.guild.id)
     g_config = _GC.Read()
 

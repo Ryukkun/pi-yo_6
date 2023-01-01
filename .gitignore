@@ -6,7 +6,8 @@ Voice
 config.py
 guild_config
 test
-voicevox_core-linux-x64-cpu
-voicevox_core-windows-x64-cpu
+voicevox_core-linux
+voicevox_core-windows
+voicevox_core-darwin
 user_config
 Output
