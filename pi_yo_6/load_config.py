@@ -1,9 +1,11 @@
 import json
 from os import path
 
+from config import Config
+
 class GC:
-    def __init__(self, GConfig, gid) -> None:
-        self.GConfig = GConfig
+    def __init__(self, gid) -> None:
+        self.GConfig = Config.Guild_Config
         self.gid = gid
         self.GC_Path = f'{self.GConfig}{self.gid}.json'
         if not path.isfile(self.GC_Path):

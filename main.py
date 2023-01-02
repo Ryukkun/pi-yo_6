@@ -22,7 +22,7 @@ from pi_yo_6.voice_client import MultiAudio
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.voicevox.core import CreateVOICEVOX
 from pi_yo_6.embeds import EmBase
-from pi_yo_6.view import CreateView
+import pi_yo_6.voice_list as VoiceList
 import pi_yo_6.voicevox.speaker_id as Speaker
 
 try:shutil.rmtree(Config.OJ.Output)
@@ -64,7 +64,7 @@ group = discord.app_commands.Group(name="pi-yo6",description="ぴーよ6号設�
 @discord.app_commands.describe(action='初期 : False')
 async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
     gid = ctx.guild_id
-    _GC = GC(Config.Guild_Config, gid)
+    _GC = GC(gid)
     GConfig = _GC.Read()
 
     if _ := await not_perm(ctx, 'auto_join', True, GConfig):
@@ -85,7 +85,7 @@ async def auto_join(ctx: discord.Interaction, action: Literal['True','False']):
 @discord.app_commands.describe(action='初期 : True')
 async def admin_only(ctx: discord.Interaction, command:Literal['auto_join','my_voice','server_voice','another_voice'], action: Literal['True','False']):
     gid = ctx.guild_id
-    _GC = GC(Config.Guild_Config, gid)
+    _GC = GC(gid)
     GConfig = _GC.Read()
 
     if not ctx.permissions.administrator:
@@ -110,7 +110,7 @@ async def admin_only(ctx: discord.Interaction, command:Literal['auto_join','my_v
 async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
     gid = ctx.guild_id
     _voice = Speaker.get_speaker_id(voice)
-    _GC = GC(Config.Guild_Config, gid)
+    _GC = GC(gid)
     GConfig = _GC.Read()
 
     if _ := await not_perm(ctx, 'my_voice', False, GConfig):
@@ -146,7 +146,7 @@ async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
 async def another_voice(ctx: discord.Interaction,user:discord.User, voice:str='-1'):
     gid = ctx.guild_id
     _voice = Speaker.get_speaker_id(voice)
-    _GC = GC(Config.Guild_Config, gid)
+    _GC = GC(gid)
     GConfig = _GC.Read()
 
     if _ := await not_perm(ctx, 'another_voice', True, GConfig):
@@ -173,7 +173,7 @@ async def another_voice(ctx: discord.Interaction,user:discord.User, voice:str='-
 async def server_voice(ctx: discord.Interaction, voice:str='-1'):
     gid = ctx.guild_id
     _voice = Speaker.get_speaker_id(voice)
-    _GC = GC(Config.Guild_Config, gid)
+    _GC = GC(gid)
     GConfig = _GC.Read()
 
     if _ := await not_perm(ctx, 'server_voice', True, GConfig):
@@ -221,7 +221,7 @@ async def join(ctx:commands.Context):
         g_opts[gid] = DataInfo(ctx.guild)
         Dic_Path = f'{Config.User_dic}{gid}.txt'
         with open(Dic_Path,'w'): pass
-        GC(Config.Guild_Config,gid)
+        GC(gid)
         return True
 
 
@@ -303,32 +303,7 @@ async def speaker(ctx:commands.Context, *args):
 
 @client.command(aliases=['vl'])
 async def voice_list(ctx:commands.Context):
-    _GC = GC(Config.Guild_Config, ctx.guild.id)
-    g_config = _GC.Read()
-
-    g_voice = g_config['voice']
-    res = res2 = ''
-    for k, v in g_voice.items():
-        if v == -1: continue
-        if k := await ctx.guild.fetch_member(int(k)):
-            res += f'{k.name}\n'
-            res2 += f'{v}\n'
-    res = res.removesuffix('\n')
-    res2 = res2.removesuffix('\n')
-    if not res:
-        res = 'N/A'
-    embed = discord.Embed(colour=EmBase.main_color())
-    embed.add_field(name='みんなのボイス', value=f'```{res}```')
-    if res2:
-        # なんで\n必要なん？？？
-        embed.add_field(name="'", value=f'```\n{res2}```')
-
-    res = g_config.get('server_voice', -1)
-    if res == -1:
-        res = 'N/A'
-
-    embed.add_field(name='サーバーボイス', value=res, inline=False)
-    await ctx.send(embed=embed, view=CreateView(g_opts=g_opts))
+    await ctx.send(embed=await VoiceList.embed(ctx.guild), view=VoiceList.CreateView(g_opts=g_opts))
 
 
 
@@ -347,7 +322,7 @@ async def on_message(message:discord.Message):
     print(f'.\n#message.server  : {guild.name} ({message.channel.name})')
     print( message.author.name +" (",message.author.display_name,') : '+ message.content)
 
-    _GC = GC(Config.Guild_Config, gid).Read()
+    _GC = GC(gid).Read()
     if voice and _GC['auto_join']:
         if voice.channel and not guild.voice_client:
             if voice.mute or voice.self_mute:

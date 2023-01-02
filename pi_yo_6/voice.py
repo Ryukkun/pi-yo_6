@@ -23,7 +23,7 @@ class ChatReader():
         self.Queue = []
         self.Config = self.Info.Config
         self.CLoop = self.Info.loop
-        self.GC = GC(self.Config.Guild_Config, self.gid)
+        self.GC = GC(self.gid)
         self.UC = UC(self.Config.User_Config)
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
