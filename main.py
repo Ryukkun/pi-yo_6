@@ -128,10 +128,9 @@ async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
             _GC.Write(GConfig)
 
         else:
-            _UC = UC(Config.User_Config)
-            UConfig = _UC.Read(uid)
+            UConfig = UC.Read(uid)
             UConfig['voice'] = _voice
-            _UC.Write(uid, UConfig)
+            UC.Write(uid, UConfig)
 
         if _voice == -1: _voice = 'N/A'
         embed = discord.Embed(title=f'反映完了', colour=EmBase.main_color())

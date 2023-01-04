@@ -34,11 +34,9 @@ class GC:
 
 
 class UC:
-    def __init__(self, uconfig) -> None:
-        self.uconfig = uconfig
-
+    @classmethod
     def Read(self, uid):
-        _path = f'{self.uconfig}{uid}.json'
+        _path = f'{Config.User_Config}{uid}.json'
         if not path.isfile(_path):
             GC = {
                 'voice':-1
@@ -51,7 +49,8 @@ class UC:
         self.Write(uid, GC)
         return GC
 
+    @classmethod
     def Write(self, uid, GC):
-        _path = f'{self.uconfig}{uid}.json'
+        _path = f'{Config.User_Config}{uid}.json'
         with open(_path,'w') as f:
             json.dump(GC, f, indent=2)

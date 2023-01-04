@@ -24,7 +24,6 @@ class ChatReader():
         self.Config = self.Info.Config
         self.CLoop = self.Info.loop
         self.GC = GC(self.gid)
-        self.UC = UC(self.Config.User_Config)
         self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
 
 
@@ -44,7 +43,7 @@ class ChatReader():
             speaker_id = -1
             if (speaker_id := g_config['voice'].get(uid,-1)) != -1:
                 pass
-            elif (speaker_id := self.UC.Read(uid)['voice']) != -1:
+            elif (speaker_id := UC.Read(uid)['voice']) != -1:
                 pass
             elif (speaker_id := g_config.get('server_voice',-1)) != -1:
                 pass
