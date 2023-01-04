@@ -1,7 +1,6 @@
 import asyncio
 from discord import ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
 
-from .voicevox.speaker_id import speaker_list, speaker_id
 from .load_config import GC
 from .embeds import EmBase
 
@@ -37,11 +36,12 @@ async def embed(guild:Guild):
 
 # Button
 class CreateView(ui.View):
-    def __init__(self, g_opts, voice='ずんだもん'):
+    def __init__(self, g_opts, VVox, voice='ずんだもん'):
         super().__init__(timeout=None)
+        self.VVox = VVox
         self.g_opts = g_opts
         self.select = CreateSelect(voice, self)
-        self.select2 = CreateSelect2(voice)
+        self.select2 = CreateSelect2(voice, self)
         self.add_item(self.select)
         self.add_item(self.select2)
         self.add_item(CreateButtonPlay(self))
@@ -57,7 +57,7 @@ class CreateView(ui.View):
 class CreateSelect(ui.Select):
     def __init__(self, voice, parent:'CreateView') -> None:
         self.parent = parent
-        sp_list = speaker_list()
+        sp_list = parent.VVox.name_list()
         select_opt = []
         for sp in sp_list:
             if sp[0] == voice:
@@ -75,8 +75,8 @@ class CreateSelect(ui.Select):
 
 
 class CreateSelect2(ui.Select):
-    def __init__(self, voice) -> None:
-        for _ in speaker_id:
+    def __init__(self, voice, parent:'CreateView') -> None:
+        for _ in parent.VVox.metas:
             if _['name'] == voice:
                 styles = _['styles']
                 break

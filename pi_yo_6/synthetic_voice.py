@@ -6,7 +6,6 @@ from discord import Message
 from platform import system
 
 from .romaji.to_kana import Romaji
-from .voicevox.speaker_id import get_speaker_id
 
 _os = system().lower()
 if _os == 'windows':
@@ -169,7 +168,7 @@ class GenerateVoice:
             await prog.communicate(input= Itext.encode(EFormat))
 
         else:
-            speaker_id = get_speaker_id(hts[1])
+            speaker_id = self.VVox.to_speaker_id(hts[1])
             if speaker_id == None: return
             elif not 0 <= speaker_id <= 38: return
             

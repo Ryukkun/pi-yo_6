@@ -29,15 +29,28 @@ import os
 import numpy
 import time
 import asyncio
+import json
+import requests
 
 
 # 何故かバグるからタイミング調整なのだ
 # その他上限設定
 class CreateVOICEVOX:
     def __init__(self, _Config, use_gpu: bool, cpu_num_threads=0, load_all_models=True) -> None:
+        
+        # Load VoiceVox
+        print('Loading VoiceVox ....')
+        self.VVox = VOICEVOX(_Config, use_gpu, cpu_num_threads, load_all_models)
+        self.metas = json.loads(self.VVox.metas())
+        res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest')
+        res = res.json()
+        print(f'Loaded VoiceVox!! - Ver.{self.metas[0]["version"]}')
+        if self.metas[0]["version"] != res['tag_name']:
+            print(f'最新バージョンは {res["tag_name"]} です')
+
+
         self.queue = []
         self.last = time.perf_counter()
-        self.VVox = VOICEVOX(_Config, use_gpu, cpu_num_threads, load_all_models)
         self.loop = None
         self.doing = 0
         self.PROCESS_LIMIT = 2
@@ -45,12 +58,13 @@ class CreateVOICEVOX:
         # 未だに挙動がよくわかんない エラーログ無しで強制終了したら数値増やして
         self.DELAY = 1.0
 
+
     async def create_voicevox(self, Itext, speaker_id, id):
         # 文字数上限
         if len(Itext) > self.TEXT_LIMIT:
-            Itext = Itext [:self.TEXT_LIMIT]
+            Itext = Itext[:self.TEXT_LIMIT]
 
-        # タイミング調節 0.1秒以上のdelay
+        # タイミング調節
         if self.loop == None:
             self.loop = asyncio.get_event_loop()
         id = (Itext,speaker_id,id)
@@ -67,6 +81,41 @@ class CreateVOICEVOX:
         except Exception: pass
         self.doing -= 1
         return data
+
+
+    def name_list(self):
+        res = []
+        for name_dic in self.metas:
+            name = name_dic['name']
+            _res = [name]
+            for style_dic in name_dic['styles']:
+                style = style_dic['name']
+                id = style_dic['id']
+                _res.append(f'{style}[{id}]')
+            res.append(_res)
+
+        return res
+
+
+    def to_speaker_id(self, hts):
+        try: hts = int(hts)
+        except Exception: pass
+        else: return hts
+        
+        res = None
+        if len(hts) <= 1:
+            return
+        for meta in self.metas:
+            if hts in meta['name']:
+                styles = meta['styles']
+                for style in styles:
+                    if hts in style['name']:
+                        res = style['id']
+                if type(res) != int:
+                    res = styles[0]['id']
+                break
+        return res
+
 
 
 class VOICEVOX:

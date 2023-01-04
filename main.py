@@ -23,7 +23,6 @@ from pi_yo_6.voice import ChatReader
 from pi_yo_6.voicevox.core import CreateVOICEVOX
 from pi_yo_6.embeds import EmBase
 import pi_yo_6.voice_list as VoiceList
-import pi_yo_6.voicevox.speaker_id as Speaker
 
 try:shutil.rmtree(Config.OJ.Output)
 except Exception:pass
@@ -44,7 +43,7 @@ client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts:dict[int, 'DataInfo'] = {}
 
 try:
-    VVox:Optional[CreateVOICEVOX] = CreateVOICEVOX(Config, use_gpu=False)
+    VVox:Optional[CreateVOICEVOX] = CreateVOICEVOX(Config, use_gpu=Config.VVOX.use_gpu)
 except Exception as e:
     print(f'\033[31m Error \033[35mpi-yo6 \033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
     VVox = None
@@ -109,7 +108,7 @@ async def admin_only(ctx: discord.Interaction, command:Literal['auto_join','my_v
 @discord.app_commands.choices(only=[discord.app_commands.Choice(name='このサーバーにだけ反映',value='True'),discord.app_commands.Choice(name='他のサーバーでも反映',value='False')])
 async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
     gid = ctx.guild_id
-    _voice = Speaker.get_speaker_id(voice)
+    _voice = VVox.to_speaker_id(voice)
     _GC = GC(gid)
     GConfig = _GC.Read()
 
@@ -144,7 +143,7 @@ async def my_voice(ctx: discord.Interaction, only:str, voice:str='-1'):
 @discord.app_commands.describe(voice='ボイス設定　・　未入力 >> 初期設定　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
 async def another_voice(ctx: discord.Interaction,user:discord.User, voice:str='-1'):
     gid = ctx.guild_id
-    _voice = Speaker.get_speaker_id(voice)
+    _voice = VVox.to_speaker_id(voice)
     _GC = GC(gid)
     GConfig = _GC.Read()
 
@@ -171,7 +170,7 @@ async def another_voice(ctx: discord.Interaction,user:discord.User, voice:str='-
 @discord.app_commands.describe(voice='ボイス設定　・　未入力 >> 初期設定　・　例 >> "ずんだもん_ささやき"、"25"、"四国"')
 async def server_voice(ctx: discord.Interaction, voice:str='-1'):
     gid = ctx.guild_id
-    _voice = Speaker.get_speaker_id(voice)
+    _voice = VVox.to_speaker_id(voice)
     _GC = GC(gid)
     GConfig = _GC.Read()
 
@@ -281,7 +280,7 @@ async def shutup(ctx:commands.Context):
 @client.command(aliases=['sp'])
 async def speaker(ctx:commands.Context, *args):
     if args:
-        sp_list = Speaker.speaker_list()
+        sp_list = VVox.name_list()
         hts_list = [os.path.split(_)[1].replace('.htsvoice','') for _ in glob.glob(f'{Config.OJ.Voice}*.htsvoice')]
         hts_dic = {}
         for hts in hts_list:
