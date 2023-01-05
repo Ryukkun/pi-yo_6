@@ -110,8 +110,6 @@ class CreateVOICEVOX:
             return
         
         res = None
-        if len(hts) <= 1:
-            return
         for meta in self.metas:
             if hts in meta['name']:
                 styles = meta['styles']
