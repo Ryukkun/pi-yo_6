@@ -45,7 +45,9 @@ class CreateVOICEVOX:
         res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest')
         res = res.json()
         print(f'Loaded VoiceVox!! - Ver.{self.metas[0]["version"]}')
-        if self.metas[0]["version"] != res['tag_name']:
+        if self.metas[0]["version"] == res['tag_name']:
+            print(f'最新バージョンです')
+        else:
             print(f'最新バージョンは {res["tag_name"]} です')
 
 

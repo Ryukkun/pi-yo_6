@@ -301,7 +301,7 @@ async def speaker(ctx:commands.Context, *args):
 
 @client.command(aliases=['vl'])
 async def voice_list(ctx:commands.Context):
-    await ctx.send(embed=await VoiceList.embed(ctx.guild), view=VoiceList.CreateView(g_opts=g_opts))
+    await ctx.send(embed=await VoiceList.embed(ctx.guild), view=VoiceList.CreateView(g_opts=g_opts, VVox=VVox))
 
 
 

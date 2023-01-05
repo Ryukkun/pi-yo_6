@@ -70,7 +70,7 @@ class CreateSelect(ui.Select):
     async def callback(self, interaction: Interaction):
         loop = asyncio.get_event_loop()
         loop.create_task(interaction.response.defer())
-        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, voice=self.values[0]))
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, VVox=self.parent.VVox, voice=self.values[0]))
 
 
 
