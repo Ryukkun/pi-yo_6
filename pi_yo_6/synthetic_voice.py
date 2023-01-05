@@ -168,9 +168,8 @@ class GenerateVoice:
             await prog.communicate(input= Itext.encode(EFormat))
 
         else:
-            speaker_id = self.VVox.to_speaker_id(hts[1])
-            if speaker_id == None: return
-            elif not 0 <= speaker_id <= 38: return
+            if (speaker_id := self.VVox.to_speaker_id(hts[1])) == None:
+                return
             
             with open(out_name, 'wb')as f:
                 f.write( await self.VVox.create_voicevox(Itext, speaker_id, out_name))

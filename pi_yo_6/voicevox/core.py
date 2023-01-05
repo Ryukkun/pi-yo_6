@@ -102,7 +102,12 @@ class CreateVOICEVOX:
     def to_speaker_id(self, hts):
         try: hts = int(hts)
         except Exception: pass
-        else: return hts
+        else:
+            for meta in self.metas:
+                for style in meta['styles']:
+                    if style['id'] == hts:
+                        return hts
+            return
         
         res = None
         if len(hts) <= 1:
