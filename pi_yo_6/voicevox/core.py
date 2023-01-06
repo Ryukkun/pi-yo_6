@@ -48,7 +48,7 @@ class CreateVOICEVOX:
         if self.metas[0]["version"] == res['tag_name']:
             print(f'最新バージョンです')
         else:
-            print(f'最新バージョンは {res["tag_name"]} です')
+            print(f'最新バージョンは {res["tag_name"]} です {res["html_url"]}')
 
 
         self.queue = []
