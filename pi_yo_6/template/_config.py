@@ -2,6 +2,7 @@ class Open_Jtalk:
     # windowsで起動するときだけ Dic_shift_jis 必須
     Dic_utf_8 = '/var/lib/mecab/dic/open-jtalk/naist-jdic'
     Dic_shift_jis = '/var/lib/mecab/dic/open-jtalk/naist-jdic'
+    # htsvoiceを入れておくファイル
     Voice = './Voice/'
     Output = './Output/'
 
