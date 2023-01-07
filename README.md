@@ -35,11 +35,16 @@
 - Python 3.8.10にて制作
 - Open_Jtalk
 - ffmpeg
-- OS : Open_Jtalk を 入れられればなんでもいけるさきっと
+- OS : Windows MacOS Linux(Ubuntu) にて動作確認済み
 
 ### 注意
 - 一度起動したら作成される ｢Config.py｣ にて PathやTokenなどを設定することが出来ます
-- htsvoiceは自分でダウンロードして持ってきてね<br>
+- 自分で用意が必要なもの
+  - htsvoice >> Open_Jtalk の再生に必要
+  - [VoiceVox Core](https://github.com/VOICEVOX/voicevox_core) >> 無くてもいいが、声の幅が広がる
+    - 現在の最新バージョン(ver.0.13.3) では、onnxruntime(ver.1.13.1) が必要とされておる
+    - GPUを使用する場合は、CUDAや、CUDNN などが要求されると思う。バージョン毎に変わってるかもしれないから、そこら辺は自分で調べてー！
+    
 
 ## 連絡はこちらから
 [とぅいたー](https://twitter.com/Ryukkun8)
