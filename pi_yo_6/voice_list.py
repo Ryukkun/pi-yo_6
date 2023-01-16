@@ -60,10 +60,10 @@ class CreateSelect(ui.Select):
         sp_list = parent.VVox.name_list()
         select_opt = []
         for sp in sp_list:
+            _default = False
             if sp[0] == voice:
-                select_opt.append(SelectOption(label=sp[0], value=sp[0], default=True))
-            else:
-                select_opt.append(SelectOption(label=sp[0], value=sp[0]))
+                _default=True
+            select_opt.append(SelectOption(label=f'VOICEVOX:{sp[0]}', value=sp[0], default=_default))
         super().__init__(placeholder='キュー表示', options=select_opt, row=0)
 
 
