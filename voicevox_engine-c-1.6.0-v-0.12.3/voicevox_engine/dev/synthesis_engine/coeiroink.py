@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Dict
 
+from os import path
 import librosa
 import numpy as np
 import pyopenjtalk
@@ -78,7 +79,7 @@ class EspnetModel:
         if uuid is None:
             raise Exception("Not Found Speaker Directory")
 
-        acoustic_model_folder_path = f"./speaker_info/{uuid}/model/{speaker_id}"
+        acoustic_model_folder_path = path.join(path.dirname(path.dirname(path.dirname(path.dirname(path.abspath(__file__))))), 'speaker_info', uuid,'model',str(speaker_id))
         model_files = sorted(glob.glob(acoustic_model_folder_path + '/*.pth'))
 
         return cls.get_espnet_model(
