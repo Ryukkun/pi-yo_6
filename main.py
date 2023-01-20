@@ -6,7 +6,7 @@ import asyncio
 import tabulate
 import glob
 from discord.ext import commands, tasks
-from typing import Literal, Optional
+from typing import Literal, Optional, Dict
 
 _my_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_my_dir)
@@ -40,7 +40,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
-g_opts:dict[int, 'DataInfo'] = {}
+g_opts:Dict[int, 'DataInfo'] = {}
 
 try:
     VVox:Optional[CreateVOICEVOX] = CreateVOICEVOX(Config, use_gpu=Config.VVOX.use_gpu)
