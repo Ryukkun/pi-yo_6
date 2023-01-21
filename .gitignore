@@ -11,3 +11,5 @@ voicevox_core-windows
 voicevox_core-darwin
 user_config
 Output
+bot-start.sh
+bot-start.bat
