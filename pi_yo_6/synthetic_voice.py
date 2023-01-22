@@ -25,7 +25,7 @@ class GenerateVoice:
     def __init__(self, engines) -> None:
         try: 
             from .systhetic_engines import SyntheticEngines
-            self.VVox: SyntheticEngines
+            self.engines: SyntheticEngines
         except Exception: pass
         self.engines = engines
 
@@ -60,12 +60,12 @@ class GenerateVoice:
             if os.path.isfile(_hts):
                 _type = 'open_jtalk'
                 _id = _hts
-            elif re.match(r'voicevox:', r):
-                r = r.replace('voicevox:','')
+            elif re.match(r'v.*?:', r):
+                r = re.sub(r'v.*?:','', r)
                 _type = 'voicevox'
                 _id = r
-            elif re.match(r'coeiroink:', r):
-                r = r.replace('coeiroink:', '')
+            elif re.match(r'c.*?:', r):
+                r = re.sub(r'c.*?:','', r)
                 _type = 'coeiroink'
                 _id = r
             

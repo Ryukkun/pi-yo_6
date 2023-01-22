@@ -109,6 +109,7 @@ class Coeiroink:
         query.intonationScale = intnation
         query.prePhonemeLength = 0.0
         query.postPhonemeLength = 0.0
+        query.volumeScale = 0.4
 
         self.synthesis(
             query= query,

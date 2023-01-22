@@ -1,23 +1,26 @@
 import asyncio
+import re
 from discord import ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
 
 from .load_config import GC
 from .embeds import EmBase
-
+from .systhetic_engines import SyntheticEngines
+from . import open_jtalk
 
 async def embed(guild:Guild):
     _GC = GC(guild.id)
     g_config = _GC.Read()
 
     g_voice = g_config['voice']
-    res = res2 = ''
+    res = ''
+    res2 = ''
     for k, v in g_voice.items():
         if v == -1: continue
         if k := await guild.fetch_member(int(k)):
             res += f'{k.name}\n'
             res2 += f'{v}\n'
-    res = res.removesuffix('\n')
-    res2 = res2.removesuffix('\n')
+    res = re.sub(r'\n$', '', res)
+    res2 = re.sub(r'\n$', '', res2)
     if not res:
         res = 'N/A'
     embed = Embed(colour=EmBase.main_color())
@@ -36,10 +39,11 @@ async def embed(guild:Guild):
 
 # Button
 class CreateView(ui.View):
-    def __init__(self, g_opts, VVox, voice='ずんだもん'):
+    def __init__(self, g_opts, engines, _type='voicevox', voice='ずんだもん'):
         super().__init__(timeout=None)
-        self.VVox = VVox
+        self.engines:SyntheticEngines = engines
         self.g_opts = g_opts
+        self._type = _type
         self.select = CreateSelect(voice, self)
         self.select2 = CreateSelect2(voice, self)
         self.add_item(self.select)
@@ -48,8 +52,9 @@ class CreateView(ui.View):
         self.add_item(CreateButtonSet(self))
         self.add_item(CreateButtonRefresh())
         self.add_item(CreateButtonDel())
-
-
+        self.add_item(CreateButtonOpenJtalk(self))
+        self.add_item(CreateButtonVoicevox(self))
+        self.add_item(CreateButtonCoeiroink(self))
 
 
 
@@ -57,34 +62,65 @@ class CreateView(ui.View):
 class CreateSelect(ui.Select):
     def __init__(self, voice, parent:'CreateView') -> None:
         self.parent = parent
-        sp_list = parent.VVox.name_list()
-        select_opt = []
+
+        if parent._type == 'open_jtalk':
+            _type = ''
+            sp_list = open_jtalk.get_metas()
+
+        elif parent._type == 'voicevox':
+            _type = 'VOICEVOX:'
+            sp_list = parent.engines.voicevox.metas
+
+        elif parent._type == 'coeiroink':
+            _type = 'COEIROINK:'
+            sp_list = parent.engines.coeiroink.metas
+
+        select_opt:list[SelectOption] = []
+        check = False
         for sp in sp_list:
             _default = False
-            if sp[0] == voice:
+            if sp['name'] == voice:
+                check = True
                 _default=True
-            select_opt.append(SelectOption(label=f'VOICEVOX:{sp[0]}', value=sp[0], default=_default))
-        super().__init__(placeholder='キュー表示', options=select_opt, row=0)
+            select_opt.append(SelectOption(label=f'{_type}{sp["name"]}', value=sp["name"], default=_default))
+        if check == False:
+            select_opt[0].default = True
+        super().__init__(placeholder='キュー表示', options=select_opt, row=1)
 
 
     async def callback(self, interaction: Interaction):
         loop = asyncio.get_event_loop()
         loop.create_task(interaction.response.defer())
-        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, VVox=self.parent.VVox, voice=self.values[0]))
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type=self.parent._type, voice=self.values[0]))
 
 
 
 class CreateSelect2(ui.Select):
     def __init__(self, voice, parent:'CreateView') -> None:
-        for _ in parent.VVox.metas:
+        if parent._type == 'open_jtalk':
+            _type = ''
+            sp_list = open_jtalk.get_metas()
+
+        elif parent._type == 'voicevox':
+            _type = 'voicevox:'
+            sp_list = parent.engines.voicevox.metas
+
+        elif parent._type == 'coeiroink':
+            _type = 'coeiroink:'
+            sp_list = parent.engines.coeiroink.metas
+        
+        styles = None
+        for _ in sp_list:
             if _['name'] == voice:
                 styles = _['styles']
                 break
-        
-        select_opt = [SelectOption(label=f"{_['name']} [{_['id']}]", value=_['id']) for _ in styles]
+        if not styles:
+            styles = sp_list[0]['styles']
+
+        select_opt = [SelectOption(label=f"{_['name']}", value=f'{_type}{_["id"]}') for _ in styles]
         select_opt[0].default = True
         self.voice_res = select_opt[0].value
-        super().__init__(placeholder='キュー表示', options=select_opt, row=1)
+        super().__init__(placeholder='キュー表示', options=select_opt, row=2)
 
 
     async def callback(self, interaction: Interaction):
@@ -102,7 +138,7 @@ class CreateButtonPlay(ui.Button):
         except Exception: pass
         self.g_opts = parent.g_opts
         self.parent = parent
-        super().__init__(label='Play', style=ButtonStyle.blurple, row=2)
+        super().__init__(label='Play', style=ButtonStyle.blurple, row=3)
 
 
     async def callback(self, interaction: Interaction):
@@ -131,7 +167,7 @@ class CreateButtonPlay(ui.Button):
 class CreateButtonText(ui.Button):
     def __init__(self, parent:'CreateView') -> None:
         self.parent = parent
-        super().__init__(label='読むテキスト', style=ButtonStyle.green, row=2)
+        super().__init__(label='読むテキスト', style=ButtonStyle.green, row=3)
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
@@ -145,7 +181,7 @@ class CreateButtonText(ui.Button):
 class CreateButtonSet(ui.Button):
     def __init__(self, parent:'CreateView') -> None:
         self.parent = parent
-        super().__init__(label='自分の声にセット', style=ButtonStyle.grey, row=2)
+        super().__init__(label='自分の声にセット', style=ButtonStyle.grey, row=3)
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
@@ -159,7 +195,7 @@ class CreateButtonSet(ui.Button):
 
 class CreateButtonRefresh(ui.Button):
     def __init__(self) -> None:
-        super().__init__(label='↺', style=ButtonStyle.grey, row=2)
+        super().__init__(label='↺', style=ButtonStyle.grey, row=3)
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
@@ -169,8 +205,44 @@ class CreateButtonRefresh(ui.Button):
 
 class CreateButtonDel(ui.Button):
     def __init__(self) -> None:
-        super().__init__(label='Delete', style=ButtonStyle.red, row=2)
+        super().__init__(label='Delete', style=ButtonStyle.red, row=3)
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
         await interaction.message.delete()
+
+
+
+class CreateButtonOpenJtalk(ui.Button):
+    def __init__(self, parent:'CreateView') -> None:
+        self.parent = parent
+        super().__init__(label='Open_Jtalk', style=ButtonStyle.green, row=0)
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type='open_jtalk'))
+
+
+class CreateButtonVoicevox(ui.Button):
+    def __init__(self, parent:'CreateView') -> None:
+        self.parent = parent
+        if parent.engines.voicevox:
+            super().__init__(label='VoiceVox', style=ButtonStyle.green, row=0)
+        else:
+            super().__init__(label='VoiceVox', style=ButtonStyle.gray, disabled=True, row=0)
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type='voicevox'))
+
+class CreateButtonCoeiroink(ui.Button):
+    def __init__(self, parent:'CreateView') -> None:
+        self.parent = parent
+        if parent.engines.coeiroink:
+            super().__init__(label='Coeiroink', style=ButtonStyle.green, row=0)
+        else:
+            super().__init__(label='Coeiroink', style=ButtonStyle.gray, disabled=True, row=0)
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type='coeiroink'))
