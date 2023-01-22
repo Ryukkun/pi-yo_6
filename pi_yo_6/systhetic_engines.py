@@ -73,5 +73,5 @@ class SyntheticEngines:
             if (hts := self.coeiroink.to_speaker_id(hts)) == None:
                 return
 
-            await self.coeiroink.create_voice(Itext['text'], hts, out, speed, tone, intnation)
+            await self.coeiroink.create_voice(Itext['text'], hts, out, float(speed), float(tone), float(intnation))
 
