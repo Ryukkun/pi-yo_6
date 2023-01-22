@@ -31,17 +31,18 @@ import time
 import asyncio
 import json
 import requests
+from concurrent.futures import ThreadPoolExecutor
 
 from config import Config
 
 # 何故かバグるからタイミング調整なのだ
 # その他上限設定
 class CreateVOICEVOX:
-    def __init__(self, use_gpu: bool, cpu_num_threads=0, load_all_models=True) -> None:
+    def __init__(self) -> None:
         
         # Load VoiceVox
         print('Loading VoiceVox ....')
-        self.VVox = VOICEVOX(use_gpu, cpu_num_threads, load_all_models)
+        self.VVox = VOICEVOX(use_gpu= Config.VVOX.use_gpu, load_all_models= Config.VVOX.load_all_models)
         self.metas = json.loads(self.VVox.metas())
         res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest')
         res = res.json()
@@ -51,38 +52,18 @@ class CreateVOICEVOX:
         else:
             print(f'最新バージョンは {res["tag_name"]} です {res["html_url"]}')
 
-
-        self.queue = []
-        self.last = time.perf_counter()
-        self.loop = None
-        self.doing = 0
-        self.PROCESS_LIMIT = 2
+        self.exe = ThreadPoolExecutor(1)
         self.TEXT_LIMIT = 100
-        # 未だに挙動がよくわかんない エラーログ無しで強制終了したら数値増やして
-        self.DELAY = 1.0
 
 
-    async def create_voice(self, Itext, speaker_id, id):
+    async def create_voice(self, Itext, speaker_id):
         # 文字数上限
         if len(Itext) > self.TEXT_LIMIT:
             Itext = Itext[:self.TEXT_LIMIT]
 
-        # タイミング調節
-        if self.loop == None:
-            self.loop = asyncio.get_event_loop()
-        id = (Itext,speaker_id,id)
-        if (time.perf_counter() - self.last) < self.DELAY or self.doing >= self.PROCESS_LIMIT:
-            self.queue.append(id)
-            while (time.perf_counter() - self.last) < self.DELAY or self.queue[0] != id or self.doing >= self.PROCESS_LIMIT:
-                await asyncio.sleep(self.DELAY)
-            del self.queue[0]
-        self.last = time.perf_counter()
-
-        self.doing += 1
+        loop = asyncio.get_event_loop()
         data = None
-        try: data = await self.loop.run_in_executor(None, self.VVox.voicevox_tts, Itext, speaker_id)
-        except Exception: pass
-        self.doing -= 1
+        data = await loop.run_in_executor(self.exe, self.VVox.voicevox_tts, Itext, speaker_id)
         return data
 
 
@@ -94,7 +75,7 @@ class CreateVOICEVOX:
             for style_dic in name_dic['styles']:
                 style = style_dic['name']
                 id = style_dic['id']
-                _res.append(f'{style}[{id}]')
+                _res.append(f'{style}')
             res.append(_res)
 
         return res

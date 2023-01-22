@@ -24,7 +24,7 @@ class ChatReader():
         self.Config = self.Info.Config
         self.CLoop = self.Info.loop
         self.GC = GC(self.gid)
-        self.creat_voice = GenerateVoice(self.Config, self.Info.VVox).creat_voice
+        self.creat_voice = GenerateVoice(self.Info.engines).creat_voice
 
 
     async def on_message(self, message:Message):
@@ -51,11 +51,11 @@ class ChatReader():
                 text = f'voice:{speaker_id} {text}'
 
             # 音声ファイル ファイル作成
-            try: source = await self.creat_voice(text, message)
-            except Exception as e:                                              # Error
-                print(f"Error : 音声ファイル作成に失敗 {e}")
-                self.Queue.remove([message.id, 0])
-                return
+            source = await self.creat_voice(text, message)
+            # except Exception as e:                                              # Error
+            #     print(f"Error : 音声ファイル作成に失敗 {e}")
+            #     self.Queue.remove([message.id, 0])
+            #     return
 
             print(f'生成時間 : {time.perf_counter()-now_time}')
             i = self.Queue.index([message.id, 0])

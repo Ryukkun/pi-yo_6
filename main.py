@@ -20,9 +20,9 @@ except Exception:
 from pi_yo_6.load_config import GC, UC
 from pi_yo_6.voice_client import MultiAudio
 from pi_yo_6.voice import ChatReader
-from pi_yo_6.voicevox.core import CreateVOICEVOX
 from pi_yo_6.embeds import EmBase
 import pi_yo_6.voice_list as VoiceList
+from pi_yo_6.systhetic_engines import SyntheticEngines
 
 try:shutil.rmtree(Config.OJ.Output)
 except Exception:pass
@@ -42,11 +42,8 @@ intents.voice_states = True
 client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
 g_opts:Dict[int, 'DataInfo'] = {}
 
-try:
-    VVox:Optional[CreateVOICEVOX] = CreateVOICEVOX(Config, use_gpu=Config.VVOX.use_gpu)
-except Exception as e:
-    print(f'\033[31m Error \033[35mpi-yo6 \033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
-    VVox = None
+engines:SyntheticEngines = SyntheticEngines()
+
 
 
 
@@ -345,7 +342,7 @@ class DataInfo:
         self.loop = client.loop
         self.client = client
         self.Config = Config
-        self.VVox = VVox
+        self.engines = engines
         self.MA = MultiAudio(guild, client, self)
         self.Voice = ChatReader(self)
         self.count_loop = 0

@@ -3,15 +3,10 @@ import alkana
 import re
 import os
 from discord import Message
-from platform import system
 
 from .romaji.to_kana import Romaji
+from config import Config
 
-_os = system().lower()
-if _os == 'windows':
-    EFormat = 'shift_jis'
-else:
-    EFormat = 'utf-8'
 
 re_mention = re.compile(r'<(@&|@)\d+>')
 re_emoji = re.compile(r'<:.+:[0-9]+>')
@@ -19,23 +14,20 @@ re_url = re.compile(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+')
 re_speed = re.compile(r'(^|\s)speed:([\d.]*)(?=\s|$)')
 re_a = re.compile(r'(^|\s)a:([\d.]*)(?=\s|$)')
 re_tone = re.compile(r'(^|\s)tone:([\d.]*)(?=\s|$)')
-re_jf = re.compile(r'(^|\s)jf:([\d.]*)(?=\s|$)')
-re_voice = re.compile(r'(^|\s)voice:([\w.]*)(?=\s|$)')
+re_int = re.compile(r'(^|\s)intnation:([\d.]*)(?=\s|$)')
+re_voice = re.compile(r'(^|\s)voice:([\w.:]*)(?=\s|$)')
 re_romaji_unit = re.compile(r'(^|[^a-zA-Z])([a-zA-Z\-]+)($|[^a-zA-Z])')
 re_not_romaji = re.compile(r'[^a-zA-Z\-]')
 _status = 'voice:\w*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|jf:\S*\s'
 re_text_status = re.compile(r'({0}|^)+.+?(?=\s({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
 class GenerateVoice:
-    def __init__(self, config, VVox) -> None:
+    def __init__(self, engines) -> None:
         try: 
-            from .template._config import Config
-            from .voicevox.core import CreateVOICEVOX
-            self.Config:Config
-            self.VVox: CreateVOICEVOX
+            from .systhetic_engines import SyntheticEngines
+            self.VVox: SyntheticEngines
         except Exception: pass
-        self.Config = config
-        self.VVox = VVox
+        self.engines = engines
 
 
     def custam_text(self, Itext, path):
@@ -56,34 +48,40 @@ class GenerateVoice:
     #------------------------------------------------------
     def costom_voice(self, Itext):
         
-        hts=['-m', self.Config.OJ.Voice+'mei_normal.htsvoice']
+        _type = 'open_jtalk'
+        _id = Config.OJ.Voice+'mei_normal.htsvoice'
         
-        r = list(re_voice.finditer(Itext))
+        r = list(re_voice.finditer(Itext['text']))
         if len(r) != 0:
-            Itext = re_voice.sub('',Itext)
-            r = r[-1].group(2)
+            Itext['text'] = re_voice.sub('',Itext['text'])
+            r = r[-1].group(2).lower()
 
-            _hts = self.Config.OJ.Voice+f'{r}.htsvoice'
+            _hts = Config.OJ.Voice+f'{r}.htsvoice'
             if os.path.isfile(_hts):
-                hts = ['-m', _hts]
-            else:
-                hts = ['voicevox', r]
+                _type = 'open_jtalk'
+                _id = _hts
+            elif re.match(r'voicevox:', r):
+                r = r.replace('voicevox:','')
+                _type = 'voicevox'
+                _id = r
+            elif re.match(r'coeiroink:', r):
+                r = r.replace('coeiroink:', '')
+                _type = 'coeiroink'
+                _id = r
             
-        return Itext, hts
+        Itext['hts'] = {'type':_type, 'id':_id}
+        return Itext
         
     #------------------------------------------------------
 
     def costom_status(self, Itext, default, _re:re.Pattern):
         
-        r = list(_re.finditer(Itext))
+        r = list(_re.finditer(Itext['text']))
         if len(r) != 0:
-            Itext = _re.sub('',Itext)
-            default[1] = r[-1].group(2)
+            Itext['text'] = _re.sub('',Itext['text'])
+            Itext[default] = r[-1].group(2)
         
-        if default[1] == "auto":
-            return Itext, ""
-        else:
-            return Itext, f"{default[0]} {default[1]}"
+        return Itext
 
 
     #-----------------------------------------------------------
@@ -128,14 +126,14 @@ class GenerateVoice:
         Itext = re_url.sub('ユーアールエルは省略するのです！ ',Itext)                    # URL省略
         Itext = re_emoji.sub('',Itext)                                              # 絵文字IDは読み上げない
         Itext = re_mention.sub('メンションは省略するのです！ ',Itext)
-        Itext = self.custam_text(Itext, self.Config.Admin_dic)                      # ユーザ登録した文字を読み替える
-        Itext = self.custam_text(Itext, f'{self.Config.User_dic}{message.guild.id}.txt')
+        Itext = self.custam_text(Itext, Config.Admin_dic)                      # ユーザ登録した文字を読み替える
+        Itext = self.custam_text(Itext, f'{Config.User_dic}{message.guild.id}.txt')
 
         out_wav = []
         gather_wav = []
         for num, Itext in enumerate(re_text_status.finditer(Itext)):
             Itext = Itext.group()
-            out = f'{self.Config.OJ.Output}{message.id}-{num}.wav'
+            out = f'{Config.OJ.Output}{message.id}-{num}.wav'
             gather_wav.append(self.split_voice(Itext, out))
             out_wav.append(out)
 
@@ -143,33 +141,17 @@ class GenerateVoice:
         return out_wav
 
 
-    async def split_voice(self, Itext, out_name):
-        Itext, hts = self.costom_voice(Itext)                               #voice
-        Itext, speed = self.costom_status(Itext, ['-r','1.2'], re_speed)    #speed
-        Itext, a = self.costom_status(Itext, ['-a','auto'], re_a)           #AllPath
-        Itext, tone = self.costom_status(Itext, ['-fm','auto'], re_tone)    #tone
-        Itext, jf = self.costom_status(Itext, ['-jf','auto'], re_jf)        #jf
-        Itext = re.sub(r'^\s+', '', Itext)
+    async def split_voice(self, text, out_name):
+        Itext = {"text": text}
+        Itext = self.costom_voice(Itext)                        #voice
+        Itext = self.costom_status(Itext, 'speed', re_speed)    #speed
+        Itext = self.costom_status(Itext, 'a', re_a)            #AllPath
+        Itext = self.costom_status(Itext, 'tone', re_tone)      #tone
+        Itext = self.costom_status(Itext, 'intnation', re_int)
+        Itext['text'] = re.sub(r'^\s+', '', Itext['text'])
 
-        Itext = self.replace_english_kana(Itext)
-        Itext = self.replace_w(Itext)
+        Itext['text'] = self.replace_english_kana(Itext['text'])
+        Itext['text'] = self.replace_w(Itext['text'])
         #print(f"変換後 ({FileNum+1}) :") #{Itext}
 
-        if hts[0] == '-m':
-            hts = ' '.join(hts)
-            
-            if _os == 'windows':
-                dic = self.Config.OJ.Dic_shift_jis
-            else:
-                dic = self.Config.OJ.Dic_utf_8
-            cmd=f'open_jtalk -x "{dic}" -ow "{out_name}" {hts} {speed} {tone} {jf} {a}'
-            
-            prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-            await prog.communicate(input= Itext.encode(EFormat))
-
-        else:
-            if (speaker_id := self.VVox.to_speaker_id(hts[1])) == None:
-                return
-            
-            with open(out_name, 'wb')as f:
-                f.write( await self.VVox.create_voicevox(Itext, speaker_id, out_name))
+        await self.engines.create_voice(Itext, out_name)

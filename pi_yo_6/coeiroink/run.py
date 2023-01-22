@@ -8,23 +8,25 @@ import soundfile
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
-from voicevox_engine import __version__
-from voicevox_engine.kana_parser import create_kana
-from voicevox_engine.model import (
+#from voicevox_engine import __version__
+from .voicevox_engine.dev.core.coeiroink import get_metas_dict
+from .voicevox_engine.kana_parser import create_kana
+from .voicevox_engine.model import (
     AudioQuery,
     Speaker,
     SpeakerInfo
 )
-from voicevox_engine.synthesis_engine import make_synthesis_engines
-
+from .voicevox_engine.synthesis_engine import make_synthesis_engines
+from config import Config
 
 class CreateCoeiroink:
-    def __init__(self, cpu_num_threads=None, load_all_models=False) -> None:
+    def __init__(self) -> None:
         
         # Load Coeiroink
         print('Loading Coeiroink ....')
-        self.coeiroink = Coeiroink(cpu_num_threads, load_all_models)
+        self.coeiroink = Coeiroink(load_all_models= Config.Coeiroink.load_all_models)
 
+        self.metas = get_metas_dict()
         self.exe = ThreadPoolExecutor(1)
         self.TEXT_LIMIT = 100
 
@@ -42,9 +44,8 @@ class CreateCoeiroink:
         if len(text) > self.TEXT_LIMIT:
             text = text[:self.TEXT_LIMIT]
 
-        data = None
         loop = asyncio.get_event_loop()
-        try: data = await loop.run_in_executor(
+        await loop.run_in_executor(
             self.exe, 
             self.coeiroink.easy_synthesis,
                 text, 
@@ -54,12 +55,33 @@ class CreateCoeiroink:
                 pitch,
                 intnation
             )
+
+
+    def to_speaker_id(self, hts):
+        try: hts = int(hts)
         except Exception: pass
-        return data
+        else:
+            for meta in self.metas:
+                for style in meta['styles']:
+                    if style['id'] == hts:
+                        return hts
+            return
+        
+        res = None
+        for meta in self.metas:
+            if hts in meta['name']:
+                styles = meta['styles']
+                for style in styles:
+                    if hts in style['name']:
+                        res = style['id']
+                if type(res) != int:
+                    res = styles[0]['id']
+                break
+        return res
 
 
 class Coeiroink:
-    def __init__(self, load_add_models:bool =False, cpu_num:Optional[int] =None ) -> None:
+    def __init__(self, load_all_models:bool =False, cpu_num:Optional[int] =None ) -> None:
         self.synthesis_engine = make_synthesis_engines(
             use_gpu=False,
             voicelib_dirs=None,
@@ -67,7 +89,7 @@ class Coeiroink:
             runtime_dirs=None,
             cpu_num_threads=cpu_num,
             enable_mock=False,
-            load_all_models=load_add_models,
+            load_all_models=load_all_models,
         )
         self.sampling_rate = self.synthesis_engine.default_sampling_rate
 
@@ -88,11 +110,11 @@ class Coeiroink:
         query.prePhonemeLength = 0.0
         query.postPhonemeLength = 0.0
 
-        coe.synthesis(
+        self.synthesis(
             query= query,
             speaker= speaker,
             enable_interrogative_upspeak= True,
-            out=out,
+            out= out,
             text= text
             )
 

@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, conint, validator
 
-from voicevox_engine.utility import engine_root
+from .utility import engine_root
 
 
 class Mora(BaseModel):
