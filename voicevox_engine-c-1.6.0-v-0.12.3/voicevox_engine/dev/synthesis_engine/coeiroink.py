@@ -2,7 +2,7 @@ import glob
 import time
 from typing import List, NamedTuple, Optional, Dict
 
-from os import path, makedirs
+from os import path
 import librosa
 import numpy as np
 import pyworld as pw

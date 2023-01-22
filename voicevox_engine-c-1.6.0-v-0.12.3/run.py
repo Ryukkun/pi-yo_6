@@ -2,7 +2,7 @@
 import json
 
 # import sys
-from typing import Dict, List, Optional
+from typing import Optional
 
 import soundfile
 
@@ -13,7 +13,7 @@ from voicevox_engine.model import (
     Speaker,
     SpeakerInfo
 )
-from voicevox_engine.synthesis_engine import SynthesisEngineBase, make_synthesis_engines
+from voicevox_engine.synthesis_engine import make_synthesis_engines
 
 
 class Coeiroink:
@@ -117,14 +117,14 @@ class Coeiroink:
                 speaker = speakers[i]
                 break
         else:
-            raise #HTTPException(status_code=404, detail="該当する話者が見つかりません")
+            raise Exception("該当する話者が見つかりません")
 
         try:
             ret_data = SpeakerInfo.from_local(Speaker(**speaker))
         except FileNotFoundError:
             import traceback
             traceback.print_exc()
-            raise #HTTPException(status_code=500, detail="追加情報が見つかりませんでした")
+            raise Exception("追加情報が見つかりませんでした")
 
         return ret_data
 
