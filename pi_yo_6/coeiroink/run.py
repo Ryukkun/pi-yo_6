@@ -5,6 +5,8 @@ import json
 from typing import Optional
 
 import soundfile
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 
 from voicevox_engine import __version__
 from voicevox_engine.kana_parser import create_kana
@@ -14,6 +16,46 @@ from voicevox_engine.model import (
     SpeakerInfo
 )
 from voicevox_engine.synthesis_engine import make_synthesis_engines
+
+
+class CreateCoeiroink:
+    def __init__(self, cpu_num_threads=None, load_all_models=False) -> None:
+        
+        # Load Coeiroink
+        print('Loading Coeiroink ....')
+        self.coeiroink = Coeiroink(cpu_num_threads, load_all_models)
+
+        self.exe = ThreadPoolExecutor(1)
+        self.TEXT_LIMIT = 100
+
+
+    async def create_voice(
+        self, 
+        text: str,
+        speaker: int,
+        out: str = "./output.wav",
+        speed: float = 1.0,
+        pitch: float = 0.0,
+        intnation: float = 1.0
+        ):
+        # 文字数上限
+        if len(text) > self.TEXT_LIMIT:
+            text = text[:self.TEXT_LIMIT]
+
+        data = None
+        loop = asyncio.get_event_loop()
+        try: data = await loop.run_in_executor(
+            self.exe, 
+            self.coeiroink.easy_synthesis,
+                text, 
+                speaker,
+                out,
+                speed,
+                pitch,
+                intnation
+            )
+        except Exception: pass
+        return data
 
 
 class Coeiroink:
@@ -33,7 +75,6 @@ class Coeiroink:
     def easy_synthesis(self,
         text: str,
         speaker: int,
-        enable_interrogative_upspeak: bool = True, #疑問系のテキストが与えられたら語尾を自動調整する
         out: str = "./output.wav",
         speed: float = 1.0,
         pitch: float = 0.0,
@@ -50,7 +91,7 @@ class Coeiroink:
         coe.synthesis(
             query= query,
             speaker= speaker,
-            enable_interrogative_upspeak= enable_interrogative_upspeak,
+            enable_interrogative_upspeak= True,
             out=out,
             text= text
             )
@@ -148,10 +189,9 @@ class Coeiroink:
 
 if __name__ == "__main__":
     coe = Coeiroink(load_add_models=False)
-    import asyncio
-    loop = asyncio.get_event_loop()
+
     coe.easy_synthesis(speaker=0, text="テストなのだ？", speed=2.0)
-    #loop.run_until_complete(asyncio.sleep(40))
+
     coe.easy_synthesis(speaker=11, text="テストなのだ？", out="./1.wav", pitch=2.0)
     #_ = coe.audio_query(speaker=0, text="テストなのだ？")
     #_.speedScale = 2.0

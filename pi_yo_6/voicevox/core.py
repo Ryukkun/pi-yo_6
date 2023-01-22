@@ -32,15 +32,16 @@ import asyncio
 import json
 import requests
 
+from config import Config
 
 # 何故かバグるからタイミング調整なのだ
 # その他上限設定
 class CreateVOICEVOX:
-    def __init__(self, _Config, use_gpu: bool, cpu_num_threads=0, load_all_models=True) -> None:
+    def __init__(self, use_gpu: bool, cpu_num_threads=0, load_all_models=True) -> None:
         
         # Load VoiceVox
         print('Loading VoiceVox ....')
-        self.VVox = VOICEVOX(_Config, use_gpu, cpu_num_threads, load_all_models)
+        self.VVox = VOICEVOX(use_gpu, cpu_num_threads, load_all_models)
         self.metas = json.loads(self.VVox.metas())
         res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest')
         res = res.json()
@@ -61,7 +62,7 @@ class CreateVOICEVOX:
         self.DELAY = 1.0
 
 
-    async def create_voicevox(self, Itext, speaker_id, id):
+    async def create_voice(self, Itext, speaker_id, id):
         # 文字数上限
         if len(Itext) > self.TEXT_LIMIT:
             Itext = Itext[:self.TEXT_LIMIT]
@@ -124,13 +125,7 @@ class CreateVOICEVOX:
 
 
 class VOICEVOX:
-    def __init__(self,_Config, use_gpu: bool, cpu_num_threads=0, load_all_models=True):
-        try: 
-            from ..template._config import Config as Con
-            self.Config:Con
-        except Exception: pass
-        self.Config = _Config
-
+    def __init__(self,use_gpu: bool, cpu_num_threads=0, load_all_models=True):
         # numpy ndarray types
         int64_dim1_type = numpy.ctypeslib.ndpointer(dtype=numpy.int64, ndim=1)
         float32_dim1_type = numpy.ctypeslib.ndpointer(dtype=numpy.float32, ndim=1)
@@ -140,11 +135,11 @@ class VOICEVOX:
         get_os = platform.system()
         
         if get_os == "Windows":
-            lib_file = self.Config.VVOX.core_windows
+            lib_file = Config.VVOX.core_windows
         elif get_os == "Darwin":
-            lib_file = self.Config.VVOX.core_darwin
+            lib_file = Config.VVOX.core_darwin
         elif get_os == "Linux":
-            lib_file = self.Config.VVOX.core_linux
+            lib_file = Config.VVOX.core_linux
 
         # ライブラリ読み込み
         if not os.path.exists(lib_file):
@@ -195,7 +190,7 @@ class VOICEVOX:
         self.lib.voicevox_error_result_to_message.argtypes = (c_int,)
         self.lib.voicevox_load_openjtalk_dict.argtypes = (c_char_p,)
 
-        self.voicevox_load_openjtalk_dict(self.Config.OJ.Dic_utf_8)
+        self.voicevox_load_openjtalk_dict(Config.OJ.Dic_utf_8)
         success = self.lib.initialize(use_gpu, cpu_num_threads, load_all_models)
         if not success:
             raise Exception(self.lib.last_error_message().decode())
