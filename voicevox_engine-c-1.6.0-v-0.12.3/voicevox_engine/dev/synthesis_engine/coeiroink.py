@@ -1,28 +1,24 @@
 import glob
-import json
 import time
-from pathlib import Path
 from typing import List, NamedTuple, Optional, Dict
 
-from os import path
+from os import path, makedirs
 import librosa
 import numpy as np
-import pyopenjtalk
 import pyworld as pw
 import resampy
-import sklearn.neighbors._partition_nodes
-import sklearn.utils._typedefs
 import torch
 import yaml
 from espnet2.text.token_id_converter import TokenIDConverter
 from espnet2.bin.tts_inference import Text2Speech
-from sklearn.preprocessing import StandardScaler
 import concurrent.futures as cf
+#from threading import Thread
 
 from ..core.coeiroink import get_metas_dict
 from ...model import AccentPhrase, AudioQuery
 from ...synthesis_engine import SynthesisEngineBase
 
+parents_folder = path.dirname(path.dirname(path.dirname(path.dirname(path.abspath(__file__)))))
 
 class EspnetSettings(NamedTuple):
     acoustic_model_config_path: str
@@ -51,7 +47,12 @@ class EspnetModel:
             unk_symbol="<unk>",
         )
 
+        self.used = 0
+        self.last_used = time.time()
+
     def make_voice(self, tokens, seed=0):
+        self.used += 1
+        self.last_used = time.time()
         np.random.seed(seed)
         torch.manual_seed(seed)
         text_ints = np.array(self.token_id_converter.tokens2ids(tokens), dtype=np.int64)
@@ -59,6 +60,8 @@ class EspnetModel:
             wave = self.tts_model(text_ints)["wav"]
         wave = wave.view(-1).cpu().numpy()
         return wave
+
+
 
     @classmethod
     def get_espnet_model(cls, acoustic_model_path, acoustic_model_config_path, use_gpu, speed_scale=1.0):
@@ -69,7 +72,8 @@ class EspnetModel:
         return cls(settings, use_gpu=use_gpu, speed_scale=speed_scale)
 
     @classmethod
-    def get_character_model(cls, use_gpu, speaker_id, speed_scale=1.0):
+    def get_character_model(cls, use_gpu, speaker_id, speed_scale=1.0, load_forever:bool=False):
+        cls.load_forever = load_forever
         uuid = None
         metas = get_metas_dict()
         for meta in metas:
@@ -79,7 +83,8 @@ class EspnetModel:
         if uuid is None:
             raise Exception("Not Found Speaker Directory")
 
-        acoustic_model_folder_path = path.join(path.dirname(path.dirname(path.dirname(path.dirname(path.abspath(__file__))))), 'speaker_info', uuid,'model',str(speaker_id))
+        
+        acoustic_model_folder_path = path.join(parents_folder, 'speaker_info', uuid, 'model', str(speaker_id))
         model_files = sorted(glob.glob(acoustic_model_folder_path + '/*.pth'))
 
         return cls.get_espnet_model(
@@ -90,10 +95,14 @@ class EspnetModel:
         )
 
 
+
+
+
 class MockSynthesisEngine(SynthesisEngineBase):
     def __init__(self,
                  speakers: str,
-                 supported_devices: Optional[str] = None):
+                 supported_devices: Optional[str] = None,
+                 load_all_models: bool = False):
         self._speakers = speakers
         self._supported_devices = supported_devices
 
@@ -104,24 +113,43 @@ class MockSynthesisEngine(SynthesisEngineBase):
         #self.previous_speaker_id = metas[0]['styles'][0]['id']
         self.previous_speed_scale = 1.0
 
-        self.speaker_models: Dict[int, EspnetModel] = {}
-        futures = []
-        with cf.ThreadPoolExecutor(10) as exe:
-            for _ in metas:
-                for style in _['styles']:
-                    futures.append(exe.submit(self._add_speaker_model, style["id"]))
-        cf.wait(futures)
-        # self.current_speaker_models: EspnetModel = \
-        #     EspnetModel.get_character_model(use_gpu=self.use_gpu,
-        #                                     speaker_id=self.previous_speaker_id,
-        #                                     speed_scale=self.previous_speed_scale)
+        self.speaker_models: Dict[tuple, EspnetModel] = {}
+        if load_all_models:
 
-
-    def _add_speaker_model(self, _id):
-        self.speaker_models[_id] = EspnetModel.get_character_model(
+            def _add_speaker_model(_id):
+                self.speaker_models[_id] = EspnetModel.get_character_model(
                                             use_gpu=self.use_gpu,
-                                            speaker_id=_id,
-                                            speed_scale=self.previous_speed_scale)
+                                            speaker_id=_id[0],
+                                            speed_scale=self.previous_speed_scale,
+                                            load_forever=True)
+            futures = []
+            with cf.ThreadPoolExecutor(10) as exe:
+                for _ in metas:
+                    for style in _['styles']:
+                        futures.append(exe.submit(_add_speaker_model, (style["id"], self.previous_speed_scale) ))
+            cf.wait(futures)
+
+        self.do_loop = True
+        cf.ThreadPoolExecutor(1).submit(self.loop_check)
+        #Thread(target=self.loop_check, daemon=True).start() 
+
+
+    def __del__(self):
+        self.do_loop = False
+
+
+    def loop_check(self):
+        while self.do_loop:
+            time.sleep(10)
+            for k, v in self.speaker_models.copy().items():
+                if v.load_forever: continue
+                if v.used == 0: limit = 120
+                elif v.used == 1: limit = 60
+                elif 2 <= v.used : limit = 300
+
+                if (v.last_used + limit) < time.time():
+                    del self.speaker_models[k]
+
 
     @property
     def speakers(self) -> str:
@@ -143,14 +171,17 @@ class MockSynthesisEngine(SynthesisEngineBase):
         start_time = time.time()
         tokens = self.query2tokens_prosody(query, text)
 
-        if self.previous_speed_scale != query.speedScale:
+        if (temp_speaker_model := self.speaker_models.get( (speaker_id, query.speedScale) )):
+            pass
+        
+        else:
             temp_speaker_model = EspnetModel.get_character_model(
                         use_gpu=self.use_gpu,
                         speaker_id=speaker_id,
                         speed_scale=1/query.speedScale
                         )
-        else:
-            temp_speaker_model = self.speaker_models[speaker_id]
+            self.speaker_models[(speaker_id, query.speedScale)] = temp_speaker_model
+
 
         wave = temp_speaker_model.make_voice(tokens)
 

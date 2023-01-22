@@ -1,12 +1,10 @@
-import json
 import sys
-import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from ..utility import engine_root
-from .core_wrapper import CoreWrapper, load_runtime_lib
-from .synthesis_engine import SynthesisEngine, SynthesisEngineBase
+from .core_wrapper import load_runtime_lib
+from .synthesis_engine import SynthesisEngineBase
 
 
 def make_synthesis_engines(
@@ -94,5 +92,5 @@ def make_synthesis_engines(
     from ..dev.synthesis_engine import MockSynthesisEngine
 
     return MockSynthesisEngine(
-            speakers=mock_metas(), supported_devices=mock_supported_devices()
+            speakers=mock_metas(), supported_devices=mock_supported_devices(), load_all_models=load_all_models
         )
