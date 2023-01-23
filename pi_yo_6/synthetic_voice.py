@@ -15,7 +15,7 @@ re_speed = re.compile(r'(^|\s)speed:([\d.]*)(?=\s|$)')
 re_a = re.compile(r'(^|\s)a:([\d.]*)(?=\s|$)')
 re_tone = re.compile(r'(^|\s)tone:([\d.]*)(?=\s|$)')
 re_int = re.compile(r'(^|\s)intnation:([\d.]*)(?=\s|$)')
-re_voice = re.compile(r'(^|\s)voice:([\w.:]*)(?=\s|$)')
+re_voice = re.compile(r'(^|\s)voice:(\S*)(?=\s|$)')
 re_romaji_unit = re.compile(r'(^|[^a-zA-Z])([a-zA-Z\-]+)($|[^a-zA-Z])')
 re_not_romaji = re.compile(r'[^a-zA-Z\-]')
 _status = 'voice:\S*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|intnation:\S*\s'
