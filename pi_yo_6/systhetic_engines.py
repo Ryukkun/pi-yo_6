@@ -43,6 +43,8 @@ class SyntheticEngines:
         _type = Itext['speaker']['type']
 
         if _type == 'open_jtalk':
+            if not self.open_jtalk: return
+
             Itext['out'] = out
             Itext['speaker'] = Itext['speaker']['id']
             Itext['speed'] = Itext.get('speed',1.2)

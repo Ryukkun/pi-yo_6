@@ -91,11 +91,12 @@ class CreateVOICEVOX:
             return
         
         res = None
+        hts = hts.lower()
         for meta in self.metas:
-            if hts in meta['name']:
+            if meta['name'].lower() in hts:
                 styles = meta['styles']
                 for style in styles:
-                    if hts in style['name']:
+                    if style['name'].lower() in hts:
                         res = style['id']
                 if type(res) != int:
                     res = styles[0]['id']

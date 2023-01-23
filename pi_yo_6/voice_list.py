@@ -2,7 +2,7 @@ import asyncio
 import re
 from discord import ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
 
-from .load_config import GC
+from .load_config import GC, UC
 from .embeds import EmBase
 from .systhetic_engines import SyntheticEngines
 
@@ -137,9 +137,10 @@ class CreateSelect2(ui.Select):
                 styles = _['styles']
                 break
         if not styles:
+            voice = sp_list[0]['name']
             styles = sp_list[0]['styles']
 
-        select_opt = [SelectOption(label=f"{_['name']}", value=f'{_type}{_["id"]}') for _ in styles]
+        select_opt = [SelectOption(label=f"{_['name']}", value=f'{_type}{voice}_{_["name"]}') for _ in styles]
         select_opt[0].default = True
         self.voice_res = select_opt[0].value
         super().__init__(placeholder='キュー表示', options=select_opt, row=2)
@@ -203,15 +204,11 @@ class CreateButtonText(ui.Button):
 class CreateButtonSet(ui.Button):
     def __init__(self, parent:'CreateView') -> None:
         self.parent = parent
-        super().__init__(label='自分の声にセット', style=ButtonStyle.grey, row=3)
+        super().__init__(label='ボイスをセット', style=ButtonStyle.grey, row=3)
 
     async def callback(self, interaction: Interaction):
-        await interaction.response.defer()
-        _GC = GC(interaction.guild.id)
-        g_config = _GC.Read()
-        g_config['voice'][str(interaction.user.id)] = self.parent.select2.voice_res
-        _GC.Write(g_config)
-        await interaction.message.edit(embed=await embed(interaction.guild))
+        new_message = EditVoiceMessage(self.parent.select2.voice_res)
+        await interaction.response.send_message(embed=new_message.who_embed, view=new_message.who_view, ephemeral=True)
 
 
 
@@ -220,8 +217,7 @@ class CreateButtonRefresh(ui.Button):
         super().__init__(label='↺', style=ButtonStyle.grey, row=3)
 
     async def callback(self, interaction: Interaction):
-        await interaction.response.defer()
-        await interaction.message.edit(embed=await embed(interaction.guild))
+        await interaction.response.edit_message(embed=await embed(interaction.guild))
 
 
 
@@ -238,7 +234,10 @@ class CreateButtonDel(ui.Button):
 class CreateButtonOpenJtalk(ui.Button):
     def __init__(self, parent:'CreateView') -> None:
         self.parent = parent
-        super().__init__(label='Open_Jtalk', style=ButtonStyle.green, row=0)
+        if parent.engines.open_jtalk:
+            super().__init__(label='Open_Jtalk', style=ButtonStyle.green, row=0)
+        else:
+            super().__init__(label='Open_Jtalk', style=ButtonStyle.gray, disabled=True, row=0)
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
@@ -268,3 +267,103 @@ class CreateButtonCoeiroink(ui.Button):
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
         await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type=coeiroink))
+
+
+
+class EditVoiceMessage:
+    def __init__(self, voice) -> None:
+
+        # ネストclass 閉じるの推奨 ------------------------------------------
+        class WhoView(ui.View):
+            def __init__(self, parent:'EditVoiceMessage'):
+                self.parent = parent
+                super().__init__(timeout=None)
+
+            @ui.button(label='自分', style=ButtonStyle.blurple)
+            async def my_voice(self, interaction:Interaction, button:ui.Button):
+                gid = interaction.guild_id
+                _GC = GC(gid)
+                g_config = _GC.Read()
+                
+                if interaction.user.guild_permissions.administrator or not g_config['admin_only'].setdefault('my_voice',False):
+                    await interaction.response.edit_message(embed=self.parent.my_embed, view=self.parent.my_view)
+                else:
+                    await interaction.response.edit_message(embed=EmBase.failed(), view=None)
+
+                _GC.Write(g_config)
+                
+
+            @ui.button(label='他人', style=ButtonStyle.blurple)
+            async def another_voice(self, interaction:Interaction, button:ui.Button):
+                gid = interaction.guild_id
+                _GC = GC(gid)
+                g_config = _GC.Read()
+                
+                if interaction.user.guild_permissions.administrator or not g_config['admin_only'].setdefault('another_voice',True):
+                    await interaction.response.edit_message(embed=self.parent.who_other_embed, view=self.parent.who_other_view)
+                else:
+                    await interaction.response.edit_message(embed=EmBase.failed(), view=None)
+
+                _GC.Write(g_config)
+
+
+
+        class MyView(ui.View):
+            def __init__(self, parent:'EditVoiceMessage'):
+                self.parent = parent
+                super().__init__(timeout=None)
+
+            @ui.button(label='このサーバーのみ反映', style=ButtonStyle.blurple)
+            async def server_voice(self, interaction:Interaction, button:ui.Button):
+                gid = interaction.guild_id
+                uid = interaction.user.id
+                _GC = GC(gid)
+                g_config = _GC.Read()
+                g_config['voice'][str(uid)] = self.parent.voice
+                _GC.Write(g_config)
+                await interaction.response.edit_message(embed=self.parent.success_embed, view=None)
+
+
+            @ui.button(label='自分の初期ボイス', style=ButtonStyle.blurple)
+            async def my_voice(self, interaction:Interaction, button:ui.Button):
+                uid = interaction.user.id
+                u_config = UC.Read(uid)
+                u_config['voice'] = self.parent.voice
+                UC.Write(uid, u_config)
+                await interaction.response.edit_message(embed=self.parent.success_embed, view=None)
+
+
+
+        class WhoOtherView(ui.View):
+            def __init__(self, parent:'EditVoiceMessage'):
+                self.parent = parent
+                super().__init__(timeout=None)
+
+            @ui.select(cls=ui.UserSelect, placeholder='ターゲットを選ぼう！')
+            async def my_voice(self, interaction:Interaction, select:ui.UserSelect):
+                user = select.values[0]
+                gid = interaction.guild_id
+                _GC = GC(gid)
+                g_config = _GC.Read()
+                g_config['voice'][str(user.id)] = self.parent.voice
+                _GC.Write(g_config)
+                embed = Embed(title='反映完了!', description=f'{user.name} : {voice}', colour=EmBase.main_color())
+
+                await interaction.response.edit_message(embed=embed, view=None)
+
+
+
+        self.voice = voice
+        self.who_embed = Embed(title=voice, description='誰のボイスを変更しますか？', colour=EmBase.main_color())
+        self.who_other_embed = Embed(title=voice, description='誰のボイスを変更しますか？\n※このサーバーにだけ反映されます', colour=EmBase.main_color())
+        self.my_embed = Embed(title=voice, description='どちらにしますか？', colour=EmBase.main_color())
+        self.my_embed.add_field(name='このサーバーのみ反映', value='サーバー毎に設定できます。どちらもボイスが指定されてた場合、こっちの方が優先されます')
+        self.my_embed.add_field(name='自分の初期ボイス', value='1人1つ指定できます。他のサーバーと同期しています。')
+        self.success_embed = Embed(title='反映完了!', description=voice, colour=EmBase.main_color())
+        self.who_view = WhoView(self)
+        self.who_other_view = WhoOtherView(self)
+        self.my_view = MyView(self)
+
+
+
+
