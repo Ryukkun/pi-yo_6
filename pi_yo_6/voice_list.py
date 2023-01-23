@@ -5,7 +5,11 @@ from discord import ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
 from .load_config import GC
 from .embeds import EmBase
 from .systhetic_engines import SyntheticEngines
-from .open_jtalk import core
+
+open_jtalk = 'open_jtalk'
+voicevox = 'voicevox'
+coeiroink = 'coeiroink'
+
 
 async def embed(guild:Guild):
     _GC = GC(guild.id)
@@ -39,11 +43,29 @@ async def embed(guild:Guild):
 
 # Button
 class CreateView(ui.View):
-    def __init__(self, g_opts, engines, _type='voicevox', voice='ずんだもん'):
+    def __init__(self, g_opts, engines:SyntheticEngines, _type=voicevox, voice='ずんだもん'):
         super().__init__(timeout=None)
-        self.engines:SyntheticEngines = engines
+        self.engines = engines
         self.g_opts = g_opts
+
+        # typeが機能していなかった時のため
+        if _type == open_jtalk and not engines.open_jtalk:
+            _type = None
+        elif _type == voicevox and not engines.voicevox:
+            _type = None
+        elif _type == coeiroink and not engines.coeiroink:
+            _type = None
+
+        if _type == None:
+            if engines.open_jtalk:
+                _type = open_jtalk
+            elif engines.voicevox:
+                _type = voicevox
+            elif engines.coeiroink:
+                _type = coeiroink
+
         self._type = _type
+
         self.select = CreateSelect(voice, self)
         self.select2 = CreateSelect2(voice, self)
         self.add_item(self.select)
@@ -63,15 +85,15 @@ class CreateSelect(ui.Select):
     def __init__(self, voice, parent:'CreateView') -> None:
         self.parent = parent
 
-        if parent._type == 'open_jtalk':
+        if parent._type == open_jtalk:
             _type = ''
-            sp_list = core.get_metas()
+            sp_list = parent.engines.open_jtalk.metas
 
-        elif parent._type == 'voicevox':
+        elif parent._type == voicevox:
             _type = 'VOICEVOX:'
             sp_list = parent.engines.voicevox.metas
 
-        elif parent._type == 'coeiroink':
+        elif parent._type == coeiroink:
             _type = 'COEIROINK:'
             sp_list = parent.engines.coeiroink.metas
 
@@ -97,15 +119,15 @@ class CreateSelect(ui.Select):
 
 class CreateSelect2(ui.Select):
     def __init__(self, voice, parent:'CreateView') -> None:
-        if parent._type == 'open_jtalk':
+        if parent._type == open_jtalk:
             _type = ''
-            sp_list = core.get_metas()
+            sp_list = parent.engines.open_jtalk.metas
 
-        elif parent._type == 'voicevox':
+        elif parent._type == voicevox:
             _type = 'voicevox:'
             sp_list = parent.engines.voicevox.metas
 
-        elif parent._type == 'coeiroink':
+        elif parent._type == coeiroink:
             _type = 'coeiroink:'
             sp_list = parent.engines.coeiroink.metas
         
@@ -220,7 +242,7 @@ class CreateButtonOpenJtalk(ui.Button):
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
-        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type='open_jtalk'))
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type=open_jtalk))
 
 
 class CreateButtonVoicevox(ui.Button):
@@ -233,7 +255,7 @@ class CreateButtonVoicevox(ui.Button):
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
-        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type='voicevox'))
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type=voicevox))
 
 class CreateButtonCoeiroink(ui.Button):
     def __init__(self, parent:'CreateView') -> None:
@@ -245,4 +267,4 @@ class CreateButtonCoeiroink(ui.Button):
 
     async def callback(self, interaction: Interaction):
         await interaction.response.defer()
-        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type='coeiroink'))
+        await interaction.message.edit(view=CreateView(g_opts=self.parent.g_opts, engines=self.parent.engines, _type=coeiroink))

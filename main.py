@@ -214,7 +214,7 @@ async def join(ctx:commands.Context):
         try: await vc.channel.connect(self_deaf=True)
         except discord.ClientException: return
         g_opts[gid] = DataInfo(ctx.guild)
-        Dic_Path = f'{Config.User_dic}{gid}.txt'
+        Dic_Path = f'{Config.user_dic}{gid}.txt'
         with open(Dic_Path,'w'): pass
         GC(gid)
         return True
@@ -249,7 +249,7 @@ async def _bye(guild:discord.Guild):
 @client.command()
 async def register(ctx:commands.Context, arg1, arg2):
     gid = str(ctx.guild.id)
-    with open(Config.User_dic+ gid +'.txt', mode='a') as f:
+    with open(Config.user_dic+ gid +'.txt', mode='a') as f:
         f.write(arg1 + ',' + arg2 + '\n')
         print(gid +'.txtに書き込み : '+ arg1 + ',' + arg2)
 
@@ -257,11 +257,11 @@ async def register(ctx:commands.Context, arg1, arg2):
 @client.command()
 async def delete(ctx:commands.Context, arg1):
     gid = str(ctx.guild.id)
-    with open(Config.User_dic+ gid +'.txt', mode='r') as f:
+    with open(Config.user_dic+ gid +'.txt', mode='r') as f:
         text = f.read()
         replaced_text = re.sub(rf'{arg1},[^\n]+\n','',text)
     if re.search(rf'{arg1},[^\n]+\n',text):
-        with open(Config.User_dic+ gid +'.txt', mode='w') as f:
+        with open(Config.user_dic+ gid +'.txt', mode='w') as f:
             f.write(replaced_text)
         print(f'{gid}.txtから削除 : {arg1}')
 

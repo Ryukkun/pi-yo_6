@@ -5,3 +5,4 @@ scipy
 soundfile
 espnet
 six
+pyopenjtalk

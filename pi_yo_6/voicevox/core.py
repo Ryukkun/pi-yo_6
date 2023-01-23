@@ -27,7 +27,6 @@ from ctypes import *
 import platform
 import os
 import numpy
-import time
 import asyncio
 import json
 import requests
@@ -42,7 +41,7 @@ class CreateVOICEVOX:
         
         # Load VoiceVox
         print('Loading VoiceVox ....')
-        self.VVox = VOICEVOX(use_gpu= Config.VVOX.use_gpu, load_all_models= Config.VVOX.load_all_models)
+        self.VVox = VOICEVOX(use_gpu= Config.Vvox.use_gpu, load_all_models= Config.Vvox.load_all_models)
         self.metas = json.loads(self.VVox.metas())
         res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest')
         res = res.json()
@@ -56,14 +55,14 @@ class CreateVOICEVOX:
         self.TEXT_LIMIT = 100
 
 
-    async def create_voice(self, Itext, speaker_id):
+    async def create_voice(self, text, speaker):
         # 文字数上限
-        if len(Itext) > self.TEXT_LIMIT:
-            Itext = Itext[:self.TEXT_LIMIT]
+        if len(text) > self.TEXT_LIMIT:
+            text = text[:self.TEXT_LIMIT]
 
         loop = asyncio.get_event_loop()
         data = None
-        data = await loop.run_in_executor(self.exe, self.VVox.voicevox_tts, Itext, speaker_id)
+        data = await loop.run_in_executor(self.exe, self.VVox.voicevox_tts, text, speaker)
         return data
 
 
@@ -116,11 +115,11 @@ class VOICEVOX:
         get_os = platform.system()
         
         if get_os == "Windows":
-            lib_file = Config.VVOX.core_windows
+            lib_file = Config.Vvox.core_windows
         elif get_os == "Darwin":
-            lib_file = Config.VVOX.core_darwin
+            lib_file = Config.Vvox.core_darwin
         elif get_os == "Linux":
-            lib_file = Config.VVOX.core_linux
+            lib_file = Config.Vvox.core_linux
 
         # ライブラリ読み込み
         if not os.path.exists(lib_file):
@@ -171,7 +170,7 @@ class VOICEVOX:
         self.lib.voicevox_error_result_to_message.argtypes = (c_int,)
         self.lib.voicevox_load_openjtalk_dict.argtypes = (c_char_p,)
 
-        self.voicevox_load_openjtalk_dict(Config.OJ.Dic_utf_8)
+        self.voicevox_load_openjtalk_dict(Config.OJ.dic_utf_8)
         success = self.lib.initialize(use_gpu, cpu_num_threads, load_all_models)
         if not success:
             raise Exception(self.lib.last_error_message().decode())

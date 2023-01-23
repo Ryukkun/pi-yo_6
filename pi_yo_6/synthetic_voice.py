@@ -49,14 +49,14 @@ class GenerateVoice:
     def costom_voice(self, Itext):
         
         _type = 'open_jtalk'
-        _id = Config.OJ.Voice+'mei_normal.htsvoice'
+        _id = Config.OJ.hts_path+'mei_normal.htsvoice'
         
         r = list(re_voice.finditer(Itext['text']))
         if len(r) != 0:
             Itext['text'] = re_voice.sub('',Itext['text'])
             r = r[-1].group(2).lower()
 
-            _hts = Config.OJ.Voice+f'{r}.htsvoice'
+            _hts = Config.OJ.hts_path+f'{r}.htsvoice'
             if os.path.isfile(_hts):
                 _type = 'open_jtalk'
                 _id = _hts
@@ -69,7 +69,7 @@ class GenerateVoice:
                 _type = 'coeiroink'
                 _id = r
             
-        Itext['hts'] = {'type':_type, 'id':_id}
+        Itext['speaker'] = {'type':_type, 'id':_id}
         return Itext
         
     #------------------------------------------------------
@@ -127,13 +127,13 @@ class GenerateVoice:
         Itext = re_emoji.sub('',Itext)                                              # 絵文字IDは読み上げない
         Itext = re_mention.sub('メンションは省略するのです！ ',Itext)
         Itext = self.custam_text(Itext, Config.admin_dic)                      # ユーザ登録した文字を読み替える
-        Itext = self.custam_text(Itext, f'{Config.User_dic}{message.guild.id}.txt')
+        Itext = self.custam_text(Itext, f'{Config.user_dic}{message.guild.id}.txt')
 
         out_wav = []
         gather_wav = []
         for num, Itext in enumerate(re_text_status.finditer(Itext)):
             Itext = Itext.group()
-            out = f'{Config.OJ.output}{message.id}-{num}.wav'
+            out = f'{Config.output}{message.id}-{num}.wav'
             gather_wav.append(self.split_voice(Itext, out))
             out_wav.append(out)
 

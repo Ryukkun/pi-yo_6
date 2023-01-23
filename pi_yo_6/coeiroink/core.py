@@ -37,7 +37,7 @@ class CreateCoeiroink:
         speaker: int,
         out: str = "./output.wav",
         speed: float = 1.0,
-        pitch: float = 0.0,
+        tone: float = 0.0,
         intnation: float = 1.0
         ):
         # 文字数上限
@@ -52,7 +52,7 @@ class CreateCoeiroink:
                 speaker,
                 out,
                 speed,
-                pitch,
+                tone,
                 intnation
             )
 
