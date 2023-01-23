@@ -139,8 +139,12 @@ class CreateSelect2(ui.Select):
         if not styles:
             voice = sp_list[0]['name']
             styles = sp_list[0]['styles']
+        if parent._type == open_jtalk:
+            value_prefix = ''
+        else:
+            value_prefix = f'{_type}{voice}_'
 
-        select_opt = [SelectOption(label=f"{_['name']}", value=f'{_type}{voice}_{_["name"]}') for _ in styles]
+        select_opt = [SelectOption(label=f"{_['name']}", value=f'{value_prefix}{_["name"]}') for _ in styles]
         select_opt[0].default = True
         self.voice_res = select_opt[0].value
         super().__init__(placeholder='キュー表示', options=select_opt, row=2)
