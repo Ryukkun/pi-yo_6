@@ -5,7 +5,7 @@ from discord import ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
 from .load_config import GC
 from .embeds import EmBase
 from .systhetic_engines import SyntheticEngines
-from . import open_jtalk
+from .open_jtalk import core
 
 async def embed(guild:Guild):
     _GC = GC(guild.id)
@@ -65,7 +65,7 @@ class CreateSelect(ui.Select):
 
         if parent._type == 'open_jtalk':
             _type = ''
-            sp_list = open_jtalk.get_metas()
+            sp_list = core.get_metas()
 
         elif parent._type == 'voicevox':
             _type = 'VOICEVOX:'
@@ -99,7 +99,7 @@ class CreateSelect2(ui.Select):
     def __init__(self, voice, parent:'CreateView') -> None:
         if parent._type == 'open_jtalk':
             _type = ''
-            sp_list = open_jtalk.get_metas()
+            sp_list = core.get_metas()
 
         elif parent._type == 'voicevox':
             _type = 'voicevox:'

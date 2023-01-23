@@ -3,7 +3,7 @@ from platform import system
 from typing import Optional
 
 from pi_yo_6.voicevox.core import CreateVOICEVOX
-from pi_yo_6.coeiroink.run import CreateCoeiroink
+from pi_yo_6.coeiroink.core import CreateCoeiroink
 from config import Config
 
 _os = system().lower()
@@ -22,11 +22,19 @@ class SyntheticEngines:
         except Exception as e:
             print(f'\033[31m Error \033[35mpi-yo6 \033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
             self.voicevox = None
+
         try:
             self.coeiroink: Optional[CreateCoeiroink] = CreateCoeiroink()
+            if not self.coeiroink.metas:
+                self.coeiroink = None
+                print('Error pi-yo6 再生可能な speaker_model が存在しません')
         except Exception as e:
             print(f'\033[31m Error \033[35mpi-yo6 \033[0mCoeiroinkの読み込みに失敗しました。\n{e}')
             self.coeiroink = None
+
+        self.open_jtalk = None
+        if Config.
+
 
     async def create_voice(self, Itext:dict, out):
         _type = Itext['hts']['type']

@@ -126,14 +126,14 @@ class GenerateVoice:
         Itext = re_url.sub('ユーアールエルは省略するのです！ ',Itext)                    # URL省略
         Itext = re_emoji.sub('',Itext)                                              # 絵文字IDは読み上げない
         Itext = re_mention.sub('メンションは省略するのです！ ',Itext)
-        Itext = self.custam_text(Itext, Config.Admin_dic)                      # ユーザ登録した文字を読み替える
+        Itext = self.custam_text(Itext, Config.admin_dic)                      # ユーザ登録した文字を読み替える
         Itext = self.custam_text(Itext, f'{Config.User_dic}{message.guild.id}.txt')
 
         out_wav = []
         gather_wav = []
         for num, Itext in enumerate(re_text_status.finditer(Itext)):
             Itext = Itext.group()
-            out = f'{Config.OJ.Output}{message.id}-{num}.wav'
+            out = f'{Config.OJ.output}{message.id}-{num}.wav'
             gather_wav.append(self.split_voice(Itext, out))
             out_wav.append(out)
 

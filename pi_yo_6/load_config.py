@@ -5,7 +5,7 @@ from config import Config
 
 class GC:
     def __init__(self, gid) -> None:
-        self.GConfig = Config.Guild_Config
+        self.GConfig = Config.guild_config
         self.gid = gid
         self.GC_Path = f'{self.GConfig}{self.gid}.json'
         if not path.isfile(self.GC_Path):
@@ -36,7 +36,7 @@ class GC:
 class UC:
     @classmethod
     def Read(self, uid):
-        _path = f'{Config.User_Config}{uid}.json'
+        _path = f'{Config.user_config}{uid}.json'
         if not path.isfile(_path):
             GC = {
                 'voice':-1
@@ -51,6 +51,6 @@ class UC:
 
     @classmethod
     def Write(self, uid, GC):
-        _path = f'{Config.User_Config}{uid}.json'
+        _path = f'{Config.user_config}{uid}.json'
         with open(_path,'w') as f:
             json.dump(GC, f, indent=2)

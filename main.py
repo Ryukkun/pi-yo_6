@@ -24,14 +24,14 @@ from pi_yo_6.embeds import EmBase
 import pi_yo_6.voice_list as VoiceList
 from pi_yo_6.systhetic_engines import SyntheticEngines
 
-try:shutil.rmtree(Config.OJ.Output)
+try:shutil.rmtree(Config.OJ.output)
 except Exception:pass
-os.makedirs(Config.User_dic, exist_ok=True)
-os.makedirs(Config.Guild_Config, exist_ok=True)
-os.makedirs(Config.User_Config, exist_ok=True)
-os.makedirs(Config.OJ.Voice, exist_ok=True)
-os.makedirs(Config.OJ.Output, exist_ok=True)
-with open(Config.Admin_dic,'a'):pass
+os.makedirs(Config.user_dic, exist_ok=True)
+os.makedirs(Config.guild_config, exist_ok=True)
+os.makedirs(Config.user_config, exist_ok=True)
+os.makedirs(Config.OJ.hts_path, exist_ok=True)
+os.makedirs(Config.output, exist_ok=True)
+with open(Config.admin_dic,'a'):pass
 
 
 
@@ -39,7 +39,7 @@ with open(Config.Admin_dic,'a'):pass
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
-client = commands.Bot(command_prefix=Config.Prefix,intents=intents)
+client = commands.Bot(command_prefix=Config.prefix,intents=intents)
 g_opts:Dict[int, 'DataInfo'] = {}
 
 engines:SyntheticEngines = SyntheticEngines()
@@ -371,4 +371,4 @@ class DataInfo:
             self.count_loop = 0
 
 
-client.run(Config.Token)
+client.run(Config.token)

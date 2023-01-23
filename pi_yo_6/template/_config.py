@@ -4,16 +4,13 @@ class Open_Jtalk:
     Dic_shift_jis : str
         windowsで起動するときだけ Dic_shift_jis 必須
     
-    Voice : str
+    hts_path : str
         htsvoiceを入れておくファイル
-    
-    Output : str
-        音声ファイル一時的保存場所
     '''
-    Dic_utf_8 = '/var/lib/mecab/dic/open-jtalk/naist-jdic'
-    Dic_shift_jis = '/var/lib/mecab/dic/open-jtalk/naist-jdic'
-    Voice = './Voice/'
-    Output = './Output/'
+    enable = True
+    dic_utf_8 = './pi_yo_6/open_jtalk/dic'
+    dic_shift_jis = './pi_yo_6/open_jtalk/dic'
+    hts_path = './pi_yo_6/open_jtalk/voice/'
 
 
 class VOICEVOX:
@@ -28,6 +25,7 @@ class VOICEVOX:
     load_all_models : bool
         今のところは True にしておかないと動きません。いつかメモリ使用を抑制するために修正するかも
     ''' 
+    enable = False
     core_windows = './pi_yo_6/voicevox/voicevox_core-windows/core.dll'
     core_linux = './pi_yo_6/voicevox/voicevox_core-linux/libcore.so'
     core_darwin = './pi_yo_6/voicevox/voicevox_core-darwin/libcore.dylib'
@@ -46,16 +44,23 @@ class Coeiroink:
         False 激推しです。　Trueにしたらメモリ不足で仮想メモリまで侵食します
         モデル量にもよりますが、自分は 20GB弱くらい取られました
     ''' 
+    enable = False
     load_all_models = False
 
 
 class Config:
-    Prefix = '.'
-    Token = ''
-    Admin_dic = './dic/admin_dic.txt'
-    User_dic = './dic/user_dic/'
-    Guild_Config = './guild_config/'
-    User_Config = './user_config/'
+    '''
+    ------
+    output : str
+        音声ファイル一時的保存場所
+    '''
+    prefix = '.'
+    token = ''
+    admin_dic = './dic/admin_dic.txt'
+    user_dic = './dic/user_dic/'
+    guild_config = './guild_config/'
+    user_config = './user_config/'
+    output = './output/'
     OJ = Open_Jtalk
-    VVOX = VOICEVOX
+    Vvox = VOICEVOX
     Coeiroink = Coeiroink
