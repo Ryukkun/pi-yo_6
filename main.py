@@ -5,6 +5,7 @@ import shutil
 import asyncio
 import tabulate
 import glob
+import logging
 from discord.ext import commands, tasks
 from typing import Literal, Optional, Dict
 
@@ -283,4 +284,4 @@ class DataInfo:
             self.count_loop = 0
 
 
-client.run(Config.token)
+client.run(Config.token, log_level=logging.WARNING)
