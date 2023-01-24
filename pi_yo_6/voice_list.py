@@ -208,7 +208,7 @@ class CreateButtonText(ui.Button):
 class CreateButtonSet(ui.Button):
     def __init__(self, parent:'CreateView') -> None:
         self.parent = parent
-        super().__init__(label='ボイスをセット', style=ButtonStyle.grey, row=3)
+        super().__init__(label='ボイスをセット', style=ButtonStyle.blurple, row=3)
 
     async def callback(self, interaction: Interaction):
         new_message = EditVoiceMessage(self.parent.select2.voice_res)
@@ -218,7 +218,7 @@ class CreateButtonSet(ui.Button):
 
 class CreateButtonRefresh(ui.Button):
     def __init__(self) -> None:
-        super().__init__(label='↺', style=ButtonStyle.grey, row=3)
+        super().__init__(label='↺', style=ButtonStyle.blurple, row=3)
 
     async def callback(self, interaction: Interaction):
         await interaction.response.edit_message(embed=await embed(interaction.guild))
@@ -283,7 +283,7 @@ class EditVoiceMessage:
                 self.parent = parent
                 super().__init__(timeout=None)
 
-            @ui.button(label='自分', style=ButtonStyle.blurple)
+            @ui.button(label='自分', style=ButtonStyle.green)
             async def my_voice(self, interaction:Interaction, button:ui.Button):
                 gid = interaction.guild_id
                 _GC = GC(gid)
@@ -297,7 +297,7 @@ class EditVoiceMessage:
                 _GC.Write(g_config)
                 
 
-            @ui.button(label='他人', style=ButtonStyle.blurple)
+            @ui.button(label='他人', style=ButtonStyle.green)
             async def another_voice(self, interaction:Interaction, button:ui.Button):
                 gid = interaction.guild_id
                 _GC = GC(gid)
@@ -311,13 +311,28 @@ class EditVoiceMessage:
                 _GC.Write(g_config)
 
 
+            @ui.button(label='サーバーの初期ボイス', style=ButtonStyle.green)
+            async def server_voice(self, interaction:Interaction, button:ui.Button):
+                gid = interaction.guild_id
+                _GC = GC(gid)
+                g_config = _GC.Read()
+                
+                if interaction.user.guild_permissions.administrator or not g_config['admin_only'].setdefault('server_voice',True):
+                    g_config['server_voice'] = self.parent.voice
+                    await interaction.response.edit_message(embed=self.parent.success_embed, view=None)
+                else:
+                    await interaction.response.edit_message(embed=EmBase.failed(), view=None)
+
+                _GC.Write(g_config)
+
+
 
         class MyView(ui.View):
             def __init__(self, parent:'EditVoiceMessage'):
                 self.parent = parent
                 super().__init__(timeout=None)
 
-            @ui.button(label='このサーバーのみ反映', style=ButtonStyle.blurple)
+            @ui.button(label='このサーバーのみ反映', style=ButtonStyle.green)
             async def server_voice(self, interaction:Interaction, button:ui.Button):
                 gid = interaction.guild_id
                 uid = interaction.user.id
@@ -328,7 +343,7 @@ class EditVoiceMessage:
                 await interaction.response.edit_message(embed=self.parent.success_embed, view=None)
 
 
-            @ui.button(label='自分の初期ボイス', style=ButtonStyle.blurple)
+            @ui.button(label='自分の初期ボイス', style=ButtonStyle.green)
             async def my_voice(self, interaction:Interaction, button:ui.Button):
                 uid = interaction.user.id
                 u_config = UC.Read(uid)
