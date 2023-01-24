@@ -292,7 +292,7 @@ class EditVoiceMessage:
                 if interaction.user.guild_permissions.administrator or not g_config['admin_only'].setdefault('my_voice',False):
                     await interaction.response.edit_message(embed=self.parent.my_embed, view=self.parent.my_view)
                 else:
-                    await interaction.response.edit_message(embed=EmBase.failed(), view=None)
+                    await interaction.response.edit_message(embed=EmBase.no_perm(), view=None)
 
                 _GC.Write(g_config)
                 
@@ -306,7 +306,7 @@ class EditVoiceMessage:
                 if interaction.user.guild_permissions.administrator or not g_config['admin_only'].setdefault('another_voice',True):
                     await interaction.response.edit_message(embed=self.parent.who_other_embed, view=self.parent.who_other_view)
                 else:
-                    await interaction.response.edit_message(embed=EmBase.failed(), view=None)
+                    await interaction.response.edit_message(embed=EmBase.no_perm(), view=None)
 
                 _GC.Write(g_config)
 
@@ -321,7 +321,7 @@ class EditVoiceMessage:
                     g_config['server_voice'] = self.parent.voice
                     await interaction.response.edit_message(embed=self.parent.success_embed, view=None)
                 else:
-                    await interaction.response.edit_message(embed=EmBase.failed(), view=None)
+                    await interaction.response.edit_message(embed=EmBase.no_perm(), view=None)
 
                 _GC.Write(g_config)
 
