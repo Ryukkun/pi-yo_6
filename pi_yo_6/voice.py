@@ -5,6 +5,7 @@ from discord import Message
 from .load_config import GC, UC
 from .synthetic_voice import GenerateVoice
 from .audio_source import StreamAudioData as SAD
+from config import Config
 
 bot_prefix = r',./?!;>'
 
@@ -21,7 +22,6 @@ class ChatReader():
         self.gid = self.Info.gid
         self.vc = self.guild.voice_client
         self.Queue = []
-        self.Config = self.Info.Config
         self.CLoop = self.Info.loop
         self.GC = GC(self.gid)
         self.creat_voice = GenerateVoice(self.Info.engines).creat_voice
@@ -51,11 +51,11 @@ class ChatReader():
                 text = f'voice:{speaker_id} {text}'
 
             # 音声ファイル ファイル作成
-            source = await self.creat_voice(text, message)
-            # except Exception as e:                                              # Error
-            #     print(f"Error : 音声ファイル作成に失敗 {e}")
-            #     self.Queue.remove([message.id, 0])
-            #     return
+            try: source = await self.creat_voice(text, message)
+            except Exception as e:                                              # Error
+                print(f"Error : 音声ファイル作成に失敗 {e}")
+                self.Queue.remove([message.id, 0])
+                return
 
             print(f'生成時間 : {time.perf_counter()-now_time}')
             i = self.Queue.index([message.id, 0])
