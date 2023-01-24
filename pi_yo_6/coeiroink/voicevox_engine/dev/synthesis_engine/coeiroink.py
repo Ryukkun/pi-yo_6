@@ -168,7 +168,6 @@ class MockSynthesisEngine(SynthesisEngineBase):
         return accent_phrases
 
     def _synthesis_impl(self, query: AudioQuery, speaker_id: int, text: str) -> np.ndarray:
-        start_time = time.time()
         tokens = self.query2tokens_prosody(query, text)
 
         if (temp_speaker_model := self.speaker_models.get( (speaker_id, query.speedScale) )):
@@ -221,8 +220,6 @@ class MockSynthesisEngine(SynthesisEngineBase):
                 filter="kaiser_fast",
             )
 
-        rtf = (time.time() - start_time)
-        print(f"Synthesis Time: {rtf}")
         return wave
 
     @staticmethod
