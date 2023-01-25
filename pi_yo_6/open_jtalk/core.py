@@ -1,5 +1,9 @@
 import os
 import asyncio
+import requests
+import tarfile
+from tqdm import tqdm
+from pathlib import Path
 
 from glob import glob
 from platform import system
@@ -13,9 +17,54 @@ else:
     EFormat = 'utf-8'
 
 
+class DownloadDic:
+    @classmethod
+    def utf_8(self):
+        parent_path = Path(__file__).parent
+        self.f_name = parent_path / 'open_jtalk_dic_utf_8-1.11'
+        if not self.f_name.is_dir():
+            self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_utf_8-1.11.tar.gz'
+            self.download(self)
+        return str(self.f_name)
+
+    @classmethod
+    def shift_jis(self):
+        parent_path = Path(__file__).parent
+        self.f_name = parent_path / 'open_jtalk_dic_shift_jis-1.11'
+        if not self.f_name.is_dir():
+            self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_utf_8-1.11.tar.gz'
+            self.download(self)
+        return str(self.f_name)
+
+
+    def download(self):
+        tar_gz = f'{self.f_name}.tar.gz'
+        r = requests.get(self.url, stream=True)
+        total_size = int(r.headers.get('content-length', 0))
+        chunk_size = 32 * 1024
+
+        pbar = tqdm(total=total_size, unit='B', unit_scale=True)
+        with open(tar_gz, 'wb') as f:
+            for data in r.iter_content(chunk_size):
+                f.write(data)
+                pbar.update(chunk_size)
+        pbar.close()
+        
+        # 展開
+        with tarfile.open(tar_gz, 'r:gz')as tar:
+            tar.extractall(path=self.f_name)
+        os.remove(tar_gz)
+
+
+
 class CreateOpenJtalk:
     def __init__(self) -> None:
         self.metas = self.get_metas()
+
+        if _os == 'windows':
+            DownloadDic.shift_jis()
+
+        DownloadDic.utf_8()
 
 
     async def create_voice(

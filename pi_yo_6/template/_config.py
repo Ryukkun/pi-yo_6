@@ -1,15 +1,9 @@
 class Open_Jtalk:
     '''
-    Dic_utf_8 : str
-    Dic_shift_jis : str
-        windowsで起動するときだけ Dic_shift_jis 必須
-    
     hts_path : str
         htsvoiceを入れておくファイル
     '''
     enable = True
-    dic_utf_8 = './pi_yo_6/open_jtalk/dic'
-    dic_shift_jis = './pi_yo_6/open_jtalk/dic'
     hts_path = './pi_yo_6/open_jtalk/voice/'
 
 
