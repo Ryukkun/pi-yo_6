@@ -79,9 +79,9 @@ class CreateOpenJtalk:
         ):
 
         if _os == 'windows':
-            dic = Config.OJ.dic_shift_jis
+            dic = DownloadDic.shift_jis()
         else:
-            dic = Config.OJ.dic_utf_8
+            dic = DownloadDic.utf_8()
 
         cmd=f'open_jtalk -x "{dic}" -ow "{out}" -m {speaker} -r {speed}{tone}{intnation}{a}'
         prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
