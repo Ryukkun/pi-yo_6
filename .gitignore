@@ -1,7 +1,7 @@
 config.ini
 __pycache__
 dic
-Voice
+voice
 .DS_Store
 config.py
 guild_config

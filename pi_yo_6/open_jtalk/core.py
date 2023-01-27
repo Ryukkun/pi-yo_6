@@ -30,7 +30,7 @@ class DownloadDic:
     def shift_jis(self):
         self.f_name = parent_path / 'open_jtalk_dic_shift_jis-1.11'
         if not self.f_name.is_dir():
-            self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_utf_8-1.11.tar.gz'
+            self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_shift_jis-1.11.tar.gz'
             self.download(self)
         return str(self.f_name)
 
