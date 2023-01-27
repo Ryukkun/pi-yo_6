@@ -15,12 +15,11 @@ if _os == 'windows':
     EFormat = 'shift_jis'
 else:
     EFormat = 'utf-8'
-
+parent_path = Path(__file__).parent
 
 class DownloadDic:
     @classmethod
     def utf_8(self):
-        parent_path = Path(__file__).parent
         self.f_name = parent_path / 'open_jtalk_dic_utf_8-1.11'
         if not self.f_name.is_dir():
             self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_utf_8-1.11.tar.gz'
@@ -29,7 +28,6 @@ class DownloadDic:
 
     @classmethod
     def shift_jis(self):
-        parent_path = Path(__file__).parent
         self.f_name = parent_path / 'open_jtalk_dic_shift_jis-1.11'
         if not self.f_name.is_dir():
             self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_utf_8-1.11.tar.gz'
@@ -52,7 +50,7 @@ class DownloadDic:
         
         # 展開
         with tarfile.open(tar_gz, 'r:gz')as tar:
-            tar.extractall(path=self.f_name)
+            tar.extractall(path=parent_path)
         os.remove(tar_gz)
 
 
