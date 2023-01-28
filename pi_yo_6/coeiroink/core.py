@@ -1,33 +1,27 @@
-# import asyncio
-import json
 import os
-
-# import sys
-from typing import Optional
-from pathlib import Path
-
 import soundfile
-from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
-#from voicevox_engine import __version__
-from .voicevox_engine.dev.core.coeiroink import get_metas_dict
-from .voicevox_engine.kana_parser import create_kana
-from .voicevox_engine.model import (
-    AudioQuery,
-    Speaker,
-    SpeakerInfo
-)
-from .voicevox_engine.synthesis_engine import make_synthesis_engines
+from typing import Optional
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+
+from .coeiroink_engine.voicevox_engine.kana_parser import create_kana
+from .coeiroink_engine.voicevox_engine.model import AudioQuery
+from .coeiroink_engine.voicevox_engine.dev.core import metas as mock_metas
+from .coeiroink_engine.voicevox_engine.dev.core import supported_devices as mock_supported_devices
+
 from config import Config
 from .. import downloader as Downloader
+from .synthetic_engine import FixedMSEngine
+from .coeiroink import get_metas_dict
 
 class CreateCoeiroink:
     def __init__(self) -> None:
         
         # Load Coeiroink
         print('Loading Coeiroink ....')
-        self.coeiroink = Coeiroink(load_all_models= Config.Coeiroink.load_all_models)
+        self.coeiroink = Coeiroink()
 
         parent = Path(__file__).parent
         file_name = 'coeiroink_engine'
@@ -35,6 +29,15 @@ class CreateCoeiroink:
         if not os.path.isdir(file_path):
             url = 'https://github.com/shirowanisan/voicevox_engine/archive/refs/heads/c-1.6.0+v-0.12.3.zip'
             Downloader.download_zip(url, parent, file_name)
+
+            model_file = parent / 'coeiroink_engine' / 'voicevox_engine' / 'model.py'
+            befor_text = 'from voicevox_engine.utility import engine_root'
+            after_text = 'from .utility import engine_root'
+            with open(model_file, 'r') as f:
+                text = f.read()
+            if befor_text in text:
+                with open(model_file, 'w') as f:
+                    f.write(text.replace(befor_text, after_text))
 
         self.metas = get_metas_dict()
         self.exe = ThreadPoolExecutor(1)
@@ -92,15 +95,12 @@ class CreateCoeiroink:
 
 
 class Coeiroink:
-    def __init__(self, load_all_models:bool =False, cpu_num:Optional[int] =None ) -> None:
-        self.synthesis_engine = make_synthesis_engines(
+    def __init__(self) -> None:
+        self.synthesis_engine = FixedMSEngine(
+            speakers=mock_metas(),
+            supported_devices=mock_supported_devices(),
+            load_all_models=Config.Coeiroink.load_all_models,
             use_gpu=False,
-            voicelib_dirs=None,
-            voicevox_dir=None,
-            runtime_dirs=None,
-            cpu_num_threads=cpu_num,
-            enable_mock=False,
-            load_all_models=load_all_models,
         )
         self.sampling_rate = self.synthesis_engine.default_sampling_rate
 
@@ -170,54 +170,6 @@ class Coeiroink:
         soundfile.write(
             file=out, data=wave, samplerate=query.outputSamplingRate, format="WAV"
         )
-
-
-
-    def speakers(self):
-        return self.synthesis_engine.speakers
-
-
-    def speaker_info(self, speaker_uuid: str):
-        """
-        指定されたspeaker_uuidに関する情報をjson形式で返します。
-        画像や音声はbase64エンコードされたものが返されます。
-
-        Returns
-        -------
-        ret_data: SpeakerInfo
-        """
-        speakers = json.loads(self.synthesis_engine.speakers)
-        for i in range(len(speakers)):
-            if speakers[i]["speaker_uuid"] == speaker_uuid:
-                speaker = speakers[i]
-                break
-        else:
-            raise Exception("該当する話者が見つかりません")
-
-        try:
-            ret_data = SpeakerInfo.from_local(Speaker(**speaker))
-        except FileNotFoundError:
-            import traceback
-            traceback.print_exc()
-            raise Exception("追加情報が見つかりませんでした")
-
-        return ret_data
-
-
-    
-    def initialize_speaker(self, speaker: int, core_version: Optional[str] = None):
-        """
-        指定されたspeaker_idの話者を初期化します。
-        実行しなくても他のAPIは使用できますが、初回実行時に時間がかかることがあります。
-        """
-        self.synthesis_engine.initialize_speaker_synthesis(speaker)
-
-   
-    def is_initialized_speaker(self, speaker: int, core_version: Optional[str] = None):
-        """
-        指定されたspeaker_idの話者が初期化されているかどうかを返します。
-        """
-        return self.synthesis_engine.is_initialized_speaker_synthesis(speaker)
 
 
 
