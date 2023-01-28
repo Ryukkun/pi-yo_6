@@ -9,6 +9,7 @@ from glob import glob
 from platform import system
 
 from config import Config
+from .. import downloader as Downloader
 
 _os = system().lower()
 if _os == 'windows':
@@ -20,38 +21,22 @@ parent_path = Path(__file__).parent
 class DownloadDic:
     @classmethod
     def utf_8(self):
-        self.f_name = parent_path / 'open_jtalk_dic_utf_8-1.11'
-        if not self.f_name.is_dir():
-            self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_utf_8-1.11.tar.gz'
-            self.download(self)
-        return str(self.f_name)
+        file_name = 'open_jtalk_dic_utf_8-1.11'
+        file_path = parent_path / file_name
+        if not file_path.is_dir():
+            url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_utf_8-1.11.tar.gz'
+            Downloader.download_tar(url, parent_path, file_name)
+        return str(file_path)
 
     @classmethod
     def shift_jis(self):
-        self.f_name = parent_path / 'open_jtalk_dic_shift_jis-1.11'
-        if not self.f_name.is_dir():
-            self.url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_shift_jis-1.11.tar.gz'
-            self.download(self)
-        return str(self.f_name)
+        file_name = 'open_jtalk_dic_shift_jis-1.11'
+        file_path = parent_path / file_name
+        if not file_path.is_dir():
+            url = 'https://jaist.dl.sourceforge.net/project/open-jtalk/Dictionary/open_jtalk_dic-1.11/open_jtalk_dic_shift_jis-1.11.tar.gz'
+            Downloader.download_tar(url, parent_path, file_name)
+        return str(file_path)
 
-
-    def download(self):
-        tar_gz = f'{self.f_name}.tar.gz'
-        r = requests.get(self.url, stream=True)
-        total_size = int(r.headers.get('content-length', 0))
-        chunk_size = 32 * 1024
-
-        pbar = tqdm(total=total_size, unit='B', unit_scale=True)
-        with open(tar_gz, 'wb') as f:
-            for data in r.iter_content(chunk_size):
-                f.write(data)
-                pbar.update(chunk_size)
-        pbar.close()
-        
-        # 展開
-        with tarfile.open(tar_gz, 'r:gz')as tar:
-            tar.extractall(path=parent_path)
-        os.remove(tar_gz)
 
 
 
