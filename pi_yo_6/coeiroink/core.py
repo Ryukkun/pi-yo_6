@@ -1,8 +1,10 @@
 # import asyncio
 import json
+import os
 
 # import sys
 from typing import Optional
+from pathlib import Path
 
 import soundfile
 from concurrent.futures import ThreadPoolExecutor
@@ -18,6 +20,7 @@ from .voicevox_engine.model import (
 )
 from .voicevox_engine.synthesis_engine import make_synthesis_engines
 from config import Config
+from .. import downloader as Downloader
 
 class CreateCoeiroink:
     def __init__(self) -> None:
@@ -25,6 +28,13 @@ class CreateCoeiroink:
         # Load Coeiroink
         print('Loading Coeiroink ....')
         self.coeiroink = Coeiroink(load_all_models= Config.Coeiroink.load_all_models)
+
+        parent = Path(__file__).parent
+        file_name = 'coeiroink_engine'
+        file_path = parent / file_name
+        if not os.path.isdir(file_path):
+            url = 'https://github.com/shirowanisan/voicevox_engine/archive/refs/heads/c-1.6.0+v-0.12.3.zip'
+            Downloader.download_zip(url, parent, file_name)
 
         self.metas = get_metas_dict()
         self.exe = ThreadPoolExecutor(1)
