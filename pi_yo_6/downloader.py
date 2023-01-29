@@ -2,8 +2,8 @@ import tarfile
 import zipfile
 import requests
 import tempfile
+import shutil
 import re
-import os
 
 from pathlib import Path
 from tqdm import tqdm
@@ -39,7 +39,7 @@ def download_tar(url, out_dir, out_file:str =''):
             after_name = out_dir / extracted_name
             if out_file:
                 after_name = out_dir / out_file
-            os.rename(befor_name, after_name)
+            shutil.move(befor_name, after_name)
 
 
 
@@ -56,7 +56,7 @@ def download_zip(url, out_dir, out_file:str =''):
             after_name = out_dir / extracted_name
             if out_file:
                 after_name = out_dir / out_file
-            os.rename(befor_name, after_name)
+            shutil.move(befor_name, after_name)
 
 
 
