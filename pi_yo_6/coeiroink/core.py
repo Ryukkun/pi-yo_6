@@ -11,10 +11,6 @@ from .. import downloader as Downloader
 
 class CreateCoeiroink:
     def __init__(self) -> None:
-        
-        # Load Coeiroink
-        print('Loading Coeiroink ....')
-        self.coeiroink = Coeiroink()
 
         parent = Path(__file__).parent
         file_name = 'coeiroink_engine'
@@ -40,6 +36,10 @@ class CreateCoeiroink:
         from .synthetic_engine import FixedMSEngine
         from .coeiroink import get_metas_dict
 
+
+        # Load Coeiroink
+        print('Loading Coeiroink ....')
+        self.coeiroink = Coeiroink()
 
         self.metas = get_metas_dict()
         self.exe = ThreadPoolExecutor(1)
