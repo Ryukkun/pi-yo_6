@@ -6,15 +6,8 @@ from typing import Optional
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-from .coeiroink_engine.voicevox_engine.kana_parser import create_kana
-from .coeiroink_engine.voicevox_engine.model import AudioQuery
-from .coeiroink_engine.voicevox_engine.dev.core import metas as mock_metas
-from .coeiroink_engine.voicevox_engine.dev.core import supported_devices as mock_supported_devices
-
 from config import Config
 from .. import downloader as Downloader
-from .synthetic_engine import FixedMSEngine
-from .coeiroink import get_metas_dict
 
 class CreateCoeiroink:
     def __init__(self) -> None:
@@ -38,6 +31,15 @@ class CreateCoeiroink:
             if befor_text in text:
                 with open(model_file, 'w') as f:
                     f.write(text.replace(befor_text, after_text))
+
+        from .coeiroink_engine.voicevox_engine.kana_parser import create_kana
+        from .coeiroink_engine.voicevox_engine.model import AudioQuery
+        from .coeiroink_engine.voicevox_engine.dev.core import metas as mock_metas
+        from .coeiroink_engine.voicevox_engine.dev.core import supported_devices as mock_supported_devices
+
+        from .synthetic_engine import FixedMSEngine
+        from .coeiroink import get_metas_dict
+
 
         self.metas = get_metas_dict()
         self.exe = ThreadPoolExecutor(1)
