@@ -1,12 +1,9 @@
 import os
-import soundfile
 import asyncio
 
-from typing import Optional
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-from config import Config
 from .. import downloader as Downloader
 
 class CreateCoeiroink:
