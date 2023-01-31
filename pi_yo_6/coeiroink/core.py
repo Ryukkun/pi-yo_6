@@ -16,16 +16,24 @@ class CreateCoeiroink:
             url = 'https://github.com/shirowanisan/voicevox_engine/archive/refs/heads/c-1.6.0+v-0.12.3.zip'
             Downloader.download_zip(url, parent, file_name)
 
-            model_file = parent / 'coeiroink_engine' / 'voicevox_engine' / 'model.py'
-            befor_text = 'from voicevox_engine.utility import engine_root'
-            after_text = 'from .utility import engine_root'
-            with open(model_file, 'r') as f:
-                text = f.read()
-            if befor_text in text:
-                with open(model_file, 'w') as f:
-                    f.write(text.replace(befor_text, after_text))
+        file = parent / 'coeiroink_engine' / 'voicevox_engine' / 'model.py'
+        befor_text = 'from voicevox_engine.utility import engine_root'
+        after_text = 'from .utility import engine_root'
+        with open(file, 'r', encoding='utf-8') as f:
+            text = f.read()
+        if befor_text in text:
+            with open(file, 'w', encoding='utf-8') as f:
+                f.write(text.replace(befor_text, after_text))
 
+        file = parent / 'coeiroink_engine' / 'voicevox_engine' / 'dev' / 'synthesis_engine' / 'coeiroink.py'
+        befor_text = 'import sklearn.neighbors._partition_nodes\nimport sklearn.utils._typedefs'
+        with open(file, 'r', encoding='utf-8') as f:
+            text = f.read()
+        if befor_text in text:
+            with open(file, 'w', encoding='utf-8') as f:
+                f.write(text.replace('import sklearn.neighbors._partition_nodes\nimport sklearn.utils._typedefs', ''))
 
+                
         from .run import Coeiroink
 
         # Load Coeiroink

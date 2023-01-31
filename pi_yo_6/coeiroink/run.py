@@ -17,7 +17,7 @@ class Coeiroink:
             speakers=mock_metas(),
             supported_devices=mock_supported_devices(),
             load_all_models=Config.Coeiroink.load_all_models,
-            use_gpu=False,
+            use_gpu=Config.Coeiroink.use_gpu,
         )
         self.sampling_rate = self.synthesis_engine.default_sampling_rate
         self.metas = get_metas_dict()
