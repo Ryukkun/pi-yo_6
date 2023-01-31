@@ -13,6 +13,9 @@ class VOICEVOX:
     onnxruntimeを同じフォルダに入れてください https://github.com/microsoft/onnxruntime/releases
     
     -------
+    core_**** : str
+        voicevox_coreがあるPath
+
     use_gpu : bool
         voicevox core の注意点を読んでください https://github.com/VOICEVOX/voicevox_core/tree/main
 
@@ -24,6 +27,7 @@ class VOICEVOX:
     core_linux = './pi_yo_6/voicevox/voicevox_core-linux/libcore.so'
     core_darwin = './pi_yo_6/voicevox/voicevox_core-darwin/libcore.dylib'
 
+    text_limit = 100
     use_gpu = False
     load_all_models = True
 
@@ -31,14 +35,21 @@ class VOICEVOX:
 class Coeiroink:
     '''
     https://coeiroink.com/
-    音声モデルは自分で入れてください pi_yo_6/coeiroink/speaker_info
+    音声モデルは自分で入れてください
+    Path : ./pi_yo_6/coeiroink/speaker_info
 
     -------
+    use_gpu : bool
+        True でも あんまり意味ないかも
+
     load_all_models : bool
         False 激推しです。　Trueにしたらメモリ不足で仮想メモリまで侵食します
         モデル量にもよりますが、自分は 20GB弱くらい取られました
     ''' 
     enable = False
+
+    text_limit = 100
+    use_gpu = False
     load_all_models = False
 
 

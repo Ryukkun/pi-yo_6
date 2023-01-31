@@ -3,28 +3,31 @@ import os
 import re
 import shutil
 import asyncio
-import tabulate
-import glob
 import logging
+from pathlib import Path
 from discord.ext import commands, tasks
 from typing import Literal, Optional, Dict
 
-_my_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(_my_dir)
+_my_dir = Path(__file__).parent
+os.chdir(str(_my_dir))
 
 ####  Config
-try: from config import Config
+config_path = str(_my_dir / 'config.py')
+temp_config_path = str(_my_dir / 'pi_yo_6' / 'template' / '_config.py')
+try:
+    from config import Config
 except Exception:
-    shutil.copyfile('pi_yo_6/template/_config.py', 'config.py')
+    shutil.copyfile(temp_config_path, config_path)
     from config import Config
 
-from pi_yo_6.load_config import GC, UC
+from pi_yo_6.load_config import GC, dif_config
 from pi_yo_6.voice_client import MultiAudio
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.embeds import EmBase
 import pi_yo_6.voice_list as VoiceList
 from pi_yo_6.systhetic_engines import SyntheticEngines
 
+dif_config(config_path, temp_config_path)
 try:shutil.rmtree(Config.output)
 except Exception:pass
 os.makedirs(Config.user_dic, exist_ok=True)
