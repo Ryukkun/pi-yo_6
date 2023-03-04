@@ -27,7 +27,7 @@ from pi_yo_6.embeds import EmBase
 import pi_yo_6.voice_list as VoiceList
 from pi_yo_6.systhetic_engines import SyntheticEngines
 
-dif_config(config_path, temp_config_path)
+#dif_config(config_path, temp_config_path)
 try:shutil.rmtree(Config.output)
 except Exception:pass
 os.makedirs(Config.user_dic, exist_ok=True)
