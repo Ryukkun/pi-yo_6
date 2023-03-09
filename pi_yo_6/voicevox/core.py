@@ -28,9 +28,10 @@ import platform
 import os
 import numpy
 import asyncio
+import aiohttp
+import urllib.parse
 import json
 import requests
-from concurrent.futures import ThreadPoolExecutor
 
 from config import Config
 from pi_yo_6.open_jtalk.core import DownloadDic
@@ -42,29 +43,46 @@ class CreateVOICEVOX:
         
         # Load VoiceVox
         print('Loading VoiceVox ....')
-        self.VVox = VOICEVOX(use_gpu= Config.Vvox.use_gpu, load_all_models= Config.Vvox.load_all_models)
-        self.metas = json.loads(self.VVox.metas())
-        res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest')
-        res = res.json()
-        print(f'Loaded VoiceVox!! - Ver.{self.metas[0]["version"]}')
-        if self.metas[0]["version"] == res['tag_name']:
+        lib = cdll.LoadLibrary(Config.Vvox.core_path)
+        lib.metas.restype = c_char_p
+        self.metas = json.loads(lib.metas().decode())
+
+        self.url_base = f'http://{Config.Vvox.ip}'
+        try:
+            res = requests.get(f'{self.url_base}/core_versions')
+            res.raise_for_status()
+            engine_ver = res.json()[0]
+        except requests.HTTPError:
+            Exception('VOICEVOX Engine が、見つかりませんでした！')
+
+        res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest').json()
+        print(f'Loaded VoiceVox!! - Ver.{engine_ver}')
+        if engine_ver == res['tag_name']:
             print(f'最新バージョンです')
         else:
             print(f'最新バージョンは {res["tag_name"]} です {res["html_url"]}')
-
-        self.exe = ThreadPoolExecutor(1)
-        self.TEXT_LIMIT = 100
+   
 
 
     async def create_voice(self, text, speaker):
         # 文字数上限
-        if len(text) > self.TEXT_LIMIT:
-            text = text[:self.TEXT_LIMIT]
+        if len(text) > Config.Vvox.text_limit:
+            text = text[:Config.Vvox.text_limit]
 
-        loop = asyncio.get_event_loop()
-        data = None
-        data = await loop.run_in_executor(self.exe, self.VVox.voicevox_tts, text, speaker)
-        return data
+        url_audio_query = fr'{self.url_base}/audio_query?text={urllib.parse.quote(text)}&speaker={speaker}'
+        url_synthesis = fr'{self.url_base}/synthesis?speaker={speaker}'
+
+        async with aiohttp.ClientSession() as session:
+            res = await session.post(url_audio_query)
+            audio_query = await res.text()
+
+            headers = {
+                'accept': 'audio/wav',
+                'Content-Type': 'application/json',
+                }
+            res = await session.post(url=url_synthesis, data=audio_query, headers=headers)
+            res = await res.read()
+        return res
 
 
     def name_list(self):

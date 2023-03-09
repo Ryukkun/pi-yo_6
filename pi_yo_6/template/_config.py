@@ -9,27 +9,20 @@ class Open_Jtalk:
 
 class VOICEVOX:
     '''
-    https://github.com/VOICEVOX/voicevox_core/releases
-    onnxruntimeを同じフォルダに入れてください https://github.com/microsoft/onnxruntime/releases
-    
+    https://github.com/VOICEVOX/voicevox_engine
+    ↑これを起動しておく必要あり
     -------
-    core_**** : str
+    core_path : str
         voicevox_coreがあるPath
 
-    use_gpu : bool
-        voicevox core の注意点を読んでください https://github.com/VOICEVOX/voicevox_core/tree/main
-
-    load_all_models : bool
-        今のところは True にしておかないと動きません。いつかメモリ使用を抑制するために修正するかも
+    ip : str
+        VOICEVOX Engine のip
     ''' 
     enable = False
-    core_windows = './pi_yo_6/voicevox/voicevox_core-windows/core.dll'
-    core_linux = './pi_yo_6/voicevox/voicevox_core-linux/libcore.so'
-    core_darwin = './pi_yo_6/voicevox/voicevox_core-darwin/libcore.dylib'
+    core_path = ''
 
     text_limit = 100
-    use_gpu = False
-    load_all_models = True
+    ip = 'localhost:50021'
 
 
 class Coeiroink:
