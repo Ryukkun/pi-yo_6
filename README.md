@@ -10,14 +10,14 @@
 - `.register (単語) (読み)` ぴーよに文字の読み方を教えることができるよ！
 - `.delete (単語)` ぴーよに覚えさせた単語の読みを 忘れさせることができるよ！
 - `.s | .shoutup` 無駄口をほざいてるピーよの息の根を簡単に止めるよ！ ぶちぶちのおミンチに差し上げましてよ！
-- `/pi-yo6 auto_join (True|False)` これを有効にしておくと、呼んでないのに ぴーよが空気を読んで自動的に ぽめーらの通話に突撃するようになるよ！ オフロスキーだね！<br>
+- `/pi-yo6 auto_join (True|False)` これを有効にしておくと、呼んでないのに ぴーよが空気を読んで自動的に ぽめーらの通話に突撃するようになるよ！ オフロスキーだね！<br><br>
 
 
 ## ☆ ぴーよの賢さ
 - ローマ字を自動的に変換
 - 英単語をカタカナ読み
 - URL メンション などの不要な読み上げを省略
-- 声帯変更マジック &nbsp; etc....
+- 声帯変更マジック &nbsp; etc....<br><br>
 
 ## ☆ 声帯変更マジックショー
 - `voice: <str>` ※Voiceファイルの場所はConfigから設定
@@ -27,7 +27,7 @@
 - `a: <int>` わからん
 
 例:
-`voice:takumi_normal speed:10 生麦生米生卵 voice:mei_happy tone:5 speed:0.5 隣の客はよくきゃき食う客だ`<br>
+`voice:takumi_normal speed:10 生麦生米生卵 voice:mei_happy tone:5 speed:0.5 隣の客はよくきゃき食う客だ`<br><br>
 
 ## ☆ 開発頑張った偉いね
 
@@ -35,7 +35,7 @@
 - Python 3.8.10にて制作
 - Open_Jtalk
 - ffmpeg
-- OS : Windows MacOS Linux(Ubuntu) にて動作確認済み
+- OS : Windows MacOS Linux(Ubuntu) にて動作確認済み<br>
 
 ### 注意
 - 一度起動したら作成される ｢Config.py｣ にて PathやTokenなどを設定することが出来ます
@@ -44,7 +44,7 @@
   - [VoiceVox Engine](https://github.com/VOICEVOX/voicevox_engine) >> 無くてもいいが、声の幅が広がる
     - 導入方法は上のURLに書いてあると思う！ あとは自分で調べてー！
     
-  - [Coeiroink](https://coeiroink.com/) >> これもなくてもいいが、声の幅が広がる
+  - [Coeiroink](https://coeiroink.com/) >> これもなくてもいいが、声の幅が広がる<br><br>
   
     
 
