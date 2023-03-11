@@ -113,6 +113,7 @@ class ChatReader():
             NCHANNELS = f.getnchannels()
             adata = np.frombuffer(f.readframes(-1), np.int16)
             adata = np.append(adata, np.zeros(FRAME_RATE//2, np.int16))
+        os.remove(source)
 
         for _ in v:
             source = await _
@@ -120,6 +121,7 @@ class ChatReader():
                 adata = np.append(adata, np.frombuffer(f.readframes(-1), np.int16))
                 if v[-1] != _:
                     adata = np.append(adata, np.zeros((FRAME_RATE - f.getnframes()), np.int16))
+            os.remove(source)
 
         out = f'{Config.output}{uuid.uuid4()}.wav'
         with wave.open(out, 'wb') as fw:
