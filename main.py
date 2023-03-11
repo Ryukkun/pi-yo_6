@@ -226,8 +226,8 @@ async def count(ctx:commands.Context):
             return
         
         message = f"voice:{random.choice(choice)} いっくよー 3 2 1 GO!"
-        await data.Voice.on_message_from_str(message)
-
+        #await data.Voice.on_message_from_str(message)
+        await data.Voice.count(random.choice(choice))
 
 
 

@@ -1,6 +1,8 @@
 import time
 import os
 import uuid
+import wave
+import numpy as np
 from discord import Message
 
 from .load_config import GC, UC
@@ -91,6 +93,46 @@ class ChatReader():
             # 再生されるまでループ
             if not self.Vvc.is_playing():
                 await self.play_loop()
+
+
+
+    async def count(self, voice:str):
+        now_time = time.perf_counter()
+        voice = f'voice:{voice}'
+        v3 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 3', uuid.uuid4()))
+        v2 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 2', uuid.uuid4()))
+        v1 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 1', uuid.uuid4()))
+        v0 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 0!', uuid.uuid4()))
+        v = [v3, v2, v1, v0]
+        source = await self.raw_creat_voice(f'{voice} いっくよー!', uuid.uuid4())
+
+        with wave.open(source[0], 'rb') as f:
+            FRAME_RATE = f.getframerate()
+            SAMPWIDTH = f.getsampwidth()
+            NCHANNELS = f.getnchannels()
+            adata = np.frombuffer(f.readframes(-1), np.int16)
+            adata = np.append(adata, np.zeros(FRAME_RATE//2, np.int16))
+
+        for _ in v:
+            source = await _
+            with wave.open(source[0], 'rb') as f:
+                adata = np.append(adata, np.frombuffer(f.readframes(-1), np.int16))
+                if v[-1] != _:
+                    adata = np.append(adata, np.zeros((FRAME_RATE - f.getnframes()), np.int16))
+
+        out = f'{Config.output}{uuid.uuid4()}.wav'
+        with wave.open(out, 'wb') as fw:
+            fw.setframerate(FRAME_RATE)
+            fw.setsampwidth(SAMPWIDTH)
+            fw.setnchannels(NCHANNELS)
+            fw.writeframes(adata)
+
+        print(f'生成時間 : {time.perf_counter()-now_time}')
+        self.Queue.append([out, 1])
+
+        # 再生されるまでループ
+        if not self.Vvc.is_playing():
+            await self.play_loop()
 
 
 
