@@ -4,6 +4,7 @@ import re
 import shutil
 import asyncio
 import logging
+import random
 from pathlib import Path
 from discord.ext import commands, tasks
 from typing import Literal, Optional, Dict
@@ -194,6 +195,38 @@ async def shutup(ctx:commands.Context):
 @client.command(aliases=['vl'])
 async def voice_list(ctx:commands.Context):
     await ctx.send(embed=await VoiceList.embed(ctx.guild), view=VoiceList.CreateView(g_opts=g_opts, engines=engines))
+
+
+
+@client.command()
+async def count(ctx:commands.Context):
+    if not ctx.voice_client:
+        await join(ctx)
+    
+    if data := g_opts.get(ctx.guild.id):
+        choice = []
+        if engines.open_jtalk:
+            for _ in engines.open_jtalk.metas:
+                if _['name'] == 'mei':
+                    for __ in _['styles']:
+                        if __['name'] == 'mei_normal':
+                            choice.append('mei_normal')
+                            break
+            if 'mei_normal' not in choice:
+                choice.append( random.choice( random.choice(engines.open_jtalk.metas)['styles'] )['id'] )
+
+        if engines.voicevox:
+            voices:list[str] = ['ずんだもん','四国めたん','春日部つむぎ','白上虎太郎','冥鳴ひまり','ちび式じい','小夜/SAYO','ナースロボ_タイプT']
+            voices = [_.lower() for _ in voices]
+            for _ in engines.voicevox.metas:
+                if _['name'].lower() in voices:
+                    choice.append(f"voicevox:{_['name']}_{_['styles'][0]['name']}")
+
+        if not choice:
+            return
+        
+        message = f"voice:{random.choice(choice)} いっくよー 3 2 1 GO!"
+        await data.Voice.on_message_from_str(message)
 
 
 

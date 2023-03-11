@@ -128,12 +128,15 @@ class GenerateVoice:
         Itext = re_mention.sub('メンションは省略するのです！ ',Itext)
         Itext = self.custam_text(Itext, Config.admin_dic)                      # ユーザ登録した文字を読み替える
         Itext = self.custam_text(Itext, f'{Config.user_dic}{message.guild.id}.txt')
+        out = await self.raw_create_voice(Itext, message.id)
+        return out
 
+    async def raw_create_voice(self, Itext:str, _id):
         out_wav = []
         gather_wav = []
         for num, Itext in enumerate(re_text_status.finditer(Itext)):
             Itext = Itext.group()
-            out = f'{Config.output}{message.id}-{num}.wav'
+            out = f'{Config.output}{_id}-{num}.wav'
             gather_wav.append(self.split_voice(Itext, out))
             out_wav.append(out)
 

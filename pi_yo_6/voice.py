@@ -1,5 +1,6 @@
 import time
 import os
+import uuid
 from discord import Message
 
 from .load_config import GC, UC
@@ -24,7 +25,9 @@ class ChatReader():
         self.Queue = []
         self.CLoop = self.Info.loop
         self.GC = GC(self.gid)
-        self.creat_voice = GenerateVoice(self.Info.engines).creat_voice
+        self.generate_voice = GenerateVoice(self.Info.engines)
+        self.raw_creat_voice = self.generate_voice.raw_create_voice
+        self.creat_voice = self.generate_voice.creat_voice
 
 
     async def on_message(self, message:Message):
@@ -65,6 +68,29 @@ class ChatReader():
             if not self.Vvc.is_playing():
                 await self.play_loop()
 
+
+    async def on_message_from_str(self, message:str):
+        # Joinしている場合
+        if self.vc:
+
+            now_time = time.perf_counter()
+            mes_id = uuid.uuid4()
+            self.Queue.append([mes_id, 0])
+
+            # 音声ファイル ファイル作成
+            try: source = await self.raw_creat_voice(message, mes_id)
+            except Exception as e:                                              # Error
+                print(f"Error : 音声ファイル作成に失敗 {e}")
+                self.Queue.remove([mes_id, 0])
+                return
+
+            print(f'生成時間 : {time.perf_counter()-now_time}')
+            i = self.Queue.index([mes_id, 0])
+            self.Queue[i:i+1] = [[_,1] for _ in source]
+
+            # 再生されるまでループ
+            if not self.Vvc.is_playing():
+                await self.play_loop()
 
 
 
