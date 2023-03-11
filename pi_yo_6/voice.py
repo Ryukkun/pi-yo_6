@@ -99,12 +99,12 @@ class ChatReader():
     async def count(self, voice:str):
         now_time = time.perf_counter()
         voice = f'voice:{voice}'
-        v3 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 3', uuid.uuid4()))
-        v2 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 2', uuid.uuid4()))
-        v1 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 1', uuid.uuid4()))
+        v3 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 3!', uuid.uuid4()))
+        v2 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 2!', uuid.uuid4()))
+        v1 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 1!', uuid.uuid4()))
         v0 = self.CLoop.create_task( self.raw_creat_voice(f'{voice} 0!', uuid.uuid4()))
         v = [v3, v2, v1, v0]
-        source = await self.raw_creat_voice(f'{voice} いっくよー!', uuid.uuid4())
+        source = await self.raw_creat_voice(f'{voice} いっくよー?', uuid.uuid4())
 
         with wave.open(source[0], 'rb') as f:
             FRAME_RATE = f.getframerate()
