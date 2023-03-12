@@ -105,7 +105,7 @@ class ChatReader():
             self.CLoop.create_task( self.raw_creat_voice(f'{voice} 1!', uuid.uuid4())),
             self.CLoop.create_task( self.raw_creat_voice(f'{voice} 0!', uuid.uuid4())),
             ]
-        source = await self.raw_creat_voice(f'{voice} いっくよー?', uuid.uuid4())
+        source = await self.raw_creat_voice(f'{voice} いくよー?', uuid.uuid4())
 
         with wave.open(source[0], 'rb') as f:
             FRAME_RATE = f.getframerate()
