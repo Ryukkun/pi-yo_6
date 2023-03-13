@@ -106,8 +106,9 @@ class ChatReader():
             self.CLoop.create_task( self.raw_creat_voice(f'{voice} 0!', uuid.uuid4())),
             ]
         source = await self.raw_creat_voice(f'{voice} いくよー?', uuid.uuid4())
+        source = source[0]
 
-        with wave.open(source[0], 'rb') as f:
+        with wave.open(source, 'rb') as f:
             FRAME_RATE = f.getframerate()
             SAMPWIDTH = f.getsampwidth()
             NCHANNELS = f.getnchannels()
@@ -117,7 +118,8 @@ class ChatReader():
 
         for _ in v:
             source = await _
-            with wave.open(source[0], 'rb') as f:
+            source = source[0]
+            with wave.open(source, 'rb') as f:
                 adata = np.append(adata, np.frombuffer(f.readframes(-1), np.int16))
                 if v[-1] != _:
                     adata = np.append(adata, np.zeros((FRAME_RATE - f.getnframes()), np.int16))
