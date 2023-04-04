@@ -31,12 +31,15 @@ class SyntheticEngines:
             print(f'\033[31m Error \033[35mpi-yo6 \033[0mCoeiroinkの読み込みに失敗しました。\n{e}')
             self.coeiroink = None
 
-        self.open_jtalk = None
-        if Config.OJ.enable:
-            self.open_jtalk = CreateOpenJtalk()
-            if not self.open_jtalk.metas:
-                self.open_jtalk = None
-                print('Error Open_Jtalk 再生可能な htsvoice が存在しません')
+        try:
+            self.open_jtalk = None
+            if Config.OJ.enable:
+                self.open_jtalk = CreateOpenJtalk()
+                if not self.open_jtalk.metas:
+                    raise Exception('再生可能な htsvoice が存在しません')
+        except Exception as e:
+            print(f'Open Jtakの読み込みに失敗 : {e}')
+            self.open_jtalk = None
 
 
     async def create_voice(self, Itext:dict, out):

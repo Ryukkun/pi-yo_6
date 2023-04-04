@@ -1,8 +1,6 @@
 import os
 import asyncio
-import requests
-import tarfile
-from tqdm import tqdm
+import subprocess
 from pathlib import Path
 
 from glob import glob
@@ -42,6 +40,9 @@ class DownloadDic:
 
 class CreateOpenJtalk:
     def __init__(self) -> None:
+        try: subprocess.check_call('open_jtalk', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError:
+            raise Exception('Open Jtalkをインストールしてください')
         self.metas = self.get_metas()
 
         if _os == 'windows':
