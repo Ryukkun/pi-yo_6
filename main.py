@@ -21,12 +21,14 @@ except Exception:
     shutil.copyfile(temp_config_path, config_path)
     from config import Config
 
-from pi_yo_6.load_config import GC, dif_config
-from pi_yo_6.voice_client import MultiAudio
+from pi_yo_6.load_config import GC
+from pi_yo_6.discord.multi_player import MultiAudio
+from pi_yo_6.discord.voicce_client import MyVoiceClient
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.embeds import EmBase
 import pi_yo_6.voice_list as VoiceList
 from pi_yo_6.systhetic_engines import SyntheticEngines
+from pi_yo_6.siri import SiriMessage
 
 #dif_config(config_path, temp_config_path)
 try:shutil.rmtree(Config.output)
@@ -128,7 +130,7 @@ async def join(ctx:commands.Context):
     if vc := ctx.author.voice:
         gid = ctx.guild.id
         print(f'{ctx.guild.name} : #join')
-        try: await vc.channel.connect(self_deaf=True)
+        try: await vc.channel.connect(self_deaf=True, cls=MyVoiceClient)
         except discord.ClientException: return
         g_opts[gid] = DataInfo(ctx.guild)
         Dic_Path = f'{Config.user_dic}{gid}.txt'
@@ -161,6 +163,14 @@ async def _bye(guild:discord.Guild):
 
 
 #---------------------------------
+@client.command()
+async def siri(ctx:commands.Context):
+    if not ctx.voice_client:
+        await join(ctx)
+
+    await SiriMessage.from_ctx(ctx, g_opts[ctx.guild.id].Voice)
+
+
 
 
 @client.command()
