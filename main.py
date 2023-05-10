@@ -23,7 +23,7 @@ except Exception:
 
 from pi_yo_6.load_config import GC
 from pi_yo_6.discord.multi_player import MultiAudio
-from pi_yo_6.discord.voicce_client import MyVoiceClient
+from pi_yo_6.discord.voice_client import MyVoiceClient
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.embeds import EmBase
 import pi_yo_6.voice_list as VoiceList

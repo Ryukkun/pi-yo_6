@@ -4,7 +4,7 @@ from discord.ext import commands
 from discord.interactions import Interaction
 from faster_whisper import WhisperModel
 
-from pi_yo_6.discord.voicce_client import MyVoiceClient
+from pi_yo_6.discord.voice_client import MyVoiceClient
 from pi_yo_6.chatgpt import ChatGPTThread
 from pi_yo_6.voice import ChatReader
 

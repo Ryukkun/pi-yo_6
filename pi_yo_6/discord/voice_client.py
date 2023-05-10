@@ -1,11 +1,8 @@
 import nacl.secret
 import time
 import asyncio
-import wave
-import io
 import numpy as np
 
-from itertools import zip_longest
 from typing import List, Optional
 
 from discord import VoiceClient
@@ -281,6 +278,7 @@ class BufferDecoder:
             if 5 < len(value):
                 self.speaking_queues[key].append(value)
         
+        self.queues.clear()
         self.finish_bool = True
 
 
