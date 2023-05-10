@@ -1,7 +1,10 @@
 import openai
 
-openai.organization = "org-KwfkJDgXsHnyx4xHQ5MsRspi"
-openai.api_key      = "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"
+from config import Config
+
+if Config.ChatGPT.organization:
+    openai.organization = Config.ChatGPT.organization
+openai.api_key = Config.ChatGPT.api_key
 
 
 class ChatGPTThread:

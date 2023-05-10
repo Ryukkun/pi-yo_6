@@ -46,6 +46,13 @@ class Coeiroink:
     load_all_models = False
 
 
+
+class ChatGPT:
+    api_key = ""
+    organization = ""
+
+
+
 class Config:
     '''
     ------
@@ -62,3 +69,4 @@ class Config:
     OJ = Open_Jtalk
     Vvox = VOICEVOX
     Coeiroink = Coeiroink
+    ChatGPT = ChatGPT
