@@ -9,7 +9,7 @@ from pathlib import Path
 from discord.ext import commands, tasks
 from typing import Literal, Optional, Dict
 
-_my_dir = Path(__file__).parenp
+_my_dir = Path(__file__).parent
 os.chdir(str(_my_dir))
 
 ####  Config
