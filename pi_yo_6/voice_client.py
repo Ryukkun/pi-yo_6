@@ -1,16 +1,72 @@
 import threading
 import asyncio
 import time
+import logging
 import numpy as np
 
 from math import sqrt
-from discord import SpeakingState, opus, Guild
+from discord import SpeakingState, opus, Guild, FFmpegPCMAudio, FFmpegOpusAudio
 from discord.ext import commands
+from typing import Union, Optional
 
-from .audio_source import StreamAudioData
+from .utils import detect_run
 
 
 lock = threading.Lock()
+
+
+
+class _StreamAudioData:
+    def __init__(self) -> None:
+        self.st_sec :Optional[int]  = None
+        self.st_url :Optional[str]  = None
+        self.local  :bool           = True
+        self.volume :Optional[int]  = None
+    
+
+
+    def _get_ffmpegaudio(self, opus:bool, before_options:list, options:list) -> Union[FFmpegOpusAudio, FFmpegPCMAudio]:
+        options = ' '.join(options)
+        before_options = ' '.join(before_options)
+        if opus:
+            #options.extend(('-c:a', 'libopus', '-ar', '48000'))
+            return FFmpegOpusAudio(self.st_url, before_options=before_options, options=options)
+
+        else:
+            #options.extend(('-c:a', 'pcm_s16le', '-ar', '48000'))
+            return FFmpegPCMAudio(self.st_url, before_options=before_options, options=options)
+
+
+
+    async def get_ffmpegaudio(self, opus:bool, sec:int=0, speed:float=1.0, pitch:int=0) -> Union[FFmpegOpusAudio, FFmpegPCMAudio]:
+        before_options = []
+        options = ['-vn', '-application', 'lowdelay', '-loglevel', 'quiet']
+        #options = ['-vn', '-application', 'lowdelay']
+        af = []
+
+        # Sec
+        if int(sec):
+            before_options.extend(('-ss' ,str(sec)))
+        
+        # Pitch
+        if pitch != 0:
+            pitch = 2 ** (pitch / 12)
+            af.append(f'rubberband=pitch={pitch}')
+        
+        if float(speed) != 1.0:
+            af.append(f'rubberband=tempo={speed}')
+
+        if self.volume:
+            af.append(f'volume={self.volume}dB')
+        
+        if not self.local:
+            before_options.extend(('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5', '-analyzeduration', '2147483647', '-probesize', '2147483647'))
+        # af -> str
+        if af:
+            options.extend(('-af', ','.join(af) ))
+
+        return self._get_ffmpegaudio(opus, before_options, options)
+
 
 
 class _Attribute:
@@ -45,14 +101,13 @@ class MultiAudio:
         self.guild = guild
         self.gid = guild.id
         self.vc = guild.voice_client
-        self.CLoop = client.loop
+        self.loop = client.loop
         self.Parent = parent
         self.Players:list['_AudioTrack'] = []
         self.PLen = 0
         self.vc.encoder = opus.Encoder()
-        self.vc.encoder.set_expected_packet_loss_percent(0.0)
+        #self.vc.encoder.set_expected_packet_loss_percent(0.01)
         self.Enc_bool = False
-        self.doing = {'run_loop':False}
 
 
     def kill(self):
@@ -78,8 +133,7 @@ class MultiAudio:
             if playing == 1:
                 self.__speak(SpeakingState.voice)
                 with lock:
-                    if not self.doing['run_loop']:
-                        self.doing['run_loop'] = True
+                    if not self.run_loop.is_running:
                         threading.Thread(target=self.run_loop,daemon=True).start()
         else:
             if playing == 0:
@@ -96,7 +150,7 @@ class MultiAudio:
         except Exception:
             pass
 
-
+    @detect_run()
     def run_loop(self):
         """
         音声データをを送る　別スレッドで動作する 
@@ -106,58 +160,50 @@ class MultiAudio:
         send_audio = self.vc.send_audio_packet
         _start = time.perf_counter()
         fin_loop = 0
-        self.doing['run_loop'] = True
         while self.loop:
             Bytes = None
             if self.PLen == 1:
                 Bytes = self.P1_read_bytes()
 
-            elif self.PLen >= 2:
-                byte_numpy = None
-                active_track = 0
-                old_vol = 1
-                for P in self.Players:
-                    _Byte = P.read_bytes()
-                    if _Byte != None:
-                        active_track += 1
-                        _byte_numpy = np.frombuffer(_Byte, dtype=np.int16)
-                        if active_track == 1:
-                            byte_numpy:np.ndarray = _byte_numpy.copy()
-                            continue
-
-                        # 音量調節
-                        target_vol = sqrt(active_track*2)
-                        _byte_numpy = _byte_numpy * (target_vol/active_track)
-                        byte_numpy = byte_numpy * (target_vol/active_track*(active_track-1) / old_vol) + _byte_numpy
-                        old_vol = target_vol
-                        
+            elif 2 <= self.PLen:
+                byte_list = []
+                byte_append = byte_list.append
+                for _ in self.Players:
+                    if _byte := _.read_bytes():
+                        byte_append(_byte)
+                
+                active_track = len(byte_list)
                 if 1 <= active_track:
+                    
+                    if active_track == 1:
+                        byte_numpy:np.ndarray = np.frombuffer(byte_list[0], dtype=np.int16)
+
+                    else:
+                        target_vol = sqrt(active_track * 2) / active_track
+                        byte_numpy = np.frombuffer(byte_list.pop(0), dtype=np.int16) * target_vol
+                        for _ in byte_list:
+                            byte_numpy = byte_numpy + np.frombuffer(_, dtype=np.int16) * target_vol
+
                     Bytes = byte_numpy.astype(np.int16).tobytes()
 
             # Loop Delay
             _start += 0.02
             delay = max(0, _start - time.perf_counter())
-            if delay == 0:
-                #print(-(_start - time.perf_counter()))
-                if (_start - time.perf_counter()) <= -0.5:
-                    _start = time.perf_counter() + 0.02
-                    delay = 0.02
             time.sleep(delay)
  
             # Send Bytes
             if Bytes:
                 fin_loop = 0
-                try:send_audio(Bytes, encode=self.Enc_bool)
+                try: send_audio(Bytes, encode=self.Enc_bool)
                 except Exception as e:
                     print(f'Error send_audio_packet : {e}')
-                    time.sleep(10)
+                    break
             # thread fin
             else:
                 fin_loop += 1
                 if (50 * 20) < fin_loop:
                     break
 
-        self.doing['run_loop'] = False
             
 
 class _AudioTrack:
@@ -169,7 +215,7 @@ class _AudioTrack:
         self.RNum = RNum*50
         self.Timer:float = 0.0
         self.pitch = _Attribute(init=0, min=-60, max=60, update_asource=self.update_asouce_sec)
-        self.speed = _Attribute(init=1.0, min=-0.1, max=3.0, update_asource=self.update_asouce_sec)
+        self.speed = _Attribute(init=1.0, min=0.1, max=3.0, update_asource=self.update_asouce_sec)
         self.read_fin = False
         self.read_loop = False
         self.After = None
@@ -179,10 +225,10 @@ class _AudioTrack:
         self.Duration = None
     
 
-    async def play(self,_SAD:StreamAudioData,after):
+    async def play(self,_SAD:_StreamAudioData,after):
         self._SAD = _SAD
         self.Duration = _SAD.st_sec
-        AudioSource = await _SAD.AudioSource(self.opus, speed=self.speed.get, pitch=self.pitch.get)
+        AudioSource = await _SAD.get_ffmpegaudio(self.opus, speed=self.speed.get, pitch=self.pitch.get)
         # 最初のロードは少し時間かかるから先にロード
         self.QBytes.clear()
         self.RBytes.clear()
@@ -199,12 +245,14 @@ class _AudioTrack:
         self._SAD = None
 
     def resume(self):
-        self.Pausing = False
-        self._speaking(True)
+        if self.Pausing:
+            self.Pausing = False
+            self._speaking(True)
 
     def pause(self):
-        self.Pausing = True
-        self._speaking(False)
+        if not self.Pausing:
+            self.Pausing = True
+            self._speaking(False)
 
     def is_playing(self):
         if self._SAD:
@@ -226,7 +274,7 @@ class _AudioTrack:
                 if target_sec > self._SAD.st_sec:
                     self._finish()
                     return
-                self.Parent.CLoop.create_task(self._new_asouce_sec(target_sec))
+                self.Parent.loop.create_task(self.update_asouce_sec(sec=target_sec))
 
             else:
                 with lock:
@@ -244,7 +292,7 @@ class _AudioTrack:
             if len(self.RBytes) < stime:
                 target_sec = target_time // 50
                 if target_sec < 0: target_sec = 0
-                self.Parent.CLoop.create_task(self._new_asouce_sec(target_sec))
+                self.Parent.loop.create_task(self.update_asouce_sec(sec=target_sec))
 
             else:
                 with lock:
@@ -254,7 +302,7 @@ class _AudioTrack:
 
 
 
-    def read_bytes(self, numpy=False):
+    def read_bytes(self):
         if self.AudioSource:            
             # Read Bytes
             if len(self.QBytes) <= (45 * 50):
@@ -276,21 +324,21 @@ class _AudioTrack:
                             if len(self.RBytes) > self.RNum:
                                 del self.RBytes[:len(self.RBytes) - self.RNum]
 
-                    if numpy:
-                        return np.frombuffer(_byte,np.int16)
                     return _byte
 
 
-    async def _new_asouce_sec(self, sec):
-        self.AudioSource = await self._SAD.AudioSource(self.opus, sec, speed=self.speed.get, pitch=self.pitch.get)
+    async def update_asouce_sec(self, time=None, sec=None):
+        if time == None and sec == None:
+            time = self.Timer
+        if time != None:
+            sec = time // 50
+
+        self.AudioSource = await self._SAD.get_ffmpegaudio(self.opus, sec, speed=self.speed.get, pitch=self.pitch.get)
         self.Timer = float(sec * 50)
         self.QBytes.clear()
         self.RBytes.clear()
         self.read_fin = False
 
-
-    async def update_asouce_sec(self):
-        await self._new_asouce_sec(self.Timer // 50)
 
 
     def _finish(self):
