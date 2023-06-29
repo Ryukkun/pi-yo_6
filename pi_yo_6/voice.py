@@ -7,15 +7,15 @@ from discord import Message
 
 from .load_config import GC, UC
 from .synthetic_voice import GenerateVoice
-from .audio_source import StreamAudioData as SAD
+from .voice_client import _StreamAudioData as SAD
 from config import Config
 
 bot_prefix = r',./?!;>'
 
-class ChatReader():
+class ChatReader:
     def __init__(self, Info):
         try:
-            from ..main import DataInfo
+            from .main import DataInfo
             self.Info:DataInfo
         except Exception: pass
         self.Info = Info

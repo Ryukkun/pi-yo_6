@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from pi_yo_6.voicevox.core import CreateVOICEVOX
@@ -6,7 +7,7 @@ from pi_yo_6.open_jtalk.core import CreateOpenJtalk
 from config import Config
 
 
-
+_log = logging.getLogger(__name__)
 
 class SyntheticEngines:
     def __init__(self) -> None:
@@ -17,7 +18,7 @@ class SyntheticEngines:
             if Config.Vvox.enable:
                 self.voicevox: Optional[CreateVOICEVOX] = CreateVOICEVOX()
         except Exception as e:
-            print(f'\033[31m Error \033[35mpi-yo6 \033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
+            _log.warning(f'\033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
             self.voicevox = None
 
         try:
@@ -26,9 +27,9 @@ class SyntheticEngines:
                 self.coeiroink: Optional[CreateCoeiroink] = CreateCoeiroink()
                 if not self.coeiroink.metas:
                     self.coeiroink = None
-                    print('Error Coeiroink 再生可能な speaker_model が存在しません')
+                    _log.warning('Coeiroink 再生可能な speaker_model が存在しません')
         except Exception as e:
-            print(f'\033[31m Error \033[35mpi-yo6 \033[0mCoeiroinkの読み込みに失敗しました。\n{e}')
+            _log.warning(f'\033[0mCoeiroinkの読み込みに失敗しました。\n{e}')
             self.coeiroink = None
 
         try:
@@ -38,7 +39,7 @@ class SyntheticEngines:
                 if not self.open_jtalk.metas:
                     raise Exception('再生可能な htsvoice が存在しません')
         except Exception as e:
-            print(f'Open Jtakの読み込みに失敗 : {e}')
+            _log.warning(f'Open Jtakの読み込みに失敗 : {e}')
             self.open_jtalk = None
 
 
