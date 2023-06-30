@@ -5,6 +5,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 from .. import downloader as Downloader
+from ..utils import MessageUnit
 
 class CreateCoeiroink:
     def __init__(self) -> None:
@@ -47,13 +48,10 @@ class CreateCoeiroink:
 
     async def create_voice(
         self, 
-        text: str,
-        speaker: int,
-        out: str = "./output.wav",
-        speed: float = 1.0,
-        tone: float = 0.0,
-        intnation: float = 1.0
+        Itext: MessageUnit
         ):
+
+        text = Itext.text
         # 文字数上限
         if len(text) > self.TEXT_LIMIT:
             text = text[:self.TEXT_LIMIT]
@@ -63,11 +61,11 @@ class CreateCoeiroink:
             self.exe, 
             self.coeiroink.easy_synthesis,
                 text, 
-                speaker,
-                out,
-                speed,
-                tone,
-                intnation
+                Itext.speaker,
+                Itext.out_path,
+                Itext.speed,
+                Itext.tone,
+                Itext.intnation
             )
 
 

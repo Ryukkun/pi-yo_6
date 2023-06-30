@@ -100,12 +100,12 @@ class ChatReader:
         now_time = time.perf_counter()
         voice = f'voice:{voice}'
         v = [
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 3!', uuid.uuid4())),
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 2!', uuid.uuid4())),
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 1!', uuid.uuid4())),
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 0!', uuid.uuid4())),
+            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 3!')),
+            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 2!')),
+            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 1!')),
+            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 0!')),
             ]
-        source = await self.raw_creat_voice(f'{voice} いくよー?', uuid.uuid4())
+        source = await self.raw_creat_voice(f'{voice} いくよー?')
         source = source[0]
 
         with wave.open(source, 'rb') as f:
@@ -159,7 +159,7 @@ class ChatReader:
             self.Queue[0][1] = 2
             print(f"Play  <{self.guild.name}>")
 
-            await self.Vvc.play(SAD(source).Url_Only(),lambda : self.CLoop.create_task(self.play_loop()))
+            await self.Vvc.play(SAD(source).from_local_path(),lambda : self.CLoop.create_task(self.play_loop()))
             return
 
         if self.Queue[0][1] == 0:                   # Skip

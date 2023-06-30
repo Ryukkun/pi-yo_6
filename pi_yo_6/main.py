@@ -21,13 +21,13 @@ except Exception:
     shutil.copyfile(temp_config_path, config_path)
     from config import Config
 
-import pi_yo_6.voice_list as VoiceList
-from pi_yo_6.load_config import GC, dif_config
-from pi_yo_6.voice_client import MultiAudio
-from pi_yo_6.voice import ChatReader
-from pi_yo_6.embeds import EmBase
-from pi_yo_6.systhetic_engines import SyntheticEngines
-from pi_yo_6.utils import set_logger
+from . import voice_list as VoiceList
+from .load_config import GC, dif_config
+from .voice_client import MultiAudio
+from .voice import ChatReader
+from .embeds import EmBase
+from .synthetic_voice import SyntheticEngines
+from .utils import set_logger
 
 set_logger()
 _log = logging.getLogger(__name__)
@@ -230,8 +230,9 @@ async def on_message(message:discord.Message):
     # 発言者がBotの場合はPass
     if message.author.bot:
         return
-    _log.info(f'.\n#message.server  : {guild.name} ({message.channel.name})')
-    _log.info( message.author.name +" (",message.author.display_name,') : '+ message.content)
+    print('')
+    _log.info(f'#message.server  : {guild.name} ({message.channel.name})')
+    _log.info(f'{message.author.name} ({message.author.display_name}) : {message.content}')
 
     _GC = GC(gid).Read()
     if voice and _GC['auto_join']:

@@ -1,11 +1,22 @@
 import asyncio
 import alkana
+import logging
+import uuid
 import re
 import os
 from discord import Message
+from typing import Optional, List
 
+from .utils import MessageUnit
 from .romaji.to_kana import Romaji
+from .voicevox.core import CreateVOICEVOX
+from .coeiroink.core import CreateCoeiroink
+from .open_jtalk.core import CreateOpenJtalk
+
 from config import Config
+
+
+_log = logging.getLogger(__name__)
 
 
 re_mention = re.compile(r'<(@&|@)\d+>')
@@ -21,12 +32,121 @@ re_not_romaji = re.compile(r'[^a-zA-Z\-]')
 _status = 'voice:\S*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|intnation:\S*\s'
 re_text_status = re.compile(r'({0}|^)+.+?(?=\s({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
+
+
+
+
+
+
+class SyntheticEngines:
+    def __init__(self) -> None:
+
+
+        try:
+            self.voicevox = None
+            if Config.Vvox.enable:
+                self.voicevox: Optional[CreateVOICEVOX] = CreateVOICEVOX()
+        except Exception as e:
+            _log.warning(f'\033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
+            self.voicevox = None
+
+        try:
+            self.coeiroink = None
+            if Config.Coeiroink.enable:
+                self.coeiroink: Optional[CreateCoeiroink] = CreateCoeiroink()
+                if not self.coeiroink.metas:
+                    self.coeiroink = None
+                    _log.warning('Coeiroink 再生可能な speaker_model が存在しません')
+        except Exception as e:
+            _log.warning(f'\033[0mCoeiroinkの読み込みに失敗しました。\n{e}')
+            self.coeiroink = None
+
+        try:
+            self.open_jtalk = None
+            if Config.OJ.enable:
+                self.open_jtalk = CreateOpenJtalk()
+                if not self.open_jtalk.metas:
+                    raise Exception('再生可能な htsvoice が存在しません')
+        except Exception as e:
+            _log.warning(f'Open Jtakの読み込みに失敗 : {e}')
+            self.open_jtalk = None
+
+
+    async def create_voice(self, Itext:MessageUnit, out):
+        _type = Itext.speaker.type
+
+
+        if _type == 'open_jtalk':
+            if not self.open_jtalk: return
+
+            Itext.out_path = out
+            Itext.speaker = Itext.speaker.id
+            if Itext.speed == None:
+                Itext.speed = 1.2
+
+            if (tone := Itext.tone) != None:
+                Itext.tone = f' -fm {tone}'
+            else:
+                Itext.tone = ''
+
+            if (intnation := Itext.intnation) != None:
+                Itext.intnation = f' -jf {intnation}'
+            else:
+                Itext.intnation = ''
+
+            if (a := Itext.a) != None:
+                Itext.a = f' -a {a}'
+            else:
+                Itext.a = ''
+
+            if Itext.out_path == None:
+                Itext.out_path = f"{Config.output}output.wav"
+
+            await self.open_jtalk.create_voice(Itext)
+
+
+
+        elif _type == 'voicevox':
+            if not self.voicevox: return
+
+            speaker = Itext.speaker.id
+            if (speaker := self.voicevox.to_speaker_id(speaker)) == None:
+                return
+            Itext.speaker = speaker
+
+            with open(out, 'wb')as f:
+                f.write( await self.voicevox.create_voice(Itext))
+
+
+
+        elif _type == 'coeiroink':
+            if not self.coeiroink: return
+
+            speaker = Itext.speaker.id
+            Itext.out_path = out
+            if (speaker := self.coeiroink.to_speaker_id(speaker)) == None:
+                return
+            Itext.speaker = speaker
+
+            if Itext.out_path == None:
+                Itext.out_path = "./output.wav"
+            if Itext.speed == None:
+                Itext.speed = 1.0
+            if Itext.tone == None:
+                Itext.tone = 0.0
+            if Itext.intnation == None:
+                Itext.intnation = 1.0
+
+            await self.coeiroink.create_voice(Itext)
+
+
+
+
+
+
+
 class GenerateVoice:
-    def __init__(self, engines) -> None:
-        try: 
-            from .systhetic_engines import SyntheticEngines
-            self.engines: SyntheticEngines
-        except Exception: pass
+    def __init__(self, engines:SyntheticEngines) -> None:
         self.engines = engines
 
 
@@ -46,14 +166,14 @@ class GenerateVoice:
 
 
     #------------------------------------------------------
-    def costom_voice(self, Itext):
+    def costom_voice(self, Itext:MessageUnit):
         
         _type = 'open_jtalk'
         _id = Config.OJ.hts_path+'mei_normal.htsvoice'
         
-        r = list(re_voice.finditer(Itext['text']))
+        r:List[re.Match] = list(re_voice.finditer(Itext.text))
         if len(r) != 0:
-            Itext['text'] = re_voice.sub('',Itext['text'])
+            Itext.text = re_voice.sub('',Itext.text)
             r = r[-1].group(2).lower()
 
             _hts = Config.OJ.hts_path+f'{r}.htsvoice'
@@ -69,56 +189,59 @@ class GenerateVoice:
                 _type = 'coeiroink'
                 _id = r
             
-        Itext['speaker'] = {'type':_type, 'id':_id}
+        Itext.speaker.type = _type
+        Itext.speaker.id = _id
         return Itext
         
     #------------------------------------------------------
 
-    def costom_status(self, Itext, default, _re:re.Pattern):
+    def costom_status(self, Itext:MessageUnit, default, _re:re.Pattern):
         
-        r = list(_re.finditer(Itext['text']))
+        r = list(_re.finditer(Itext.text))
         if len(r) != 0:
-            Itext['text'] = _re.sub('',Itext['text'])
-            Itext[default] = r[-1].group(2)
-        
+            Itext.text = _re.sub('',Itext.text)
+            setattr(Itext, default, r[-1].group(2))
+
         return Itext
 
 
     #-----------------------------------------------------------
-    def replace_english_kana(self, Itext):
-        temp_text = Itext
+    def replace_english_kana(self, Itext:MessageUnit):
+        text = Itext.text
         output = ""
 
         # 先頭から順番に英単語を検索しカタカナに変換
-        while word := re_romaji_unit.search(temp_text):
-            _word = word.group(2)
-            _word_low = _word.lower()
+        while re_word := re_romaji_unit.search(text):
+            word = re_word.group(2)
+            word_low = word.lower()
 
-            if word.start() != 0 or re_not_romaji.search(temp_text[0]):    # 文字のスタート位置修復
-                output += temp_text[:word.start()+1]
+            if re_word.start() != 0 or re_not_romaji.search(text[0]):    # 文字のスタート位置修復
+                output += text[:re_word.start()+1]
 
-            if kana := alkana.get_kana(_word_low):      # 英語変換
+            if kana := alkana.get_kana(word_low):      # 英語変換
                 output += kana
-            elif _word_low == "i":
+            elif word_low == "i":
                 output += "あい"
-            elif re.search(r'[A-Z]',_word):
-                output += _word
+            elif re.search(r'[A-Z]',word):
+                output += word
             else:
-                output += Romaji.to_kana(_word_low)   # ローマ字 → カナ 変換
+                output += Romaji.to_kana(word_low)   # ローマ字 → カナ 変換
             
-            if word.end() != len(temp_text) or re_not_romaji.search(temp_text[-1]):    # 文字の末尾を修復
-                temp_text = temp_text[word.end()-1:]
+            if re_word.end() != len(text) or re_not_romaji.search(text[-1]):    # 文字の末尾を修復
+                Itext = text[re_word.end()-1:]
             else:
-                temp_text = ""
+                Itext = ""
 
-        return output + temp_text
+        Itext.text = output + text
 
 
 
     # ************************************************
-    def replace_w(self, Itext):
-        Itext = re.sub(r'(ww+|ｗｗ+)','わらわら', Itext)
-        return re.sub(r'(w|ｗ)','わら', Itext)
+    def replace_w(self, Itext:MessageUnit):
+        text = Itext.text
+        text = re.sub(r'(ww+|ｗｗ+)','わらわら', text)
+        text = re.sub(r'(w|ｗ)','わら', text)
+        Itext.text = text
 
 
     async def creat_voice(self, Itext:str, message:Message):
@@ -131,13 +254,14 @@ class GenerateVoice:
         out = await self.raw_create_voice(Itext, message.id)
         return out
 
-    async def raw_create_voice(self, Itext:str, _id):
+
+    async def raw_create_voice(self, text:str, _id=uuid.uuid4()):
         out_wav = []
         gather_wav = []
-        for num, Itext in enumerate(re_text_status.finditer(Itext)):
-            Itext = Itext.group()
+        for num, re_text in enumerate(re_text_status.finditer(text)):
+            text = re_text.group()
             out = f'{Config.output}{_id}-{num}.wav'
-            gather_wav.append(self.split_voice(Itext, out))
+            gather_wav.append(self.split_voice(text, out))
             out_wav.append(out)
 
         await asyncio.gather(*gather_wav)
@@ -145,16 +269,16 @@ class GenerateVoice:
 
 
     async def split_voice(self, text, out_name):
-        Itext = {"text": text}
-        Itext = self.costom_voice(Itext)                        #voice
-        Itext = self.costom_status(Itext, 'speed', re_speed)    #speed
-        Itext = self.costom_status(Itext, 'a', re_a)            #AllPath
-        Itext = self.costom_status(Itext, 'tone', re_tone)      #tone
-        Itext = self.costom_status(Itext, 'intnation', re_int)
-        Itext['text'] = re.sub(r'^\s+', '', Itext['text'])
+        Itext = MessageUnit(text)
+        self.costom_voice(Itext)                        #voice
+        self.costom_status(Itext, 'speed', re_speed)    #speed
+        self.costom_status(Itext, 'a', re_a)            #AllPath
+        self.costom_status(Itext, 'tone', re_tone)      #tone
+        self.costom_status(Itext, 'intnation', re_int)
+        Itext.text = re.sub(r'^\s+', '', Itext.text)
 
-        Itext['text'] = self.replace_english_kana(Itext['text'])
-        Itext['text'] = self.replace_w(Itext['text'])
-        #print(f"変換後 ({FileNum+1}) :") #{Itext}
+        self.replace_english_kana(Itext)
+        self.replace_w(Itext)
 
         await self.engines.create_voice(Itext, out_name)
+

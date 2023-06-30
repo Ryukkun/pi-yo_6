@@ -4,7 +4,7 @@ from discord import ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
 
 from .load_config import GC, UC
 from .embeds import EmBase
-from .systhetic_engines import SyntheticEngines
+from .synthetic_voice import SyntheticEngines
 
 open_jtalk = 'open_jtalk'
 voicevox = 'voicevox'
@@ -104,7 +104,8 @@ class CreateSelect(ui.Select):
             if sp['name'] == voice:
                 check = True
                 _default=True
-            select_opt.append(SelectOption(label=f'{_type}{sp["name"]}', value=sp["name"], default=_default))
+            if len(select_opt) < 25:
+                select_opt.append(SelectOption(label=f'{_type}{sp["name"]}', value=sp["name"], default=_default))
         if check == False:
             select_opt[0].default = True
         super().__init__(placeholder='キュー表示', options=select_opt, row=1)

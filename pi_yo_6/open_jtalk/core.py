@@ -8,6 +8,7 @@ from platform import system
 
 from config import Config
 from .. import downloader as Downloader
+from ..utils import MessageUnit
 
 _os = system().lower()
 if _os == 'windows':
@@ -53,13 +54,7 @@ class CreateOpenJtalk:
 
     async def create_voice(
         self, 
-        text: str,
-        speaker: str,
-        out: str = f"{Config.output}output.wav",
-        speed: str = '1.2',
-        tone: str = '',
-        intnation: str = '',
-        a: str = ''
+        Itext: MessageUnit
         ):
 
         if _os == 'windows':
@@ -67,9 +62,9 @@ class CreateOpenJtalk:
         else:
             dic = DownloadDic.utf_8()
 
-        cmd=f'open_jtalk -x "{dic}" -ow "{out}" -m {speaker} -r {speed}{tone}{intnation}{a}'
+        cmd=f'open_jtalk -x "{dic}" -ow "{Itext.out_path}" -m "{Itext.speaker}" -r {Itext.speed}{Itext.tone}{Itext.intnation}{Itext.a}'
         prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-        await prog.communicate(input= text.encode(EFormat))
+        await prog.communicate(input= Itext.text.encode(EFormat))
 
 
 

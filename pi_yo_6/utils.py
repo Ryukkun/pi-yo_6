@@ -2,7 +2,8 @@ import asyncio
 import traceback
 import logging
 from discord.utils import _ColourFormatter
-
+from dataclasses import dataclass
+from typing import Optional
 
 
 def set_logger():
@@ -12,6 +13,30 @@ def set_logger():
     handler.setFormatter(_ColourFormatter())
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
+
+
+
+
+@dataclass
+class _SpeakerUnit:
+    type:Optional[str] = None
+    id:Optional[str] = None
+
+
+@dataclass
+class MessageUnit:
+    text:Optional[str] = None
+    speaker = _SpeakerUnit()
+    speed:Optional[str] = None
+    a:Optional[str] = None
+    tone:Optional[str] = None
+    intnation:Optional[str] = None
+    out_path:Optional[str] = None
+
+
+
+
+
 
 
 class DetectRunWrapper:

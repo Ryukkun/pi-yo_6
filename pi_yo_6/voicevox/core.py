@@ -34,7 +34,8 @@ import json
 import requests
 
 from config import Config
-from pi_yo_6.open_jtalk.core import DownloadDic
+from ..open_jtalk.core import DownloadDic
+from ..utils import MessageUnit
 
 # 何故かバグるからタイミング調整なのだ
 # その他上限設定
@@ -43,11 +44,18 @@ class CreateVOICEVOX:
         
         # Load VoiceVox
         print('Loading VoiceVox ....')
-        lib = cdll.LoadLibrary(Config.Vvox.core_path)
-        lib.metas.restype = c_char_p
-        self.metas = json.loads(lib.metas().decode())
-
         self.url_base = f'http://{Config.Vvox.ip}'
+
+        res = requests.get(f'{self.url_base}/speakers')
+
+        if res.status_code == requests.codes.ok:
+            self.metas = res.json()
+        else:
+            lib = cdll.LoadLibrary(Config.Vvox.core_path)
+            lib.metas.restype = c_char_p
+            self.metas = json.loads(lib.metas().decode())
+
+        
         try:
             res = requests.get(f'{self.url_base}/core_versions')
             res.raise_for_status()
@@ -64,7 +72,9 @@ class CreateVOICEVOX:
    
 
 
-    async def create_voice(self, text, speaker):
+    async def create_voice(self, Itext:MessageUnit):
+        text = Itext.text
+        speaker = Itext.speaker
         # 文字数上限
         if len(text) > Config.Vvox.text_limit:
             text = text[:Config.Vvox.text_limit]
