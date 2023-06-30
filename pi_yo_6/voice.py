@@ -2,6 +2,7 @@ import time
 import os
 import uuid
 import wave
+import logging
 import numpy as np
 from discord import Message
 
@@ -11,6 +12,7 @@ from .voice_client import _StreamAudioData as SAD
 from config import Config
 
 bot_prefix = r',./?!;>'
+_log = logging.getLogger(__name__)
 
 class ChatReader:
     def __init__(self, Info):
@@ -157,10 +159,10 @@ class ChatReader:
         if self.Queue[0][1] == 1:                   # 再生
             source = self.Queue[0][0]
             self.Queue[0][1] = 2
-            print(f"Play  <{self.guild.name}>")
+            _log.info(f"Play  <{self.guild.name}>")
 
             await self.Vvc.play(SAD(source).from_local_path(),lambda : self.CLoop.create_task(self.play_loop()))
             return
 
         if self.Queue[0][1] == 0:                   # Skip
-            print(f"作成途中かな {self.Queue}")
+            _log.info(f"作成途中かな {self.guild.name} {self.Queue}")
