@@ -1,8 +1,0 @@
-cython
-numpy
-pyworld
-scipy
-soundfile
-espnet
-six
-pyopenjtalk

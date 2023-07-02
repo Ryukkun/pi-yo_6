@@ -9,8 +9,7 @@ from typing import Optional, List
 
 from .utils import MessageUnit
 from .romaji.to_kana import Romaji
-from .voicevox.core import CreateVOICEVOX
-from .coeiroink.core import CreateCoeiroink
+from .voicevox.core import CreateVoicevox, VoicevoxEngineBase
 from .open_jtalk.core import CreateOpenJtalk
 
 from config import Config
@@ -45,7 +44,7 @@ class SyntheticEngines:
         try:
             self.voicevox = None
             if Config.Vvox.enable:
-                self.voicevox: Optional[CreateVOICEVOX] = CreateVOICEVOX()
+                self.voicevox: Optional[CreateVoicevox] = CreateVoicevox(Config.Vvox)
         except Exception as e:
             _log.warning(f'\033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
             self.voicevox = None
@@ -53,10 +52,7 @@ class SyntheticEngines:
         try:
             self.coeiroink = None
             if Config.Coeiroink.enable:
-                self.coeiroink: Optional[CreateCoeiroink] = CreateCoeiroink()
-                if not self.coeiroink.metas:
-                    self.coeiroink = None
-                    _log.warning('Coeiroink 再生可能な speaker_model が存在しません')
+                self.coeiroink: Optional[VoicevoxEngineBase] = VoicevoxEngineBase(Config.Coeiroink, 'Coeiroink')
         except Exception as e:
             _log.warning(f'\033[0mCoeiroinkの読み込みに失敗しました。\n{e}')
             self.coeiroink = None
@@ -123,13 +119,10 @@ class SyntheticEngines:
             if not self.coeiroink: return
 
             speaker = Itext.speaker.id
-            Itext.out_path = out
             if (speaker := self.coeiroink.to_speaker_id(speaker)) == None:
                 return
             Itext.speaker = speaker
 
-            if Itext.out_path == None:
-                Itext.out_path = "./output.wav"
             if Itext.speed == None:
                 Itext.speed = 1.0
             if Itext.tone == None:
@@ -137,7 +130,8 @@ class SyntheticEngines:
             if Itext.intnation == None:
                 Itext.intnation = 1.0
 
-            await self.coeiroink.create_voice(Itext)
+            with open(out, 'wb')as f:
+                f.write( await self.coeiroink.create_voice(Itext))
 
 
 
@@ -228,9 +222,9 @@ class GenerateVoice:
                 output += Romaji.to_kana(word_low)   # ローマ字 → カナ 変換
             
             if re_word.end() != len(text) or re_not_romaji.search(text[-1]):    # 文字の末尾を修復
-                Itext = text[re_word.end()-1:]
+                text = text[re_word.end()-1:]
             else:
-                Itext = ""
+                text = ""
 
         Itext.text = output + text
 

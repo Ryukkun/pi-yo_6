@@ -40,10 +40,11 @@ class Coeiroink:
         モデル量にもよりますが、自分は 20GB弱くらい取られました
     ''' 
     enable = False
-
-    text_limit = 100
     use_gpu = False
     load_all_models = False
+
+    text_limit = 100
+    ip = 'localhost:50031'
 
 
 class Config:

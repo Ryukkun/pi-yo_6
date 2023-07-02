@@ -36,7 +36,7 @@ class Romaji:
                 None => 候補なし
                 '''
                 temp_unit = ''
-                while type(_tree) == dict:
+                while isinstance(_tree, dict):
                     unit = self.text.read()
                     _tree = _tree.get(unit)
                     temp_unit += unit
