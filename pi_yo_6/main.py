@@ -9,25 +9,22 @@ from pathlib import Path
 from discord.ext import commands, tasks
 from typing import Literal, Optional, Dict
 
-_my_dir = Path(__file__).parent
+_my_dir = Path(__file__).parent.parent
 os.chdir(str(_my_dir))
 
 ####  Config
-config_path = str(_my_dir / 'config.py')
-temp_config_path = str(_my_dir / 'pi_yo_6' / 'template' / '_config.py')
-try:
-    from config import Config
-except Exception:
-    shutil.copyfile(temp_config_path, config_path)
-    from config import Config
+from .utils import set_logger, check_config
+check_config()
+from config import Config
+
 
 from . import voice_list as VoiceList
-from .load_config import GC, dif_config
+from .load_config import GC
 from .voice_client import MultiAudio
 from .voice import ChatReader
 from .embeds import EmBase
 from .synthetic_voice import SyntheticEngines
-from .utils import set_logger
+
 
 set_logger()
 _log = logging.getLogger(__name__)

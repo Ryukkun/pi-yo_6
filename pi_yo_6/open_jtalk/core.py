@@ -8,7 +8,7 @@ from platform import system
 
 from config import Config
 from .. import downloader as Downloader
-from ..utils import MessageUnit
+from ..utils import MessageUnit, NoMetas
 
 _os = system().lower()
 if _os == 'windows':
@@ -44,7 +44,10 @@ class CreateOpenJtalk:
         try: subprocess.check_call('open_jtalk', stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError:
             raise Exception('Open Jtalkをインストールしてください')
+        
         self.metas = self.get_metas()
+        if not self.metas:
+            raise NoMetas('再生可能な htsvoice が存在しません')
 
         if _os == 'windows':
             DownloadDic.shift_jis()

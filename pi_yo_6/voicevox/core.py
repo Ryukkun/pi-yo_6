@@ -5,27 +5,22 @@ import json
 import requests
 
 from ..template._config import VOICEVOX as config_voicevox
-from ..utils import MessageUnit
+from ..utils import MessageUnit, NoMetas
 
 
 
-class NoMetas(Exception):
-    pass
+
 
 
 
 class VoicevoxEngineBase:
-    def __init__(self, config:config_voicevox, name='VOICEVOX') -> None:
-        self.name = name
+    def __init__(self, config:config_voicevox) -> None:
         self.config = config
 
         # Load
-        print(f'Loading {name} ....')
         self.url_base = f'http://{config.ip}'
 
         self._load_metas(f'{self.url_base}/speakers')
-
-        print(f'Loaded {name}!!')
     
 
 
@@ -33,9 +28,9 @@ class VoicevoxEngineBase:
         try:
             res = requests.get(url)
         except requests.ConnectionError:
-            raise requests.ConnectionError(f'{self.name} Engine が、見つかりませんでした！')
+            raise requests.ConnectionError(f'Engine が、見つかりませんでした！')
         if res.status_code != requests.codes.ok:
-            raise NoMetas(f'{self.name} : metasを読み込めません')
+            raise NoMetas(f'metasを読み込めません')
         self.metas = res.json()
 
 
@@ -104,25 +99,20 @@ class VoicevoxEngineBase:
 
 
 class CreateVoicevox(VoicevoxEngineBase):
-    def __init__(self, config:config_voicevox, name='VOICEVOX') -> None:
-        super().__init__(config, name)
+    def __init__(self, config:config_voicevox) -> None:
+        super().__init__(config)
 
 
-        res = requests.get(f'{self.url_base}/core_versions')
-        engine_ver = res.json()[0]
-
-        res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest').json()
-        print(f'Loaded {name}!! - Ver.{engine_ver}')
-        if engine_ver == res['tag_name']:
-            print(f'最新バージョンです')
-        else:
-            print(f'最新バージョンは {res["tag_name"]} です {res["html_url"]}')
+ 
 
 
     def _load_metas(self, url):
         try: 
             super()._load_metas(url)
         except NoMetas:
-            lib = cdll.LoadLibrary(self.config.core_path)
-            lib.metas.restype = c_char_p
-            self.metas = json.loads(lib.metas().decode())
+            try:
+                lib = cdll.LoadLibrary(self.config.core_path)
+                lib.metas.restype = c_char_p
+                self.metas = json.loads(lib.metas().decode())
+            except:
+                raise NoMetas('metasを読み込めません')

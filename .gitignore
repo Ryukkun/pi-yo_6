@@ -15,5 +15,4 @@ bot-start.sh
 bot-start.bat
 open_jtalk_dic_utf_8-1.11
 open_jtalk_dic_shift_jis-1.11
-coeiroink_engine
-speaker_info
+config copy.py

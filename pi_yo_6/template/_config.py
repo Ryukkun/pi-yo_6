@@ -28,20 +28,15 @@ class VOICEVOX:
 class Coeiroink:
     '''
     https://coeiroink.com/
+    https://github.com/shirowanisan/voicevox_engine
+    ↑これを起動しておく必要あり
     音声モデルは自分で入れてください
-    Path : ./pi_yo_6/coeiroink/speaker_info
 
     -------
-    use_gpu : bool
-        True でも あんまり意味ないかも
-
-    load_all_models : bool
-        False 激推しです。　Trueにしたらメモリ不足で仮想メモリまで侵食します
-        モデル量にもよりますが、自分は 20GB弱くらい取られました
+    ip : str
+        Coeiroink Engine のip
     ''' 
     enable = False
-    use_gpu = False
-    load_all_models = False
 
     text_limit = 100
     ip = 'localhost:50031'

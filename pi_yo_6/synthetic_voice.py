@@ -1,6 +1,7 @@
 import asyncio
 import alkana
 import logging
+import requests
 import uuid
 import re
 import os
@@ -45,24 +46,34 @@ class SyntheticEngines:
             self.voicevox = None
             if Config.Vvox.enable:
                 self.voicevox: Optional[CreateVoicevox] = CreateVoicevox(Config.Vvox)
+                res = requests.get(f'{self.voicevox.url_base}/core_versions')
+                engine_ver = res.json()[0]
+
+                res = requests.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest').json()
+                _log.info(f'Loaded Voicevox!! - Ver.{engine_ver}')
+                if engine_ver == res['tag_name']:
+                    _log.info(f'最新バージョンです')
+                else:
+                    _log.warning(f'最新バージョンは {res["tag_name"]} です {res["html_url"]}')
+
         except Exception as e:
-            _log.warning(f'\033[0mVoiceVoxの読み込みに失敗しました。\n{e}')
+            _log.warning(f'\033[0mVoiceVoxの読み込みに失敗しました。 : {e}')
             self.voicevox = None
 
         try:
             self.coeiroink = None
             if Config.Coeiroink.enable:
-                self.coeiroink: Optional[VoicevoxEngineBase] = VoicevoxEngineBase(Config.Coeiroink, 'Coeiroink')
+                self.coeiroink: Optional[VoicevoxEngineBase] = VoicevoxEngineBase(Config.Coeiroink)
+                _log.info('Loaded Coeiroink!!')
         except Exception as e:
-            _log.warning(f'\033[0mCoeiroinkの読み込みに失敗しました。\n{e}')
+            _log.warning(f'\033[0mCoeiroinkの読み込みに失敗しました。 : {e}')
             self.coeiroink = None
 
         try:
             self.open_jtalk = None
             if Config.OJ.enable:
                 self.open_jtalk = CreateOpenJtalk()
-                if not self.open_jtalk.metas:
-                    raise Exception('再生可能な htsvoice が存在しません')
+                _log.info('Loaded Open_Jtalk!!')
         except Exception as e:
             _log.warning(f'Open Jtakの読み込みに失敗 : {e}')
             self.open_jtalk = None
