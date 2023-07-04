@@ -45,6 +45,7 @@ class CreateOpenJtalk:
         except subprocess.CalledProcessError:
             raise Exception('Open Jtalkをインストールしてください')
         
+        self.hts_path = Path(Config.OJ.hts_path)
         self.metas = self.get_metas()
         if not self.metas:
             raise NoMetas('再生可能な htsvoice が存在しません')
@@ -72,7 +73,7 @@ class CreateOpenJtalk:
 
 
     def get_metas(self) -> list:
-        hts_list = [os.path.split(_)[1].replace('.htsvoice','') for _ in glob(f'{Config.OJ.hts_path}*.htsvoice')]
+        hts_list = [os.path.split(_)[1].replace('.htsvoice','') for _ in glob(str( self.hts_path / '*.htsvoice'))]
         hts_dic = {}
         for hts in hts_list:
             _hts = hts.split('_')

@@ -22,7 +22,7 @@ class ChatReader:
         except Exception: pass
         self.Info = Info
         self.MA = self.Info.MA
-        self.Vvc = self.MA.add_player(opus=False)
+        self.Vvc = self.MA.add_player(opus=True)
         self.guild = self.Info.guild
         self.gid = self.Info.gid
         self.vc = self.guild.voice_client

@@ -124,7 +124,7 @@ def detect_run(exception = False):
 
 
 re_class = re.compile(r'class (.+):')
-re_var = re.compile(r'\s*(.+?)\s*=\s*(.+?)\s')
+re_var = re.compile(r'\s*(.+?)\s*=\s*(.+?) *\n')
 
 
 class _class:
@@ -138,7 +138,7 @@ def analysis_config(path):
     classes:List[_class] = []
     now_comment = False
 
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         texts = f.readlines()
 
     for text in texts:
@@ -218,5 +218,5 @@ def check_config():
                 text_list.append('')
 
     
-    with open(target_path, 'w') as f:
+    with open(target_path, 'w',encoding='utf-8') as f:
         f.write('\n'.join(text_list))

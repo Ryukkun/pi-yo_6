@@ -174,17 +174,17 @@ class GenerateVoice:
     def costom_voice(self, Itext:MessageUnit):
         
         _type = 'open_jtalk'
-        _id = Config.OJ.hts_path+'mei_normal.htsvoice'
+        _id = str( self.engines.open_jtalk.hts_path / 'mei_normal.htsvoice' )
         
         r:List[re.Match] = list(re_voice.finditer(Itext.text))
         if len(r) != 0:
             Itext.text = re_voice.sub('',Itext.text)
             r = r[-1].group(2).lower()
 
-            _hts = Config.OJ.hts_path+f'{r}.htsvoice'
-            if os.path.isfile(_hts):
+            _hts = self.engines.open_jtalk.hts_path / f'{r}.htsvoice'
+            if _hts.is_file():
                 _type = 'open_jtalk'
-                _id = _hts
+                _id = str(_hts)
             elif re.match(r'v.*?:', r):
                 r = re.sub(r'v.*?:','', r)
                 _type = 'voicevox'

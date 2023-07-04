@@ -242,7 +242,9 @@ class _AudioTrack:
         self.Timer = 0.0
         self.read_fin = False
         self.After = after
-        self.resume()
+        self.Pausing = False
+        self._speaking(True)
+
 
     def stop(self):
         if self.AudioSource:

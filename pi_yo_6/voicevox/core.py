@@ -26,7 +26,7 @@ class VoicevoxEngineBase:
 
     def _load_metas(self, url):
         try:
-            res = requests.get(url)
+            res = requests.get(url, timeout=1.0)
         except requests.ConnectionError:
             raise requests.ConnectionError(f'Engine が、見つかりませんでした！')
         if res.status_code != requests.codes.ok:
@@ -99,13 +99,6 @@ class VoicevoxEngineBase:
 
 
 class CreateVoicevox(VoicevoxEngineBase):
-    def __init__(self, config:config_voicevox) -> None:
-        super().__init__(config)
-
-
- 
-
-
     def _load_metas(self, url):
         try: 
             super()._load_metas(url)
