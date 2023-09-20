@@ -102,16 +102,13 @@ class DetectRunWrapper:
         if obj is None:
             return self
 
-        copy = DetectRunWrapper(self.func, _class=obj)
-        copy._exception = self._exception
+        copy = DetectRunWrapper(self.func, _class=obj, _exception=self._exception)
 
         setattr(obj, self.func.__name__, copy)
         return copy
 
 
 def detect_run(exception = False):
-
-
     def wrapper(func) -> DetectRunWrapper:
         return DetectRunWrapper(func, _exception=exception)
 
@@ -119,6 +116,68 @@ def detect_run(exception = False):
 
 
 
+
+class RunCheckStorageWrapper:
+    def __init__(self, func, check_fin, _class= None):
+        self.is_running = False
+        self.func = func
+        self._class = _class
+        self.check_fin = check_fin
+        self.is_coroutine = asyncio.iscoroutinefunction(func)
+
+
+    def __call__(self, *args, **kwds):
+        if self._class:
+            args = (self._class,) + args
+        return self.async_run(*args, **kwds) if self.is_coroutine else self.sync_run(*args, **kwds)
+
+
+    def sync_run(self, *a, **k):
+        res = self.func(*a, **k)
+
+        if self.check_fin:
+            self.is_running = False
+        return res
+    
+    def set_running(self, status:bool):
+        self.is_running = status
+
+
+    async def async_run(self, *a, **k):
+        res = await self.func(*a, **k)
+
+        if self.check_fin:
+            self.is_running = False
+        return res
+
+
+    def __get__(self, obj, objtype):
+        if obj is None:
+            return self
+
+        copy = RunCheckStorageWrapper(self.func, self.check_fin, _class=obj)
+
+        #print(getattr(obj, self.func.__name__) == self)
+        setattr(obj, self.func.__name__, copy)
+        # print(copy)
+        # print("gettu")
+        # print(obj)
+        # print(self._class)
+        # print(copy._class)
+        # print(getattr(obj,self.func.__name__))
+        # print(self)
+        # print("")
+        
+
+        return copy
+
+
+
+def run_check_storage(check_fin= True):
+    def wapper(func) -> RunCheckStorageWrapper:
+        return RunCheckStorageWrapper(func, check_fin)
+    
+    return wapper
 
 
 
