@@ -1,3 +1,4 @@
+import asyncio
 import time
 import os
 import uuid
@@ -6,39 +7,34 @@ import logging
 import numpy as np
 from discord import Message
 
+from pi_yo_6.message_unit import MessageUnit
+
 from .load_config import GC, UC
-from .synthetic_voice import GenerateVoice
-from .voice_client import _StreamAudioData as SAD
+from .voice_client import StreamAudioData
 from config import Config
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .main import DataInfo
 
 bot_prefix = r',./?!;>'
 _log = logging.getLogger(__name__)
 
 class ChatReader:
-    def __init__(self, Info):
-        try:
-            from .main import DataInfo
-            self.Info:DataInfo
-        except Exception: pass
-        self.Info = Info
-        self.MA = self.Info.MA
-        self.Vvc = self.MA.add_player(opus=True)
-        self.guild = self.Info.guild
-        self.gid = self.Info.gid
-        self.vc = self.guild.voice_client
+    def __init__(self, Info:"DataInfo") -> None:
+        self.info = Info
+        self.track = self.info.MA.add_track(opus=True)
+        self.guild = self.info.guild
         self.Queue = []
-        self.CLoop = self.Info.loop
-        self.GC = GC(self.gid)
-        self.generate_voice = GenerateVoice(self.Info.engines)
-        self.raw_creat_voice = self.generate_voice.raw_create_voice
-        self.creat_voice = self.generate_voice.creat_voice
+        self.GC = GC(self.guild.id)
 
 
     async def on_message(self, message:Message):
         if not message.content:
             return
         # コマンドではなく なおかつ Joinしている場合
-        if not message.content[0] in bot_prefix and self.vc:
+        if not message.content[0] in bot_prefix and self.guild.voice_client:
 
             now_time = time.perf_counter()
             self.Queue.append([message.id, 0])
@@ -58,7 +54,10 @@ class ChatReader:
                 text = f'voice:{speaker_id} {text}'
 
             # 音声ファイル ファイル作成
-            try: source = await self.creat_voice(text, message)
+            try: 
+                msg_unit = MessageUnit(text, self.info.cog.engines)
+                await msg_unit.normalize_text(self.guild.id)
+                source = await msg_unit.create_voice()
             except Exception as e:                                              # Error
                 print(f"Error : 音声ファイル作成に失敗 {e}")
                 self.Queue.remove([message.id, 0])
@@ -69,13 +68,13 @@ class ChatReader:
             self.Queue[i:i+1] = [[_,1] for _ in source]
 
             # 再生されるまでループ
-            if not self.Vvc.is_playing():
+            if not self.track.has_play_data():
                 await self.play_loop()
 
 
     async def on_message_from_str(self, message:str):
         # Joinしている場合
-        if self.vc:
+        if self.info.vc:
 
             now_time = time.perf_counter()
             mes_id = uuid.uuid4()
@@ -93,7 +92,7 @@ class ChatReader:
             self.Queue[i:i+1] = [[_,1] for _ in source]
 
             # 再生されるまでループ
-            if not self.Vvc.is_playing():
+            if not self.track.has_play_data():
                 await self.play_loop()
 
 
@@ -102,10 +101,10 @@ class ChatReader:
         now_time = time.perf_counter()
         voice = f'voice:{voice}'
         v = [
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 3!')),
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 2!')),
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 1!')),
-            self.CLoop.create_task( self.raw_creat_voice(f'{voice} 0!')),
+            asyncio.create_task( self.raw_creat_voice(f'{voice} 3!')),
+            asyncio.create_task( self.raw_creat_voice(f'{voice} 2!')),
+            asyncio.create_task( self.raw_creat_voice(f'{voice} 1!')),
+            asyncio.create_task( self.raw_creat_voice(f'{voice} 0!')),
             ]
         source = await self.raw_creat_voice(f'{voice} いくよー?')
         source = source[0]
@@ -138,7 +137,7 @@ class ChatReader:
         self.Queue.append([out, 1])
 
         # 再生されるまでループ
-        if not self.Vvc.is_playing():
+        if not self.track.has_play_data():
             await self.play_loop()
 
 
@@ -161,7 +160,7 @@ class ChatReader:
             self.Queue[0][1] = 2
             _log.info(f"Play  <{self.guild.name}>")
 
-            await self.Vvc.play(SAD(source).from_local_path(),lambda : self.CLoop.create_task(self.play_loop()))
+            await self.track.play(StreamAudioData(source), lambda : asyncio.run_coroutine_threadsafe(self.play_loop(), self.info.cog.bot.loop))
             return
 
         if self.Queue[0][1] == 0:                   # Skip

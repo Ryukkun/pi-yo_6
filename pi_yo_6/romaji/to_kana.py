@@ -1,86 +1,85 @@
+from typing import Union
+
 try: from translation import tree
 except ModuleNotFoundError:
     from .translation import tree
 
-boin_n = 'aiueon'
-siin_n = 'bcdfghjklmpqrstvwxyz'
 
 class Romaji:
-    @classmethod
-    def to_kana(self, text: str):
-        self.text = ReadText(text.lower())
-        out = ''
-        #文字がなくなるまで LOOP
-        while self.text.text:
-            self.first_unit = self.text.read()
-            ltu = None
+    BOIN = 'aiueon'
+    SIIN = 'bcdfghjklmnpqrstvwxyz'
+    @staticmethod
+    def to_kana(text: str) -> str:
+        text_list = list(text)
+        out:list[str] = []
+        try:
+            #文字がなくなるまで LOOP
+            while text_list:
+                char = text_list[0]
 
-            # 異端変換 
-            if self._nn(self):
-                out += 'ん'
-                continue
-            
-            if ltu := self._ltu(self):
-                '''
-                この先変換候補があったら out の語尾を "っ" を入れ変える
-                無かったらこのまま 
-                '''
-                out += self.first_unit
-                self.first_unit = self.text.read()
+                # 異端変換 
+                if Romaji.is_nn(text_list, char):
+                    "nの後に母音以外が来るパターンを検出"
+                    out += 'ん'
+                    text_list.pop(0)
+                    continue
+                
+                if Romaji.is_ltu(text_list, char):
+                    '''
+                    この先変換候補があったら out の語尾を "っ" を入れ変える
+                    無かったらこのまま
+                    '''
+                    # ただし 'nn' は上で処理済みなのでここでは子音の連続＝「っ」
+                    out += 'っ'
+                    text_list.pop(0)
+                    continue
 
-            # 通常変換
-            if _tree := tree.get(self.first_unit):
-                '''
-                dcit => 変換候補あり
-                str => Answer
-                None => 候補なし
-                '''
-                temp_unit = ''
-                while isinstance(_tree, dict):
-                    unit = self.text.read()
-                    _tree = _tree.get(unit)
-                    temp_unit += unit
-                if _tree:
-                    if ltu:
-                        out = out[:-1]
-                        out += 'っ'
-                    out += _tree
+                # 3. Tree(辞書)を使った変換
+                current_tree: Union[dict[str, str | dict], str, None] = tree
+                match_len = 0
+                found_str = None
+                
+                # どこまで深くマッチするか探索
+                for i in range(len(text_list)):
+                    next_char = text_list[i]
+                    current_tree = current_tree.get(next_char)
+                    
+                    if current_tree is None:
+                        break
+                    
+                    if isinstance(current_tree, str):
+                        found_str = current_tree
+                        match_len = i + 1
+                        break # マッチ確定
+                    # dictの場合はさらにループ継続
+                
+                if found_str:
+                    out += found_str
+                    del text_list[:match_len]
                 else:
-                    self.text.text = temp_unit + self.text.text
-                    out += self.first_unit
-            else:
-                out += self.first_unit
-        return out
+                    # 変換不能な文字はそのまま通す
+                    out += text_list.pop(0) if text_list else char
+            return ''.join(out)
+        
+        except Exception as e:
+            print(e)
+            return ''.join(out) + ''.join(text_list)
 
-    def _nn(self):
-        if self.first_unit == 'n':
-            if not self.text.read_only() in boin_n:
+
+    @staticmethod
+    def is_nn(text_list:list[str], char:str) -> bool:
+        "nの後に母音以外が来るパターンを検出"
+        if char == 'n':
+            if len(text_list) >= 2 and text_list[1] not in "aiueoyn":
                 return True
+        return False
 
-    def _ltu(self):
-        if self.first_unit in siin_n:
-            if self.text.read_only() == self.first_unit:
-                if self.text.read_only(indent=2) != self.first_unit:
-                    return True
-
-
-
-
-class ReadText():
-
-    def __init__(self, text):
-        self.text:str = text
-
-    def read_only(self, indent=1):
-        return self.text[indent-1:indent]
-    
-    def delete(self):
-        self.text = self.text[1:]
-
-    def read(self):
-        _text = self.text[:1]
-        self.delete()
-        return _text
+    @staticmethod
+    def is_ltu(text_list:list[str], first_unit:str) -> bool:
+        if first_unit in 'bcdfghjklmpqrstvwxyz' and len(text_list) >= 3:
+            if text_list[1] == first_unit:
+                return text_list[2] in Romaji.BOIN
+        return False
 
 
 

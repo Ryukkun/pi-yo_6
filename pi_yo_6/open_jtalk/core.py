@@ -1,5 +1,7 @@
 import os
 import asyncio
+from re import S
+import re
 import subprocess
 from pathlib import Path
 
@@ -7,8 +9,9 @@ from glob import glob
 from platform import system
 
 from config import Config
+from pi_yo_6.message_unit import MessageUnit
 from .. import downloader as Downloader
-from ..utils import MessageUnit, NoMetas
+from pi_yo_6.utils import NoMetas, SpeakerMeta
 
 _os = system().lower()
 if _os == 'windows':
@@ -45,7 +48,7 @@ class CreateOpenJtalk:
         except subprocess.CalledProcessError:
             raise Exception('Open Jtalkをインストールしてください')
         
-        self.hts_path = Path(Config.OJ.hts_path)
+        self.hts_path = Config.OpenJtalk.hts_path
         self.metas = self.get_metas()
         if not self.metas:
             raise NoMetas('再生可能な htsvoice が存在しません')
@@ -58,7 +61,7 @@ class CreateOpenJtalk:
 
     async def create_voice(
         self, 
-        Itext: MessageUnit
+        text: MessageUnit
         ):
 
         if _os == 'windows':
@@ -66,25 +69,32 @@ class CreateOpenJtalk:
         else:
             dic = DownloadDic.utf_8()
 
-        cmd=f'open_jtalk -x "{dic}" -ow "{Itext.out_path}" -m "{Itext.speaker}" -r {Itext.speed}{Itext.tone}{Itext.intnation}{Itext.a}'
+        def get_path() -> str:
+            for meta in self.metas:
+                for style in meta['styles']:
+                    if style['name'] == text.speaker.id:
+                        return style['id']
+            return self.metas[0]['styles'][0]['id'] # デフォルトは最初のhtsvoice
+        speaker_path = get_path()
+    
+        cmd=f'open_jtalk -x "{dic}" -ow "{text.out_path}" -m "{speaker_path}" -r {text.speed}{text.tone}{text.intnation}{text.a}'
         prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-        await prog.communicate(input= Itext.text.encode(EFormat))
+        await prog.communicate(input= text.text.encode(EFormat))
 
 
 
-    def get_metas(self) -> list:
-        hts_list = [os.path.split(_)[1].replace('.htsvoice','') for _ in glob(str( self.hts_path / '*.htsvoice'))]
-        hts_dic = {}
-        for hts in hts_list:
-            _hts = hts.split('_')
-            hts_name = _hts[0]
-            if not hts_dic.get(hts_name): hts_dic[hts_name] = []
-            hts_dic[hts_name].append(hts)
+    def get_metas(self) -> list[SpeakerMeta]:
+        hts_list = [(_, os.path.split(_)[1].replace('.htsvoice','')) for _ in glob(str( Config.OpenJtalk.hts_path / '*.htsvoice'))]
+        hts_dic:dict[str, list[tuple[str, str]]] = {}
+        for path, hts_name in hts_list:
+            hts_author = hts_name.split('_')[0]
+            if not hts_dic.get(hts_author): hts_dic[hts_author] = []
+            hts_dic[hts_author].append((path, hts_name))
         return [
             {
                 'name':k,
                 'styles':[
-                    {'name': _, 'id': _} for _ in v
+                    {'name': hts_name, 'id': path} for path, hts_name in v
                 ]
             } for k, v, in hts_dic.items()
         ]

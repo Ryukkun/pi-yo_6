@@ -2,8 +2,6 @@ ffmpeg
 alkana
 discord
 discord.py[voice]
-tabulate[widechars]
 numpy
 requests
 tqdm
-espnet

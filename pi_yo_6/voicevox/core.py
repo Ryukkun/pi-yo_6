@@ -1,59 +1,72 @@
+import asyncio
 from ctypes import cdll, c_char_p
+import stat
+from typing import TYPE_CHECKING, Any, Optional
 import aiohttp
-import urllib.parse
 import json
-import requests
+import logging
 
-from ..template._config import VOICEVOX as config_voicevox
-from ..utils import MessageUnit, NoMetas
+from pi_yo_6.message_unit import MessageUnit
+
+from ..utils import NoMetas
+
+if TYPE_CHECKING:
+    from pi_yo_6.config import VOICEVOX_Engine_Config
 
 
 
-
-
+_log = logging.getLogger(__name__)
 
 
 class VoicevoxEngineBase:
-    def __init__(self, config:config_voicevox) -> None:
+    def __init__(self, config:VOICEVOX_Engine_Config, session: aiohttp.ClientSession) -> None:
         self.config = config
+        self.session = session
 
         # Load
-        self.url_base = f'http://{config.ip}'
+        self.url_base = f'http://{self.config.ip}'
+        self.metas: list[dict[str, Any]] = []
+        # セッションを保持するための変数（後で作成）
+        
 
-        self._load_metas(f'{self.url_base}/speakers')
-    
+    async def initialize(self):
+        await self._load_metas(f'{self.url_base}/metas')
 
 
-    def _load_metas(self, url):
+    async def _load_metas(self, url):
+        """完全非同期でmetasを読み込む"""
         try:
-            res = requests.get(url, timeout=1.0)
-        except requests.ConnectionError:
-            raise requests.ConnectionError(f'Engine が、見つかりませんでした！')
-        if res.status_code != requests.codes.ok:
-            raise NoMetas(f'metasを読み込めません')
-        self.metas = res.json()
+            async with self.session.get(url, timeout=aiohttp.ClientTimeout(total=2.0)) as res:
+                if res.status != 200:
+                    raise NoMetas(f'metasを読み込めません (Status: {res.status})')
+                self.metas = await res.json()
+        except (aiohttp.ClientConnectorError, asyncio.TimeoutError):
+            _log.error(f"Engine ({url}) が見つかりませんでした。")
+            raise ConnectionError(f'Engine が、見つかりませんでした！')
 
 
-    async def create_voice(self, Itext:MessageUnit):
+    async def create_voice(self, Itext:MessageUnit) -> bytes:
         text = Itext.text
-        speaker = Itext.speaker
+        speaker = Itext.speaker.id
         tlimit = self.config.text_limit
         # 文字数上限
         if len(text) > tlimit:
             text = text[:tlimit]
 
-        url_audio_query = fr'{self.url_base}/audio_query?text={urllib.parse.quote(text)}&speaker={speaker}'
-        url_synthesis = fr'{self.url_base}/synthesis?speaker={speaker}'
+        audio_query_url = fr'{self.url_base}/audio_query'
+        audio_query_params = {"text":text, "speaker":speaker}
+        synthesis_url = fr'{self.url_base}/synthesis'
+        synthesis_params = {"speaker":speaker}
 
-        async with aiohttp.ClientSession() as session:
-            res = await session.post(url_audio_query)
+        # Audio Queryの取得
+        async with self.session.post(audio_query_url, params=audio_query_params) as res:
             audio_query = await res.text()
 
-            headers = {
-                'accept': 'audio/wav',
-                'Content-Type': 'application/json',
-                }
-            res = await session.post(url=url_synthesis, data=audio_query, headers=headers)
+        headers = {
+            'accept': 'audio/wav',
+            'Content-Type': 'application/json',
+            }
+        async with self.session.post(url=synthesis_url, params=synthesis_params, data=audio_query, headers=headers) as res:
             res = await res.read()
         return res
 
@@ -99,13 +112,13 @@ class VoicevoxEngineBase:
 
 
 class CreateVoicevox(VoicevoxEngineBase):
-    def _load_metas(self, url):
+    async def _load_metas(self, url):
         try: 
-            super()._load_metas(url)
+            await super()._load_metas(url)
         except NoMetas:
             try:
                 lib = cdll.LoadLibrary(self.config.core_path)
                 lib.metas.restype = c_char_p
                 self.metas = json.loads(lib.metas().decode())
             except:
-                raise NoMetas('metasを読み込めません')
+                raise NoMetas('metasを読み込めません(HTTP/Core両方失敗)')
