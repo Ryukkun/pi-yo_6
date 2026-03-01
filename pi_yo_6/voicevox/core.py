@@ -44,7 +44,7 @@ class VoicevoxEngineBase:
         
 
     async def initialize(self):
-        await self._load_metas(f'{self.url_base}/metas')
+        await self._load_metas(f'{self.url_base}/speakers')
 
 
     async def _load_metas(self, url):
@@ -73,6 +73,7 @@ class VoicevoxEngineBase:
             作成された音声データのbytesデータ
         """
         if (speaker := self.to_speaker_id(msg.voice.id)) == None:
+            _log.error(f"Speaker ID {msg.voice.id} not found.")
             return b''
         tlimit = self.config.text_limit
         # 文字数上限
