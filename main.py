@@ -5,7 +5,7 @@ import shutil
 import discord
 from discord.ext import commands
 
-from pi_yo_6.synthetic_voice import SyntheticEngines
+# configを読み込む前にプロジェクトのモジュールを読み込まないこと
 
 
 IS_MAIN_PROCESS = __name__ == "__main__"
@@ -18,6 +18,7 @@ async def main():
     
     from pi_yo_6.main import MyCog
     from pi_yo_6.utils import set_logger
+    from pi_yo_6.synthetic_voice import SyntheticEngines
 
 
     try:shutil.rmtree(Config.output)
