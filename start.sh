@@ -1,0 +1,3 @@
+#!/bin/sh
+cd "$(dirname "$0")"
+uv run main.py 
