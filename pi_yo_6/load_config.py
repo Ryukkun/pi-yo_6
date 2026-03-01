@@ -6,6 +6,7 @@ from dacite import from_dict
 from dacite import Config as DConfig
 
 from pi_yo_6.config import Config
+from pi_yo_6.dictionary_manager import DictionaryManager
 from pi_yo_6.message_unit import ENGINE_TYPE, VoiceUnit
 
 
@@ -15,7 +16,8 @@ _log = logging.getLogger(__name__)
 @dataclass
 class GuildConfigData:
     auto_join:bool = False
-    admin_only:dict = field(default_factory=dict)
+    dic:DictionaryManager = field(default_factory=DictionaryManager)
+    """guildごとの辞書"""
 
 
 class GuildConfig:

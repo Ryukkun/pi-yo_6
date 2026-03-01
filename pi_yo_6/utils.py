@@ -1,10 +1,7 @@
 import asyncio
 import logging
-import re
-import shutil
-from os import path
 from discord.utils import _ColourFormatter
-from typing import Optional, List, Dict, Callable, Any, Generic, TypeVar, Self, TypedDict
+from typing import List, Callable, Any, Generic, TypeVar, Self, TypedDict
 import threading
 from concurrent.futures import ThreadPoolExecutor
 

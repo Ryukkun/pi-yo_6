@@ -10,6 +10,7 @@ import uuid
 import alkana
 
 from pi_yo_6.config import Config
+from pi_yo_6.load_config import GuildConfig
 from pi_yo_6.romaji.to_kana import Romaji
 
 if TYPE_CHECKING:
@@ -19,16 +20,7 @@ if TYPE_CHECKING:
 re_mention = re.compile(r'<(@&|@)\d+>')
 re_emoji = re.compile(r'<:.+:[0-9]+>')
 re_url = re.compile(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+')
-re_speed = re.compile(r'(^|\s)speed:([\d.]*)(?=\s|$)')
-re_a = re.compile(r'(^|\s)a:([\d.]*)(?=\s|$)')
-re_tone = re.compile(r'(^|\s)tone:([\d.]*)(?=\s|$)')
-re_int = re.compile(r'(^|\s)intnation:([\d.]*)(?=\s|$)')
-re_voice = re.compile(r'(^|\s)voice:(\S*)(?=\s|$)')
-#re_romaji_unit = re.compile(r'(^|[^a-zA-Z])([a-zA-Z\-]+)($|[^a-zA-Z])') #(先頭|英語以外の文字)(英単語)(末尾|英語以外の文字)
 re_romaji_unit = re.compile(r'\b([a-zA-Z\-]+)\b') #(単語境界)(英単語)(単語境界)
-#re_not_romaji = re.compile(r'[^a-zA-Z\-]')
-#_status = 'voice:\S*\s|speed:\S*\s|a:\S*\s|tone:\S*\s|intnation:\S*\s'
-#re_text_status = re.compile(r'({0}|^)+.+?(?=\s({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
 
 class ENGINE_TYPE(str, enum.Enum):
@@ -57,20 +49,9 @@ class MessageUnit:
         self.generated = False
 
 
-    def _custom_text(self, Itext, path:Path):
-        text_out = Itext
-        format_num = 0
-        replace_list = []
-
-        with open(path, 'r') as f:
-            while (line := f.readline().strip().split(',')) != [""]:
-                if line[0] in Itext:
-                    text_out = text_out.replace(line[0], '{0['+str(format_num)+']}')
-                    format_num += 1
-                    replace_list.append(line[1])
-
-        return text_out.format(replace_list)
-
+    def _custom_text(self, gid:int) -> None:
+        gc = GuildConfig.get(gid)
+        self.text = gc.data.dic.replace(self.text)
 
 
     #-----------------------------------------------------------
@@ -104,8 +85,7 @@ class MessageUnit:
         self.text = re_url.sub('ユーアールエルは省略するのです！ ',self.text)                    # URL省略
         self.text = re_emoji.sub('',self.text)                                              # 絵文字IDは読み上げない
         self.text = re_mention.sub('メンションは省略するのです！ ',self.text)
-        self.text = self._custom_text(self.text, Config.admin_dic)                      # ユーザ登録した文字を読み替える
-        self.text = self._custom_text(self.text, Config.user_dic / f'{guild_id}.txt')
+        self._custom_text(guild_id)                      # ユーザ登録した文字を読み替える
         self._replace_english_kana()
         self._replace_w()
 

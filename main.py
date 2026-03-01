@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import asyncio
@@ -36,13 +37,11 @@ async def main():
 
     try:shutil.rmtree(Config.output)
     except Exception:pass
-    os.makedirs(Config.user_dic, exist_ok=True)
     os.makedirs(Config.guild_config, exist_ok=True)
     os.makedirs(Config.user_config, exist_ok=True)
     os.makedirs(Config.output, exist_ok=True)
     os.makedirs(Config.OpenJtalk.hts_path, exist_ok=True)
     os.makedirs(Config.OpenJtalk.dictionary_path, exist_ok=True)
-    with open(Config.admin_dic,'a'):pass
 
 
     ####  起動準備 And 初期設定
@@ -52,7 +51,7 @@ async def main():
     intents.voice_states = True
     bot = commands.Bot(command_prefix=Config.prefix,intents=intents)
     set_logger()
-    #logging.basicConfig(level=logging.DEBUG)
+    
 
     engines = SyntheticEngines()
     await engines.init_all()

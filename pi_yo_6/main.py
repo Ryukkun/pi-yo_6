@@ -1,15 +1,10 @@
 import discord
-import os
-import re
 import asyncio
 import logging
-from pathlib import Path
 from discord.ext import commands, tasks
-from typing import Literal
 
 
 ####  Config
-from pi_yo_6.config import Config
 from pi_yo_6.voice_list import CreateView
 from pi_yo_6.load_config import GuildConfig
 from pi_yo_6.voice_client import MultiAudioVoiceClient
@@ -36,13 +31,13 @@ class MyCog(commands.Cog):
 
 
     @discord.app_commands.command(name="auto_join", description="自動接続 要権限")
-    async def auto_join(self, ctx:discord.Interaction, action:Literal['True','False']):
+    async def auto_join(self, ctx:discord.Interaction, action:bool):
         if not ctx.guild: return
         if not ctx.permissions.administrator:
             await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral= True)
             return
         gc = GuildConfig.get(ctx.guild.id)
-        gc.data.auto_join = bool(action)
+        gc.data.auto_join = action
         gc.write()
         embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=EmBase.main_color())
         await ctx.response.send_message(embed=embed, ephemeral= True)
@@ -58,7 +53,8 @@ class MyCog(commands.Cog):
         print('--------------------------')
 
         activity = discord.Activity(name='華麗なる美声', type=discord.ActivityType.listening)
-        await self.bot.change_presence(activity=activity)
+        asyncio.create_task(self.bot.change_presence(activity=activity))
+        asyncio.create_task(self.bot.tree.sync())
     
 
 
@@ -70,8 +66,6 @@ class MyCog(commands.Cog):
                     await ctx.author.voice.channel.connect(self_deaf=True)
                     _log.info(f'{ctx.guild.name} : #join')
                     self.g_opts[ctx.guild.id] = DataInfo(ctx.guild, self)
-                    dicPath = Config.user_dic / f'{ctx.guild.id}.txt'
-                    with open(dicPath,'w'): pass
                     return True
             except:
                 _log.exception(f"func:join  guild:{ctx.guild.name}")
@@ -91,23 +85,20 @@ class MyCog(commands.Cog):
     @commands.command()
     async def register(self, ctx:commands.Context, arg1, arg2):
         if not ctx.guild: return
-        gid = str(ctx.guild.id)
-        with open(Config.user_dic / f'{gid}.txt', mode='a') as f:
-            f.write(arg1 + ',' + arg2 + '\n')
-            _log.info(f'{ctx.guild.name} : #register >> {gid}.txt "{arg1} -> {arg2}"')
+        gc = GuildConfig.get(ctx.guild.id)
+        gc.data.dic.put(arg1, arg2)
+        gc.write()
+        _log.info(f'{ctx.guild.name} : #register : "{arg1}" -> "{arg2}"')
 
 
     @commands.command()
     async def delete(self, ctx:commands.Context, arg1):
         if not ctx.guild: return
-        gid = str(ctx.guild.id)
-        with open(Config.user_dic / f'{gid}.txt', mode='r') as f:
-            text = f.read()
-            replaced_text = re.sub(rf'{arg1},[^\n]+\n','',text)
-        if re.search(rf'{arg1},[^\n]+\n',text):
-            with open(Config.user_dic / f'{gid}.txt', mode='w') as f:
-                f.write(replaced_text)
-            _log.info(f'{ctx.guild.name} : #delete >> {gid}.txtから "{arg1}" を削除')
+        gc = GuildConfig.get(ctx.guild.id)
+        if gc.data.dic.get(arg1):
+            gc.data.dic.remove(arg1)
+            gc.write()
+            _log.info(f'{ctx.guild.name} : #delete : "{arg1}" を削除')
 
 
     @commands.command(aliases=['s'])
