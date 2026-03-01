@@ -27,8 +27,8 @@ class CreateView(ui.View):
 
         self._type = _type
 
-        self.select = EngineSelect(voice, self)
-        self.select2 = VoiceSelect(voice, self)
+        self.select = VoiceAuthorSelect(voice, self)
+        self.select2 = VoiceStyleSelect(voice, self)
         self.add_item(self.select)
         self.add_item(self.select2)
         self.add_item(TextPlayButton(self))
@@ -41,7 +41,7 @@ class CreateView(ui.View):
 
 
 
-class EngineSelect(ui.Select):
+class VoiceAuthorSelect(ui.Select):
     def __init__(self, voice, parent_view:'CreateView') -> None:
         self.parent_view = parent_view
         engine_name = ''
@@ -79,7 +79,7 @@ class EngineSelect(ui.Select):
 
 
 
-class VoiceSelect(ui.Select):
+class VoiceStyleSelect(ui.Select):
     def __init__(self, voice, parent_view:'CreateView') -> None:
         self.parent_view = parent_view
         sp_list = []
@@ -101,7 +101,7 @@ class VoiceSelect(ui.Select):
             voice = sp_list[0]['name']
             styles = sp_list[0]['styles']
 
-        select_opt = [SelectOption(label=f"{_['name']}", value=_["name"]) for _ in styles]
+        select_opt = [SelectOption(label=f"{_['name']}", value=f"{voice}_{_['name']}") for _ in styles]
         select_opt[0].default = True
         self.voice_res = VoiceUnit(type=parent_view._type, id=select_opt[0].value)
         super().__init__(placeholder='キュー表示', options=select_opt, row=2)
@@ -219,7 +219,7 @@ class EditVoiceMessage:
             async def my_voice(self, interaction:Interaction, button:ui.Button):
                 if not interaction.guild: return 
 
-                uc = UserConfig.get(interaction.guild.id)
+                uc = UserConfig.get(interaction.user.id)
                 uc.data.voice = voice
                 uc.write()
                 
