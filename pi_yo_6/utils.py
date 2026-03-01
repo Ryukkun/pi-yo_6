@@ -1,4 +1,6 @@
 import asyncio
+from dataclasses import dataclass
+import enum
 import logging
 from discord.utils import _ColourFormatter
 from typing import List, Callable, Any, Generic, TypeVar, Self, TypedDict
@@ -182,3 +184,19 @@ def task_running_wrapper():
     def wapper(func) -> TaskRunningWrapper:
         return TaskRunningWrapper(func)
     return wapper
+
+
+class ENGINE_TYPE(str, enum.Enum):
+    OPEN_JTALK = 'open_jtalk'
+    VOICEVOX = 'voicevox'
+    COEIROINK = 'coeiroink'
+
+
+@dataclass
+class VoiceUnit:
+    type:ENGINE_TYPE = ENGINE_TYPE.OPEN_JTALK
+    id:str = ""
+    speed:float = 1.2
+    tone:float = 0.0
+    """= pitch"""
+    intnation:float = 0.0

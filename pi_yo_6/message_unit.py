@@ -1,6 +1,4 @@
-from dataclasses import dataclass
 from datetime import datetime
-import enum
 import os
 from pathlib import Path
 import re
@@ -12,6 +10,7 @@ import alkana
 from pi_yo_6.config import Config
 from pi_yo_6.load_config import GuildConfig
 from pi_yo_6.romaji.to_kana import Romaji
+from pi_yo_6.utils import VoiceUnit
 
 if TYPE_CHECKING:
     from pi_yo_6.synthetic_voice import SyntheticEngines
@@ -21,21 +20,6 @@ re_mention = re.compile(r'<(@&|@)\d+>')
 re_emoji = re.compile(r'<:.+:[0-9]+>')
 re_url = re.compile(r'https?://[\w/:%#\$&\?\(\)~\.=\+\-]+')
 re_romaji_unit = re.compile(r'\b([a-zA-Z\-]+)\b') #(単語境界)(英単語)(単語境界)
-
-
-class ENGINE_TYPE(str, enum.Enum):
-    OPEN_JTALK = 'open_jtalk'
-    VOICEVOX = 'voicevox'
-    COEIROINK = 'coeiroink'
-
-@dataclass
-class VoiceUnit:
-    type:ENGINE_TYPE = ENGINE_TYPE.OPEN_JTALK
-    id:str = ""
-    speed:float = 1.2
-    tone:float = 0.0
-    """= pitch"""
-    intnation:float = 0.0
 
 
 class MessageUnit:

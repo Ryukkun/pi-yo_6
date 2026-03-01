@@ -7,7 +7,8 @@ from dacite import Config as DConfig
 
 from pi_yo_6.config import Config
 from pi_yo_6.dictionary_manager import DictionaryManager
-from pi_yo_6.message_unit import ENGINE_TYPE, VoiceUnit
+from pi_yo_6.utils import VoiceUnit
+from pi_yo_6.utils import ENGINE_TYPE
 
 
 

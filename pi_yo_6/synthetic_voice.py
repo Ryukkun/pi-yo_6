@@ -3,7 +3,8 @@ import aiohttp
 import logging
 from typing import Optional
 
-from pi_yo_6.message_unit import ENGINE_TYPE, MessageUnit
+from pi_yo_6.message_unit import MessageUnit
+from pi_yo_6.utils import ENGINE_TYPE
 from pi_yo_6.voicevox.core import VoicevoxEngineBase
 from pi_yo_6.open_jtalk.core import CreateOpenJtalk
 from pi_yo_6.config import Config

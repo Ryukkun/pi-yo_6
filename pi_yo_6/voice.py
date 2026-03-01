@@ -5,8 +5,9 @@ import logging
 from discord import Message
 from typing import TYPE_CHECKING
 
-from pi_yo_6.message_unit import ENGINE_TYPE, MessageUnit, VoiceUnit
+from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.load_config import UserConfig
+from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
 from pi_yo_6.voice_client import StreamAudioData
 
 
@@ -47,8 +48,8 @@ class ChatReader:
         for meta in self.info.cog.engines.open_jtalk.metas:
             if meta['name'] == 'mei':
                 style = random.choice(meta['styles'])
-                return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, style['name'], speed=1.2, tone=random.uniform(-15.0, 15.0))
-        return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, self.info.cog.engines.open_jtalk.metas[0]['styles'][0]['name'], speed=1.2, tone=random.uniform(-15.0, 15.0))
+                return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, style['id'], speed=1.2, tone=random.uniform(-15.0, 15.0))
+        return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, self.info.cog.engines.open_jtalk.metas[0]['styles'][0]['id'], speed=1.2, tone=random.uniform(-15.0, 15.0))
 
 
     async def play_message(self, msg_unit:MessageUnit):

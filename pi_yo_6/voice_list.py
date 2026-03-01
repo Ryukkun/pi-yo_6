@@ -2,7 +2,8 @@ import asyncio
 from discord import Member, ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
 from typing import TYPE_CHECKING
 
-from pi_yo_6.message_unit import ENGINE_TYPE, MessageUnit, VoiceUnit
+from pi_yo_6.message_unit import MessageUnit
+from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
 
 from .load_config import  UserConfig
 from .embeds import EmBase
@@ -101,7 +102,7 @@ class VoiceStyleSelect(ui.Select):
             voice = sp_list[0]['name']
             styles = sp_list[0]['styles']
 
-        select_opt = [SelectOption(label=f"{_['name']}", value=f"{voice}_{_['name']}") for _ in styles]
+        select_opt = [SelectOption(label=f"{_['name']}", value=_['id']) for _ in styles]
         select_opt[0].default = True
         self.voice_res = VoiceUnit(type=parent_view._type, id=select_opt[0].value)
         super().__init__(placeholder='キュー表示', options=select_opt, row=2)
