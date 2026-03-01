@@ -75,32 +75,20 @@ class MessageUnit:
 
     #-----------------------------------------------------------
     def _replace_english_kana(self):
-        text = self.text
-        output = ""
-
-        # 先頭から順番に英単語を検索しカタカナに変換
-        while text and (re_word := re_romaji_unit.search(text)):
-            word = re_word.group()
+        def replacer(match:re.Match) -> str:
+            word:str = match.group()
             word_low = word.lower()
-
-            if re_word.start() != 0:
-                output += text[:re_word.start()+1]
-
-            if kana := alkana.get_kana(word_low):      # 英語変換
-                output += kana
-            elif word_low == "i":
-                output += "あい"
-            elif re.search(r'[A-Z]',word):
-                output += word
-            else:
-                output += Romaji.to_kana(word_low)   # ローマ字 → カナ 変換
             
-            if re_word.end() != len(text):
-                text = text[re_word.end()-1:]
-            else:
-                text = ""
+            if kana := alkana.get_kana(word_low):
+                return kana
+            if word_low == "i":
+                return "あい"
+            if re.search(r'[A-Z]', word):
+                return word
+            return Romaji.to_kana(word_low)
 
-        self.text = output + text
+        # 全体の self.text に対して一括置換
+        self.text = re_romaji_unit.sub(replacer, self.text)
 
 
 
