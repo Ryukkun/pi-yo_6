@@ -18,7 +18,7 @@ class DictionaryManager:
         return automaton
 
     def replace(self, text: str) -> str:
-        if not self:
+        if not self.words:
             return text
         
         automaton: ahocorasick.Automaton = self.automaton
