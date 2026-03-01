@@ -64,6 +64,7 @@ class SyntheticEngines:
                 check_ver()
             )
             _log.info(f'Loaded Voicevox!! - Ver.{ver}')
+            self.voicevox = engine
             if ver == latest:
                 _log.info(f'最新バージョンです')
             else:
@@ -79,8 +80,8 @@ class SyntheticEngines:
             session = await self.get_session()
             engine = VoicevoxEngineBase(Config.Coeiroink, session=session)
             await engine.initialize()
-            self.coeiroink = engine
             _log.info('Loaded Coeiroink!!')
+            self.coeiroink = engine
         except Exception as e:
             _log.warning(f'Coeiroink失敗: {e}')
 
