@@ -91,9 +91,9 @@ class VoicevoxEngineBase:
 
         if msg.voice.speed != 1.0:
             audio_query['speedScale'] = msg.voice.speed
-        if msg.voice.a != 0.0:
-            audio_query['pitchScale'] = msg.voice.tone
         if msg.voice.tone != 0.0:
+            audio_query['pitchScale'] = msg.voice.tone
+        if msg.voice.intnation != 0.0:
             audio_query['intonationScale'] = msg.voice.intnation
 
         headers = {

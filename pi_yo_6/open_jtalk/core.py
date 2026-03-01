@@ -75,12 +75,6 @@ class CreateOpenJtalk:
 
         if voice.tone:
             options.append(f"-fm {voice.tone}")
-
-        if voice.intnation:
-            options.append(f"-jf {voice.intnation}")
-
-        if voice.a:
-            options.append(f"-a {voice.a}")
     
         cmd=f'open_jtalk -x "{Config.OpenJtalk.dictionary_path}" -ow "{out_path}" -m "{speaker_path}" {" ".join(options)}'
         _log.info(f"Running command: {cmd}")

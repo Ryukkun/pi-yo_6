@@ -33,7 +33,6 @@ class VoiceUnit:
     type:ENGINE_TYPE = ENGINE_TYPE.OPEN_JTALK
     id:str = ""
     speed:float = 1.2
-    a:float = 0.0
     tone:float = 0.0
     """= pitch"""
     intnation:float = 0.0
