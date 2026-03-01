@@ -12,10 +12,21 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "runBotDebug",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${cwd}\\main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--debug"
+            ]
+        },
+        {
             "name": "Python デバッガー: 現在のファイル",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         }
     ]
