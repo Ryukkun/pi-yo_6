@@ -3,6 +3,10 @@ from pathlib import Path
 
 @dataclass
 class Open_Jtalk_Config:
+    """
+    OpenJtalkは絶対に使える想定
+    meiはデフォルトで1つ以上入れておくこと
+    """
     hts_path = Path('./pi_yo_6/open_jtalk/voice/')
     """htsvoiceを入れておくフォルダ"""
     dictionary_path = Path('./pi_yo_6/open_jtalk/dic')
@@ -12,7 +16,6 @@ class Open_Jtalk_Config:
 @dataclass
 class VOICEVOX_Engine_Config:
     enable: bool = False
-    core_path: str = ''
     text_limit: int = 100
     ip: str = 'localhost:50021'
 
@@ -29,7 +32,11 @@ class Config:
     """音声ファイル一時的保存場所"""
 
     OpenJtalk = Open_Jtalk_Config()
-    VOICEVOX = VOICEVOX_Engine_Config()
+    VOICEVOX = VOICEVOX_Engine_Config(
+        enable=False,
+        text_limit=100,
+        ip='localhost:50021'
+    )
     '''
     https://github.com/VOICEVOX/voicevox_engine
     ↑これを起動しておく必要あり

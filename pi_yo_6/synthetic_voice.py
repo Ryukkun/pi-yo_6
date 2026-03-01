@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from pi_yo_6.message_unit import ENGINE_TYPE, MessageUnit
-from pi_yo_6.voicevox.core import CreateVoicevox, VoicevoxEngineBase
+from pi_yo_6.voicevox.core import VoicevoxEngineBase
 from pi_yo_6.open_jtalk.core import CreateOpenJtalk
 from pi_yo_6.config import Config
 
@@ -18,7 +18,7 @@ class SyntheticEngines:
         """OpenJtalkは標準で読み込み"""
         self.open_jtalk: CreateOpenJtalk = CreateOpenJtalk()
         _log.info('Loaded Open_Jtalk!!')
-        self.voicevox: Optional[CreateVoicevox] = None
+        self.voicevox: Optional[VoicevoxEngineBase] = None
         self.coeiroink: Optional[VoicevoxEngineBase] = None
     
     async def init_all(self):
@@ -50,7 +50,7 @@ class SyntheticEngines:
     async def _init_voicevox(self) -> None:
         try:
             session = await self.get_session()
-            engine: CreateVoicevox = CreateVoicevox(Config.VOICEVOX, session=session)
+            engine: VoicevoxEngineBase = VoicevoxEngineBase(Config.VOICEVOX, session=session)
             
             async def check_ver():
                 async with session.get(f'{engine.url_base}/core_versions', timeout=aiohttp.ClientTimeout(total=1.0)) as r:

@@ -140,18 +140,3 @@ class VoicevoxEngineBase:
                     res = styles[0]['id']
                 break
         return res
-
-
-
-
-class CreateVoicevox(VoicevoxEngineBase):
-    async def _load_metas(self, url):
-        try: 
-            await super()._load_metas(url)
-        except NoMetas:
-            try:
-                lib = cdll.LoadLibrary(self.config.core_path)
-                lib.metas.restype = c_char_p
-                self.metas = json.loads(lib.metas().decode())
-            except:
-                raise NoMetas('metasを読み込めません(HTTP/Core両方失敗)')
