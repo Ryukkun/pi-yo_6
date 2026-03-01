@@ -1,17 +1,19 @@
-
-
-import asyncio
 from dataclasses import dataclass
+from datetime import datetime
 import enum
+import os
+from pathlib import Path
 import re
+from typing import TYPE_CHECKING
 import uuid
 
 import alkana
-from discord import Guild, Optional
 
 from pi_yo_6.config import Config
 from pi_yo_6.romaji.to_kana import Romaji
-from pi_yo_6.synthetic_voice import SyntheticEngines
+
+if TYPE_CHECKING:
+    from pi_yo_6.synthetic_voice import SyntheticEngines
 
 
 re_mention = re.compile(r'<(@&|@)\d+>')
@@ -29,30 +31,33 @@ re_romaji_unit = re.compile(r'\b([a-zA-Z\-]+)\b') #(単語境界)(英単語)(単
 #re_text_status = re.compile(r'({0}|^)+.+?(?=\s({0})|$)'.format(_status)) # [(^|_status) 癖の強い文字たち ($|_status)]
 
 
-class ENGINE_TYPE(enum.Enum):
+class ENGINE_TYPE(str, enum.Enum):
     OPEN_JTALK = 'open_jtalk'
     VOICEVOX = 'voicevox'
     COEIROINK = 'coeiroink'
 
 @dataclass
-class _SpeakerUnit:
+class VoiceUnit:
     type:ENGINE_TYPE = ENGINE_TYPE.OPEN_JTALK
     id:str = ""
+    speed:float = 1.2
+    a:float = 0.0
+    tone:float = 0.0
+    """= pitch"""
+    intnation:float = 0.0
 
 
 class MessageUnit:
-    def __init__(self, text:str, engines:SyntheticEngines) -> None:
+    def __init__(self, text:str, engines:"SyntheticEngines", time:datetime = datetime.now()) -> None:
+        self.time = time
         self.engines = engines
         self.text:str = text
-        self.speaker = _SpeakerUnit()
-        self.speed:Optional[str] = None
-        self.a:str = ""
-        self.tone:str = ""
-        self.intnation:str = ""
-        self.out_path:Optional[str] = None
+        self.voice = VoiceUnit()
+        self.out_path:Path = Config.output / f'{uuid.uuid4()}.wav'
+        self.generated = False
 
 
-    def _custom_text(self, Itext, path):
+    def _custom_text(self, Itext, path:Path):
         text_out = Itext
         format_num = 0
         replace_list = []
@@ -65,34 +70,6 @@ class MessageUnit:
                     replace_list.append(line[1])
 
         return text_out.format(replace_list)
-
-
-    #------------------------------------------------------
-    def _set_voice(self):
-        _type = 'open_jtalk'
-        _id = str( Config.OpenJtalk.hts_path / 'mei_normal.htsvoice' )
-        
-        r:list[re.Match] = list(re_voice.finditer(Itext.text))
-        if len(r) != 0:
-            Itext.text = re_voice.sub('',Itext.text)
-            r = r[-1].group(2).lower()
-
-            _hts = self.engines.open_jtalk.hts_path / f'{r}.htsvoice'
-            if _hts.is_file():
-                _type = 'open_jtalk'
-                _id = str(_hts)
-            elif re.match(r'v.*?:', r):
-                r = re.sub(r'v.*?:','', r)
-                _type = 'voicevox'
-                _id = r
-            elif re.match(r'c.*?:', r):
-                r = re.sub(r'c.*?:','', r)
-                _type = 'coeiroink'
-                _id = r
-            
-        self.speaker.type = _type
-        self.speaker.id = _id
-        
 
 
 
@@ -135,19 +112,21 @@ class MessageUnit:
 
 
     async def normalize_text(self, guild_id:int) -> None:                                            # コマンドは読み上げない
-        if self.text is not None:
-            self.text = re.sub(r'^\s+', ' ', self.text)
+        self.text = re.sub(r'^\s+', ' ', self.text)
         self.text = re_url.sub('ユーアールエルは省略するのです！ ',self.text)                    # URL省略
         self.text = re_emoji.sub('',self.text)                                              # 絵文字IDは読み上げない
         self.text = re_mention.sub('メンションは省略するのです！ ',self.text)
         self.text = self._custom_text(self.text, Config.admin_dic)                      # ユーザ登録した文字を読み替える
-        self.text = self._custom_text(self.text, f'{Config.user_dic}{guild_id}.txt')
+        self.text = self._custom_text(self.text, Config.user_dic / f'{guild_id}.txt')
         self._replace_english_kana()
         self._replace_w()
 
 
-    async def create_voice(self):
-        out_file_name = f'{Config.output}{uuid.uuid4()}.wav'
-        self._set_voice()
-        await self.engines.create_voice(self, out_file_name)
-        return out_file_name
+    async def create_voice(self) -> None:
+        await self.engines.create_voice(self)
+        self.generated = True
+
+
+    def delete_file(self):
+        if os.path.isfile(self.out_path):
+            os.remove(self.out_path)

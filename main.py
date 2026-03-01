@@ -24,8 +24,9 @@ async def main():
     os.makedirs(Config.user_dic, exist_ok=True)
     os.makedirs(Config.guild_config, exist_ok=True)
     os.makedirs(Config.user_config, exist_ok=True)
-    os.makedirs(Config.OpenJtalk.hts_path, exist_ok=True)
     os.makedirs(Config.output, exist_ok=True)
+    os.makedirs(Config.OpenJtalk.hts_path, exist_ok=True)
+    os.makedirs(Config.OpenJtalk.dictionary_path, exist_ok=True)
     with open(Config.admin_dic,'a'):pass
 
 

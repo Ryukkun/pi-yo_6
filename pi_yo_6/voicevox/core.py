@@ -1,14 +1,13 @@
 import asyncio
 from ctypes import cdll, c_char_p
-import stat
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, TypedDict
 import aiohttp
 import json
 import logging
 
 from pi_yo_6.message_unit import MessageUnit
 
-from ..utils import NoMetas
+from ..utils import NoMetas, SpeakerMeta
 
 if TYPE_CHECKING:
     from pi_yo_6.config import VOICEVOX_Engine_Config
@@ -18,14 +17,29 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 
+
+class AudioQuery(TypedDict):
+    accent_phrases: list[Any]
+    speedScale: float
+    pitchScale: float
+    intonationScale: float
+    volumeScale: float
+    prePhonemeLength: float
+    postPhonemeLength: float
+    outputSamplingRate: int
+    outputStereo: bool
+    kana: Optional[str]
+
+
+
 class VoicevoxEngineBase:
-    def __init__(self, config:VOICEVOX_Engine_Config, session: aiohttp.ClientSession) -> None:
+    def __init__(self, config:"VOICEVOX_Engine_Config", session: aiohttp.ClientSession) -> None:
         self.config = config
         self.session = session
 
         # Load
         self.url_base = f'http://{self.config.ip}'
-        self.metas: list[dict[str, Any]] = []
+        self.metas: list[SpeakerMeta] = []
         # セッションを保持するための変数（後で作成）
         
 
@@ -45,30 +59,48 @@ class VoicevoxEngineBase:
             raise ConnectionError(f'Engine が、見つかりませんでした！')
 
 
-    async def create_voice(self, Itext:MessageUnit) -> bytes:
-        text = Itext.text
-        speaker = Itext.speaker.id
+    async def create_voice(self, msg:MessageUnit) -> bytes:
+        """メッセージから音声データを作成
+
+        Parameters
+        ----------
+        Itext : MessageUnit
+            メッセージ
+
+        Returns
+        -------
+        bytes
+            作成された音声データのbytesデータ
+        """
+        if (speaker := self.to_speaker_id(msg.voice.id)) == None:
+            return b''
         tlimit = self.config.text_limit
         # 文字数上限
-        if len(text) > tlimit:
-            text = text[:tlimit]
+        if len(msg.text) > tlimit:
+            msg.text = msg.text[:tlimit]
 
         audio_query_url = fr'{self.url_base}/audio_query'
-        audio_query_params = {"text":text, "speaker":speaker}
+        audio_query_params = {"text":msg.text, "speaker":speaker}
         synthesis_url = fr'{self.url_base}/synthesis'
         synthesis_params = {"speaker":speaker}
 
         # Audio Queryの取得
         async with self.session.post(audio_query_url, params=audio_query_params) as res:
-            audio_query = await res.text()
+            audio_query: AudioQuery = await res.json()
+
+        if msg.voice.speed != 1.0:
+            audio_query['speedScale'] = msg.voice.speed
+        if msg.voice.a != 0.0:
+            audio_query['pitchScale'] = msg.voice.tone
+        if msg.voice.tone != 0.0:
+            audio_query['intonationScale'] = msg.voice.intnation
 
         headers = {
             'accept': 'audio/wav',
             'Content-Type': 'application/json',
             }
-        async with self.session.post(url=synthesis_url, params=synthesis_params, data=audio_query, headers=headers) as res:
-            res = await res.read()
-        return res
+        async with self.session.post(url=synthesis_url, params=synthesis_params, json=audio_query, headers=headers) as res:
+            return await res.read()
 
 
     def name_list(self):
@@ -85,14 +117,14 @@ class VoicevoxEngineBase:
         return res
 
 
-    def to_speaker_id(self, hts):
+    def to_speaker_id(self, hts) -> Optional[str]:
         try: hts = int(hts)
         except Exception: pass
         else:
             for meta in self.metas:
                 for style in meta['styles']:
                     if style['id'] == hts:
-                        return hts
+                        return str(hts)
             return
         
         res = None
@@ -103,7 +135,7 @@ class VoicevoxEngineBase:
                 for style in styles:
                     if style['name'].lower() in hts:
                         res = style['id']
-                if type(res) != int:
+                if res == None:
                     res = styles[0]['id']
                 break
         return res

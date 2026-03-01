@@ -3,29 +3,21 @@ import os
 import re
 import asyncio
 import logging
-import random
 from pathlib import Path
 from discord.ext import commands, tasks
-from typing import Literal, Optional, Dict
+from typing import Literal
 
-_my_dir = Path(__file__).parent.parent
-os.chdir(str(_my_dir))
 
 ####  Config
-from .utils import set_logger, check_config
-check_config()
-from config import Config
+from pi_yo_6.config import Config
+from pi_yo_6.voice_list import CreateView
+from pi_yo_6.load_config import GuildConfig
+from pi_yo_6.voice_client import MultiAudioVoiceClient
+from pi_yo_6.voice import ChatReader
+from pi_yo_6.embeds import EmBase
+from pi_yo_6.synthetic_voice import SyntheticEngines
 
 
-from . import voice_list as VoiceList
-from .load_config import GC
-from .voice_client import MultiAudioVoiceClient
-from .voice import ChatReader
-from .embeds import EmBase
-from .synthetic_voice import SyntheticEngines
-
-
-set_logger()
 _log = logging.getLogger(__name__)
 
 #dif_config(config_path, temp_config_path)
@@ -34,16 +26,6 @@ _log = logging.getLogger(__name__)
 
 
 ####  起動準備 And 初期設定
-
-
-
-
-
-async def not_perm(ctx:discord.Interaction, com_name, com_bool, GConfig):
-    if not ctx.permissions.administrator and GConfig['admin_only'].setdefault(com_name,com_bool):
-        await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral= True)
-        return GConfig
-
 
 
 class MyCog(commands.Cog):
@@ -55,42 +37,14 @@ class MyCog(commands.Cog):
 
     @discord.app_commands.command(name="auto_join", description="自動接続 要権限")
     async def auto_join(self, ctx:discord.Interaction, action:Literal['True','False']):
-        gid = ctx.guild_id
-        _GC = GC(gid)
-        GConfig = _GC.Read()
-
-        if _ := await not_perm(ctx, 'auto_join', True, GConfig):
-            _GC.Write(_)
-            return
-        if action == 'True':
-            GConfig['auto_join'] = True
-        else:
-            GConfig['auto_join'] = False
-
-        _GC.Write(GConfig)
-        embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=EmBase.main_color())
-        await ctx.response.send_message(embed=embed, ephemeral= True)
-
-
-
-    @discord.app_commands.command(name="admin_only", description="特定のコマンドを管理者しか使えないようにするか否か 要権限")
-    async def admin_only(self, ctx:discord.Interaction, command:Literal['auto_join','my_voice','server_voice','another_voice'], action: Literal['True','False']):
-        gid = ctx.guild_id
-        _GC = GC(gid)
-        GConfig = _GC.Read()
-
+        if not ctx.guild: return
         if not ctx.permissions.administrator:
             await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral= True)
             return
-        if action == 'True':
-            GConfig['admin_only'][command] = True
-        else:
-            GConfig['admin_only'][command] = False
-
-        _GC.Write(GConfig)
-        embed = discord.Embed(title='権限状況', colour=EmBase.main_color())
-        for k, v in GConfig['admin_only'].items():
-            embed.add_field(name=k,value=str(v),inline=True)
+        gc = GuildConfig.get(ctx.guild.id)
+        gc.data.auto_join = bool(action)
+        gc.write()
+        embed = discord.Embed(title=f'auto_join を {action} に変更しました', colour=EmBase.main_color())
         await ctx.response.send_message(embed=embed, ephemeral= True)
 
 
@@ -116,9 +70,8 @@ class MyCog(commands.Cog):
                     await ctx.author.voice.channel.connect(self_deaf=True)
                     _log.info(f'{ctx.guild.name} : #join')
                     self.g_opts[ctx.guild.id] = DataInfo(ctx.guild, self)
-                    dicPath = f'{Config.user_dic}{ctx.guild.id}.txt'
+                    dicPath = Config.user_dic / f'{ctx.guild.id}.txt'
                     with open(dicPath,'w'): pass
-                    GC(ctx.guild.id)
                     return True
             except:
                 _log.exception(f"func:join  guild:{ctx.guild.name}")
@@ -139,7 +92,7 @@ class MyCog(commands.Cog):
     async def register(self, ctx:commands.Context, arg1, arg2):
         if not ctx.guild: return
         gid = str(ctx.guild.id)
-        with open(Config.user_dic+ gid +'.txt', mode='a') as f:
+        with open(Config.user_dic / f'{gid}.txt', mode='a') as f:
             f.write(arg1 + ',' + arg2 + '\n')
             _log.info(f'{ctx.guild.name} : #register >> {gid}.txt "{arg1} -> {arg2}"')
 
@@ -148,11 +101,11 @@ class MyCog(commands.Cog):
     async def delete(self, ctx:commands.Context, arg1):
         if not ctx.guild: return
         gid = str(ctx.guild.id)
-        with open(Config.user_dic+ gid +'.txt', mode='r') as f:
+        with open(Config.user_dic / f'{gid}.txt', mode='r') as f:
             text = f.read()
             replaced_text = re.sub(rf'{arg1},[^\n]+\n','',text)
         if re.search(rf'{arg1},[^\n]+\n',text):
-            with open(Config.user_dic+ gid +'.txt', mode='w') as f:
+            with open(Config.user_dic / f'{gid}.txt', mode='w') as f:
                 f.write(replaced_text)
             _log.info(f'{ctx.guild.name} : #delete >> {gid}.txtから "{arg1}" を削除')
 
@@ -160,48 +113,15 @@ class MyCog(commands.Cog):
     @commands.command(aliases=['s'])
     async def shutup(self, ctx:commands.Context):
         if ctx.guild and ctx.guild.voice_client and (data := self.g_opts.get(ctx.guild.id)):
-            await data.voice.play_loop()
+            data.voice.track._finish()
 
 
 
     @commands.command(aliases=['vl'])
     async def voice_list(self, ctx:commands.Context):
         if not ctx.guild: return
-        await ctx.send(embed=await VoiceList.embed(ctx.guild), view=VoiceList.CreateView(g_opts=self.g_opts, engines=self.engines))
+        await ctx.send(view=CreateView(g_opts=self.g_opts, engines=self.engines))
 
-
-
-    @commands.command()
-    async def count(self, ctx:commands.Context):
-        if not ctx.guild: return
-
-        if not ctx.voice_client:
-            await self.join(ctx)
-        if data := self.g_opts.get(ctx.guild.id):
-            choice = []
-            if self.engines.open_jtalk:
-                for _ in self.engines.open_jtalk.metas:
-                    if _['name'] == 'mei':
-                        for __ in _['styles']:
-                            if __['name'] == 'mei_normal':
-                                choice.append('mei_normal')
-                                break
-                if 'mei_normal' not in choice:
-                    choice.append( random.choice( random.choice(self.engines.open_jtalk.metas)['styles'] )['id'] )
-
-            if self.engines.voicevox:
-                voices:list[str] = ['ずんだもん','四国めたん','春日部つむぎ','白上虎太郎','冥鳴ひまり','ちび式じい','小夜/SAYO','ナースロボ_タイプT']
-                voices = [_.lower() for _ in voices]
-                for _ in self.engines.voicevox.metas:
-                    if _['name'].lower() in voices:
-                        choice.append(f"voicevox:{_['name']}_{_['styles'][0]['name']}")
-
-            if not choice:
-                return
-            
-            message = f"voice:{random.choice(choice)} いっくよー 3 2 1 GO!"
-            #await data.Voice.on_message_from_str(message)
-            await data.voice.count(random.choice(choice))
 
 
 
@@ -220,14 +140,14 @@ class MyCog(commands.Cog):
         _log.info(f'#message.server  : {msg.guild.name} ({msg.channel.name})')
         _log.info(f'{msg.author.name} ({msg.author.display_name}) : {msg.content}')
 
-        _GC = GC(msg.guild.id).Read()
-        if msg.author.voice and _GC['auto_join']:
+        gc = GuildConfig.get(msg.guild.id)
+        if msg.author.voice and gc.data.auto_join:
             if msg.author.voice.channel and not msg.guild.voice_client:
                 if msg.author.voice.mute or msg.author.voice.self_mute:
                     await self.join(await self.bot.get_context(msg))
 
-        try: await self.g_opts[msg.guild.id].voice.on_message(msg)
-        except KeyError:pass
+        await self.g_opts[msg.guild.id].voice.on_message(msg)
+
 
 
 

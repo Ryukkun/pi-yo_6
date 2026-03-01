@@ -1,13 +1,35 @@
-class Open_Jtalk:
-    '''
-    hts_path : str
-        htsvoiceを入れておくファイル
-    '''
-    enable = True
-    hts_path = './pi_yo_6/open_jtalk/voice/'
+from dataclasses import dataclass
+from pathlib import Path
+
+@dataclass
+class Open_Jtalk_Config:
+    hts_path = Path('./pi_yo_6/open_jtalk/voice/')
+    """htsvoiceを入れておくフォルダ"""
+    dictionary_path = Path('./pi_yo_6/open_jtalk/dic')
+    """フォルダ指定"""
 
 
-class VOICEVOX:
+@dataclass
+class VOICEVOX_Engine_Config:
+    enable: bool = False
+    core_path: str = ''
+    text_limit: int = 100
+    ip: str = 'localhost:50021'
+
+
+
+class Config:
+    prefix = '.'
+    token = ''
+    admin_dic = Path('./dic/admin_dic.txt')
+    user_dic = Path('./dic/user_dic/')
+    guild_config = Path('./guild_config/')
+    user_config = Path('./user_config/')
+    output = Path('./output/')
+    """音声ファイル一時的保存場所"""
+
+    OpenJtalk = Open_Jtalk_Config()
+    VOICEVOX = VOICEVOX_Engine_Config()
     '''
     https://github.com/VOICEVOX/voicevox_engine
     ↑これを起動しておく必要あり
@@ -18,14 +40,12 @@ class VOICEVOX:
     ip : str
         VOICEVOX Engine のip
     ''' 
-    enable = False
-    core_path = ''
 
-    text_limit = 100
-    ip = 'localhost:50021'
-
-
-class Coeiroink:
+    Coeiroink = VOICEVOX_Engine_Config(
+        enable=False,
+        text_limit=100,
+        ip='localhost:50031'
+        )
     '''
     https://coeiroink.com/
     https://github.com/shirowanisan/voicevox_engine
@@ -36,25 +56,3 @@ class Coeiroink:
     ip : str
         Coeiroink Engine のip
     ''' 
-    enable = False
-
-    text_limit = 100
-    ip = 'localhost:50031'
-
-
-class Config:
-    '''
-    ------
-    output : str
-        音声ファイル一時的保存場所
-    '''
-    prefix = '.'
-    token = ''
-    admin_dic = './dic/admin_dic.txt'
-    user_dic = './dic/user_dic/'
-    guild_config = './guild_config/'
-    user_config = './user_config/'
-    output = './output/'
-    OJ = Open_Jtalk
-    Vvox = VOICEVOX
-    Coeiroink = Coeiroink

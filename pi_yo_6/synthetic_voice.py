@@ -1,42 +1,34 @@
 import asyncio
-
 import aiohttp
 import logging
 from typing import Optional
 
-from pi_yo_6.message_unit import MessageUnit
-
-from .voicevox.core import CreateVoicevox, VoicevoxEngineBase
-from .open_jtalk.core import CreateOpenJtalk
-
-from config import Config
-
+from pi_yo_6.message_unit import ENGINE_TYPE, MessageUnit
+from pi_yo_6.voicevox.core import CreateVoicevox, VoicevoxEngineBase
+from pi_yo_6.open_jtalk.core import CreateOpenJtalk
+from pi_yo_6.config import Config
 
 _log = logging.getLogger(__name__)
-
-
-
-
 
 
 
 class SyntheticEngines:
     _session: Optional[aiohttp.ClientSession] = None
     def __init__(self) -> None:
+        """OpenJtalkは標準で読み込み"""
+        self.open_jtalk: CreateOpenJtalk = CreateOpenJtalk()
+        _log.info('Loaded Open_Jtalk!!')
         self.voicevox: Optional[CreateVoicevox] = None
         self.coeiroink: Optional[VoicevoxEngineBase] = None
-        self.open_jtalk: Optional[CreateOpenJtalk] = None
     
     async def init_all(self):
         """gather を使って全エンジンを爆速で初期化する"""
         tasks = []
-
+        tasks.append(self.open_jtalk.run_test())
         if Config.VOICEVOX.enable:
             tasks.append(self._init_voicevox())
         if Config.Coeiroink.enable:
             tasks.append(self._init_coeiroink())
-        if Config.OpenJtalk.enable:
-            tasks.append(self._init_open_jtalk())
         if tasks:
             await asyncio.gather(*tasks)
 
@@ -93,69 +85,17 @@ class SyntheticEngines:
             _log.warning(f'Coeiroink失敗: {e}')
 
 
-    async def _init_open_jtalk(self) -> None:
-        """Open JTalk専用の初期化タスク"""
-        try:
-            self.open_jtalk = CreateOpenJtalk()
-            _log.info('Loaded Open_Jtalk!!')
-        except Exception as e:
-            _log.warning(f'Open JTalk失敗: {e}')
 
+    async def create_voice(self, msg:MessageUnit):
+        _type = msg.voice.type
 
+        if _type == ENGINE_TYPE.OPEN_JTALK and self.open_jtalk:
+            await self.open_jtalk.create_voice(msg)
 
-    async def create_voice(self, Itext:MessageUnit, out):
-        _type = Itext.speaker.type
+        elif _type == ENGINE_TYPE.VOICEVOX and self.voicevox:
+            with open(msg.out_path, 'wb')as f:
+                f.write( await self.voicevox.create_voice(msg))
 
-        if _type == 'open_jtalk':
-            if not self.open_jtalk: return
-
-            Itext.out_path = out
-            if Itext.speed == None:
-                Itext.speed = "1.2"
-
-            if (tone := Itext.tone) != None:
-                Itext.tone = f' -fm {tone}'
-
-            if (intnation := Itext.intnation) != None:
-                Itext.intnation = f' -jf {intnation}'
-
-            if (a := Itext.a) != None:
-                Itext.a = f' -a {a}'
-
-            if Itext.out_path == None:
-                Itext.out_path = f"{Config.output}output.wav"
-
-            await self.open_jtalk.create_voice(Itext)
-
-
-
-        elif _type == 'voicevox':
-            if not self.voicevox: return
-
-            speaker = Itext.speaker.id
-            if (speaker := self.voicevox.to_speaker_id(speaker)) == None:
-                return
-            Itext.speaker.id = str(speaker)
-
-            with open(out, 'wb')as f:
-                f.write( await self.voicevox.create_voice(Itext))
-
-
-
-        elif _type == 'coeiroink':
-            if not self.coeiroink: return
-
-            speaker = Itext.speaker.id
-            if (speaker := self.coeiroink.to_speaker_id(speaker)) == None:
-                return
-            Itext.speaker.id = str(speaker)
-
-            if Itext.speed == None:
-                Itext.speed = 1.0
-            if Itext.tone == None:
-                Itext.tone = 0.0
-            if Itext.intnation == None:
-                Itext.intnation = 1.0
-
-            with open(out, 'wb')as f:
-                f.write( await self.coeiroink.create_voice(Itext))
+        elif _type == ENGINE_TYPE.COEIROINK and self.coeiroink:
+            with open(msg.out_path, 'wb')as f:
+                f.write( await self.coeiroink.create_voice(msg))

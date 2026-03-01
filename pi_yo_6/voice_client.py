@@ -1,16 +1,15 @@
 from concurrent.futures import ThreadPoolExecutor
 import logging
+from pathlib import Path
 import threading
 import asyncio
 import time
-import traceback
 import numpy as np
 from collections import deque
 from math import sqrt
 from discord import FFmpegAudio, SpeakingState, opus, Guild, FFmpegPCMAudio, FFmpegOpusAudio
 from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, Union
 
-from main import IS_MAIN_PROCESS
 from pi_yo_6.utils import run_check_storage
 
 
@@ -23,11 +22,21 @@ _log = logging.getLogger(__name__)
 
 
 class StreamAudioData:
-    exe:ThreadPoolExecutor = ThreadPoolExecutor(max_workers=2) if IS_MAIN_PROCESS else None # type: ignore
     def __init__(self, 
-                 st_url:str,
+                 st_url:str | Path,
                  volume:float | None = None,
                  duration:int | None = None):
+        """音声データの作成
+
+        Parameters
+        ----------
+        st_url : str | Path
+            strの場合はURL、Pathの場合はローカルファイルとして扱う
+        volume : float | None, optional
+            ボリューム, by default None
+        duration : int | None, optional
+            音声の再生時間（秒）, by default None
+        """
         self.stream_url = st_url
         self.volume = volume
         self.duration = duration
@@ -38,11 +47,11 @@ class StreamAudioData:
         before_option:str = ' '.join(before_options)
         if opus:
             #options.extend(('-c:a', 'libopus', '-ar', '48000'))
-            return FFmpegOpusAudio(self.stream_url, before_options=before_option, options=option)
+            return FFmpegOpusAudio(str(self.stream_url), before_options=before_option, options=option)
 
         else:
             #options.extend(('-c:a', 'pcm_s16le', '-ar', '48000'))
-            return FFmpegPCMAudio(self.stream_url, before_options=before_option, options=option)
+            return FFmpegPCMAudio(str(self.stream_url), before_options=before_option, options=option)
 
 
 
@@ -55,7 +64,8 @@ class StreamAudioData:
         # Sec
         if int(sec):
             before_options.extend(('-ss' ,str(sec)))
-        before_options.extend(('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5', '-analyzeduration', '2147483647', '-probesize', '2147483647'))
+        if isinstance(self.stream_url, str):
+            before_options.extend(('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5', '-analyzeduration', '2147483647', '-probesize', '2147483647'))
         
         # Pitch
         if pitch != 0:
