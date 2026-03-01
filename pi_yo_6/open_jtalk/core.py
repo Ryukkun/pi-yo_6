@@ -91,7 +91,16 @@ class CreateOpenJtalk:
 
     def get_metas(self) -> list[SpeakerMeta]:
         """stylesのnameに拡張子は含まれない、 idはファイルパス
-
+        例 :
+        { 
+            "name": "mei",
+            "styles": [
+                {
+                    "name": "normal",
+                    "id": "C:/htsvoice/mei_normal.htsvoice"
+                },
+                ...]
+        }
         Returns
         -------
         list[SpeakerMeta]
@@ -100,14 +109,16 @@ class CreateOpenJtalk:
         hts_list = [(_, os.path.split(_)[1].replace('.htsvoice','')) for _ in glob(str( Config.OpenJtalk.hts_path / '*.htsvoice'))]
         hts_dic:dict[str, list[tuple[str, str]]] = {}
         for path, hts_name in hts_list:  # hts_nameに拡張子は含まれない
-            hts_author = hts_name.split('_')[0]
+            hts_split = hts_name.split('_')
+            hts_author = hts_split[0] if len(hts_split) > 1 else hts_name
+            style_name = '_'.join(hts_split) if len(hts_split) > 1 else hts_name
             if not hts_dic.get(hts_author): hts_dic[hts_author] = []
-            hts_dic[hts_author].append((path, hts_name))
+            hts_dic[hts_author].append((style_name, path))
         return [
             {
                 'name':k,
                 'styles':[
-                    {'name': hts_name, 'id': path} for path, hts_name in v
+                    {'name': style_name, 'id': path} for style_name, path in v
                 ]
             } for k, v, in hts_dic.items()
         ]

@@ -1,13 +1,13 @@
 import asyncio
+import random
 import time
 import logging
 from discord import Message
 from typing import TYPE_CHECKING
 
-from pi_yo_6.message_unit import MessageUnit
+from pi_yo_6.message_unit import ENGINE_TYPE, MessageUnit, VoiceUnit
 from pi_yo_6.load_config import UserConfig
 from pi_yo_6.voice_client import StreamAudioData
-from pi_yo_6.config import Config
 
 
 if TYPE_CHECKING:
@@ -32,12 +32,23 @@ class ChatReader:
             # ボイス初期設定
             text = message.content
             user_config = UserConfig.get(message.author.id)
+            if user_config.data.voice.id == "":
+                user_config.data.voice = self.random_voice()
+                user_config.write()
 
             msg_unit = MessageUnit(text, self.info.cog.engines, message.created_at)
             msg_unit.voice = user_config.data.voice
             await msg_unit.normalize_text(self.guild.id)
             await self.play_message(msg_unit)
 
+
+    def random_voice(self) -> VoiceUnit:
+        """ランダムなVoiceUnitを返す"""
+        for meta in self.info.cog.engines.open_jtalk.metas:
+            if meta['name'] == 'mei':
+                style = random.choice(meta['styles'])
+                return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, style['name'], speed=1.2, tone=random.uniform(-15.0, 15.0))
+        return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, self.info.cog.engines.open_jtalk.metas[0]['styles'][0]['name'], speed=1.2, tone=random.uniform(-15.0, 15.0))
 
 
     async def play_message(self, msg_unit:MessageUnit):
