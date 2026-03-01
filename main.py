@@ -1,3 +1,4 @@
+import logging
 import os
 import asyncio
 import shutil
@@ -37,6 +38,7 @@ async def main():
     intents.voice_states = True
     bot = commands.Bot(command_prefix=Config.prefix,intents=intents)
     set_logger()
+    #logging.basicConfig(level=logging.DEBUG)
 
     engines = SyntheticEngines()
     await engines.init_all()
@@ -46,4 +48,4 @@ async def main():
         await bot.start(Config.token)
 
 if IS_MAIN_PROCESS:
-    asyncio.run(main())
+    asyncio.run(main(), debug=True)

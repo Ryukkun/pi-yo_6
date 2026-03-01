@@ -135,10 +135,12 @@ class MyCog(commands.Cog):
         # 発言者がBotの場合はPass
         if msg.author.bot:
             return
-        print('')
 
         _log.info(f'#message.server  : {msg.guild.name} ({msg.channel.name})')
         _log.info(f'{msg.author.name} ({msg.author.display_name}) : {msg.content}')
+
+        if not msg.guild.id in self.g_opts:
+            return
 
         gc = GuildConfig.get(msg.guild.id)
         if msg.author.voice and gc.data.auto_join:
