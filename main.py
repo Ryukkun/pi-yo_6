@@ -10,7 +10,20 @@ from discord.ext import commands
 
 IS_MAIN_PROCESS = __name__ == "__main__"
 
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="読み上げBotの起動スクリプト")
+    # 引数の設定
+    parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
+    return parser.parse_args()
+
+
 async def main():
+    args = parse_args()
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+
     try: from pi_yo_6.config import Config
     except Exception:
         shutil.copy("./pi_yo_6/resources/config_template.py", "./pi_yo_6/config.py")
