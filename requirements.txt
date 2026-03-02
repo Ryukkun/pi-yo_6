@@ -1,9 +1,0 @@
-ffmpeg
-alkana
-discord
-discord.py[voice]
-numpy
-requests
-tqdm
-dacite
-pyahocorasick
