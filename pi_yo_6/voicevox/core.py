@@ -7,7 +7,7 @@ import logging
 
 from pi_yo_6.message_unit import MessageUnit
 
-from ..utils import NoMetas, SpeakerMeta
+from ..utils import NoMetas, SpeakerMeta, VoiceUnit
 
 if TYPE_CHECKING:
     from pi_yo_6.config import VOICEVOX_Engine_Config
@@ -72,8 +72,8 @@ class VoicevoxEngineBase:
         bytes
             作成された音声データのbytesデータ
         """
-        if (speaker := self.to_speaker_id(msg.voice.id)) == None:
-            _log.error(f"Speaker ID {msg.voice.id} not found.")
+        if (speaker := self.to_speaker_id(msg.voice)) == None:
+            _log.error(f"Speaker ID {msg.voice} not found.")
             return b''
         tlimit = self.config.text_limit
         # 文字数上限
@@ -118,25 +118,12 @@ class VoicevoxEngineBase:
         return res
 
 
-    def to_speaker_id(self, hts) -> Optional[str]:
-        try: hts = int(hts)
-        except Exception: pass
-        else:
-            for meta in self.metas:
-                for style in meta['styles']:
-                    if style['id'] == hts:
-                        return str(hts)
-            return
-        
+    def to_speaker_id(self, voice:VoiceUnit) -> Optional[str]:
         res = None
-        hts = hts.lower()
         for meta in self.metas:
-            if meta['name'].lower() in hts:
+            if meta['name'] == voice.name:
                 styles = meta['styles']
                 for style in styles:
-                    if style['name'].lower() in hts:
+                    if style['name'] == voice.style:
                         res = style['id']
-                if res == None:
-                    res = styles[0]['id']
-                break
         return res

@@ -13,6 +13,8 @@ from typing import Optional
 from venv import create
 import wave
 
+import discord
+
 from pi_yo_6.config import Config
 from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, NoMetas, SpeakerMeta, VoiceUnit
@@ -25,7 +27,6 @@ else:
 
 
 _log = logging.getLogger(__name__)
-
 
 
 class CreateOpenJtalk:
@@ -42,7 +43,7 @@ class CreateOpenJtalk:
 
     async def run_test(self):
         path = Config.output / f"test.wav"
-        await self.create_voice('テスト', VoiceUnit(ENGINE_TYPE.OPEN_JTALK ,self.metas[0]['styles'][0]['id']), path)
+        await self.create_voice('テスト', VoiceUnit(ENGINE_TYPE.OPEN_JTALK ,name=self.metas[0]['name'], style=self.metas[0]['styles'][0]['name']), path)
         if self.__playable_wav(path):
             os.remove(path)
         else:
@@ -61,15 +62,9 @@ class CreateOpenJtalk:
             _log.error('Invalid arguments for create_voice')
             return
 
-            
-        def get_path() -> str:
-            for meta in self.metas:
-                for style in meta['styles']:
-                    if style['name'] == voice.id or style['id'] == voice.id:
-                        return style['id']
-            return self.metas[0]['styles'][0]['id'] # デフォルトは最初のhtsvoice
-        speaker_path = get_path()
-        
+        speaker_path = self.to_speaker_id(voice)
+        if speaker_path == None: speaker_path = self.metas[0]['styles'][0]['id'] # デフォルトは最初のhtsvoice
+
         options:list[str] = []
         options.append(f"-r {voice.speed}")
 
@@ -81,6 +76,16 @@ class CreateOpenJtalk:
         prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
         await prog.communicate(input= msg.encode(EFormat))
 
+
+    def to_speaker_id(self, voice:VoiceUnit) -> Optional[str]:
+        res = None
+        for meta in self.metas:
+            if meta['name'] == voice.name:
+                styles = meta['styles']
+                for style in styles:
+                    if style['name'] == voice.style:
+                        res = style['id']
+        return res
 
 
     def get_metas(self) -> list[SpeakerMeta]:
@@ -100,12 +105,12 @@ class CreateOpenJtalk:
         list[SpeakerMeta]
             metas
         """
-        hts_list = [(_, os.path.split(_)[1].replace('.htsvoice','')) for _ in glob(str( Config.OpenJtalk.hts_path / '*.htsvoice'))]
+        hts_list = [(_, os.path.split(_)[-1].replace('.htsvoice','')) for _ in glob(str( Config.OpenJtalk.hts_path / '*.htsvoice'))]
         hts_dic:dict[str, list[tuple[str, str]]] = {}
         for path, hts_name in hts_list:  # hts_nameに拡張子は含まれない
             hts_split = hts_name.split('_')
-            hts_author = hts_split[0] if len(hts_split) > 1 else hts_name
-            style_name = '_'.join(hts_split) if len(hts_split) > 1 else hts_name
+            hts_author = hts_split[0] if len(hts_split) >= 1 else hts_name
+            style_name = "_".join(hts_split[1:]) if len(hts_split) >= 2 else hts_author
             if not hts_dic.get(hts_author): hts_dic[hts_author] = []
             hts_dic[hts_author].append((style_name, path))
         return [
@@ -114,8 +119,9 @@ class CreateOpenJtalk:
                 'styles':[
                     {'name': style_name, 'id': path} for style_name, path in v
                 ]
-            } for k, v, in hts_dic.items()
+            } for k, v in hts_dic.items()
         ]
+
 
     def __playable_wav(self, path:Path) -> bool:
         if not (path.is_file() and path.suffix.lower() == '.wav'):

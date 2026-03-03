@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from pi_yo_6.message_unit import MessageUnit
-from pi_yo_6.utils import ENGINE_TYPE
+from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
 from pi_yo_6.voicevox.core import VoicevoxEngineBase
 from pi_yo_6.open_jtalk.core import CreateOpenJtalk
 from pi_yo_6.config import Config
@@ -101,3 +101,13 @@ class SyntheticEngines:
         elif _type == ENGINE_TYPE.COEIROINK and self.coeiroink:
             with open(msg.out_path, 'wb')as f:
                 f.write( await self.coeiroink.create_voice(msg))
+
+
+    def is_available(self, voice:VoiceUnit) -> bool:
+        if voice.type == ENGINE_TYPE.OPEN_JTALK:
+            return self.open_jtalk.to_speaker_id(voice) != None
+        elif voice.style == ENGINE_TYPE.VOICEVOX and self.voicevox:
+            return self.voicevox.to_speaker_id(voice) != None
+        elif voice.style == ENGINE_TYPE.COEIROINK and self.coeiroink:
+            return self.coeiroink.to_speaker_id(voice) != None
+        return False

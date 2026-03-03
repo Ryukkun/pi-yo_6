@@ -195,7 +195,8 @@ class ENGINE_TYPE(str, enum.Enum):
 @dataclass
 class VoiceUnit:
     type:ENGINE_TYPE = ENGINE_TYPE.OPEN_JTALK
-    id:str = ""
+    name:str = ""
+    style:str = ""
     speed:float = 1.2
     tone:float = 0.0
     """= pitch"""

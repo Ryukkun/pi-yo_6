@@ -33,7 +33,7 @@ class ChatReader:
             # ボイス初期設定
             text = message.content
             user_config = UserConfig.get(message.author.id)
-            if user_config.data.voice.id == "":
+            if not self.info.cog.engines.is_available(user_config.data.voice):
                 user_config.data.voice = self.random_voice()
                 user_config.write()
 
@@ -45,11 +45,12 @@ class ChatReader:
 
     def random_voice(self) -> VoiceUnit:
         """ランダムなVoiceUnitを返す"""
-        for meta in self.info.cog.engines.open_jtalk.metas:
+        metas = self.info.cog.engines.open_jtalk.metas
+        for meta in metas:
             if meta['name'] == 'mei':
                 style = random.choice(meta['styles'])
-                return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, style['id'], speed=1.2, tone=random.uniform(-15.0, 15.0))
-        return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, self.info.cog.engines.open_jtalk.metas[0]['styles'][0]['id'], speed=1.2, tone=random.uniform(-15.0, 15.0))
+                return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, name='mei', style=style['name'], speed=1.2, tone=random.uniform(-15.0, 15.0))
+        return VoiceUnit(ENGINE_TYPE.OPEN_JTALK, name=metas[0]['name'], style=metas[0]['styles'][0]['id'], speed=1.2, tone=random.uniform(-15.0, 15.0))
 
 
     async def play_message(self, msg_unit:MessageUnit):
@@ -59,11 +60,11 @@ class ChatReader:
             try: 
                 await msg_unit.create_voice()
             except Exception as e:                                              # Error
-                print(f"Error : 音声ファイル作成に失敗 {e}")
+                _log.error(f"音声ファイル作成に失敗 {e}")
                 self.Queue.remove(msg_unit)
                 return
 
-            print(f'生成時間 : {time.perf_counter()-now_time}')
+            _log.info(f'生成時間 : {time.perf_counter()-now_time}')
 
             # 再生されるまでループ
             if not self.track.has_play_data():
