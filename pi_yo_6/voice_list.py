@@ -1,6 +1,9 @@
 import asyncio
-from discord import Member, ui, Interaction, SelectOption ,ButtonStyle, Embed, Guild
-from typing import TYPE_CHECKING
+import copy
+import logging
+import math
+from discord import Emoji, Member, PartialEmoji, ui, Interaction, ButtonStyle, Embed
+from typing import TYPE_CHECKING, TypedDict
 
 from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
@@ -13,196 +16,185 @@ if TYPE_CHECKING:
     from pi_yo_6.main import DataInfo
 
 
+_log = logging.getLogger(__file__)
+
+
+class VLStyleMeta(TypedDict):
+    name:str
+    id:str
+    author:str
+
+class VLSpeakerMeta(TypedDict):
+    name:list[str]
+    styles:list[VLStyleMeta]
+
+
 # Button
-class CreateView(ui.View):
-    def __init__(self, g_opts:dict[int, "DataInfo"], engines:SyntheticEngines, _type:ENGINE_TYPE=ENGINE_TYPE.OPEN_JTALK, voice='mei_normal'):
-        super().__init__(timeout=None)
+class VoiceListContainer(ui.Container):
+    def __init__(self, g_opts:dict[int, "DataInfo"], engines:SyntheticEngines, voice:VoiceUnit=VoiceUnit(ENGINE_TYPE.OPEN_JTALK, "mei", "normal")):
+        super().__init__()
         self.engines = engines
         self.g_opts = g_opts
+        self.voice = voice
+        self.res_styles:list[VLStyleMeta] = []
+        self.accent_color = EmBase.main_color()
 
+        self.add_item(ui.ActionRow(
+            EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None),
+            EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None),
+            EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None)
+        ))
+
+        self.set_new_select_options()
+
+
+
+    def set_new_select_options(self):
         # typeが機能していなかった時のため
-        if _type == ENGINE_TYPE.VOICEVOX and not engines.voicevox:
-            _type = ENGINE_TYPE.OPEN_JTALK
-        if _type == ENGINE_TYPE.COEIROINK and not engines.coeiroink:
-            _type = ENGINE_TYPE.OPEN_JTALK
-
-        self._type = _type
-
-        self.select = VoiceAuthorSelect(voice, self)
-        self.select2 = VoiceStyleSelect(voice, self)
-        self.add_item(self.select)
-        self.add_item(self.select2)
-        self.add_item(TextPlayButton(self))
-        self.add_item(SetVoiceButton(self))
-        self.add_item(DeleteButton())
-        self.add_item(OpenJtalkButton(self))
-        self.add_item(VoicevoxButton(self))
-        self.add_item(CoeiroinkButton(self))
+        if self.voice.type == ENGINE_TYPE.VOICEVOX and self.engines.voicevox:
+            _metas = copy.deepcopy(self.engines.voicevox.metas)
+        elif self.voice.type == ENGINE_TYPE.COEIROINK and self.engines.coeiroink:
+            _metas = copy.deepcopy(self.engines.coeiroink.metas)
+        else:
+            self.voice.type = ENGINE_TYPE.OPEN_JTALK
+            _metas = copy.deepcopy(self.engines.open_jtalk.metas)
 
 
+        """
+        25人以上のボイスに対応する都合上、注意事項が何個か
+        - Speakerのnameには複数の名前が含まれることがある (list[str])
+        - Styleにauthor追加 そのスタイルの声の主
+        """
+        for s in _metas:
+            for st in s['styles']:
+                st['id'] = s['name']
+
+        # 25以上の場合圧縮処理
+        metas: list[VLSpeakerMeta] = []
+        booking = math.ceil(len(_metas) / 25)
+        for i in range(0, len(_metas), booking):
+            parts = _metas[i:i+booking]
+            flat_style:list[VLStyleMeta] = []
+            for part in parts:
+                for style in part['styles']:
+                    flat_style.append({
+                        "author": part['name'],
+                        "name": style['name'],
+                        "id": style["id"]
+                    })
+            merged:VLSpeakerMeta = {
+                "name" : [_['name'] for _ in parts],
+                "styles" : flat_style
+            }
+            metas.append(merged)
+            
+        # voiceAuthorsの選択肢生成
+        self.voice_authors_selection.options.clear()
+        has_default = False
+        for i in range(min(len(metas), 25)):
+            meta = metas[i]
+            if (default := (self.voice.name in meta['name'] and not has_default)): has_default = True
+            self.voice_authors_selection.add_option(label=", ".join(meta["name"]), value=meta["name"][0], default=default)
+        ### どれ一つヒットしなかった場合初期値に指定
+        if not has_default:
+            self.voice.name = metas[0]['styles'][0]['author']
+            self.voice_authors_selection.options[0].default = True
 
 
-class VoiceAuthorSelect(ui.Select):
-    def __init__(self, voice, parent_view:'CreateView') -> None:
-        self.parent_view = parent_view
-        engine_name = ''
-        sp_list = []
-        if parent_view._type == ENGINE_TYPE.OPEN_JTALK and parent_view.engines.open_jtalk:
-            sp_list = parent_view.engines.open_jtalk.metas
-
-        elif parent_view._type == ENGINE_TYPE.VOICEVOX and parent_view.engines.voicevox:
-            engine_name = 'VOICEVOX:'
-            sp_list = parent_view.engines.voicevox.metas
-
-        elif parent_view._type == ENGINE_TYPE.COEIROINK and parent_view.engines.coeiroink:
-            engine_name = 'COEIROINK:'
-            sp_list = parent_view.engines.coeiroink.metas
-
-        select_opt:list[SelectOption] = []
-        check = False
-        for sp in sp_list:
-            _default = False
-            if sp['name'] == voice:
-                check = True
-                _default=True
-            if len(select_opt) < 25:
-                select_opt.append(SelectOption(label=f'{engine_name}{sp["name"]}', value=sp["name"], default=_default))
-        if check == False:
-            select_opt[0].default = True
-        super().__init__(placeholder='キュー表示', options=select_opt, row=1)
-
-
-    async def callback(self, interaction: Interaction):
-        loop = asyncio.get_event_loop()
-        loop.create_task(interaction.response.defer())
-        if interaction.message:
-            await interaction.message.edit(view=CreateView(g_opts=self.parent_view.g_opts, engines=self.parent_view.engines, _type=self.parent_view._type, voice=self.values[0]))
-
-
-
-class VoiceStyleSelect(ui.Select):
-    def __init__(self, voice, parent_view:'CreateView') -> None:
-        self.parent_view = parent_view
-        sp_list = []
-        if parent_view._type == ENGINE_TYPE.OPEN_JTALK and parent_view.engines.open_jtalk:
-            sp_list = parent_view.engines.open_jtalk.metas
-
-        elif parent_view._type == ENGINE_TYPE.VOICEVOX and parent_view.engines.voicevox:
-            sp_list = parent_view.engines.voicevox.metas
-
-        elif parent_view._type == ENGINE_TYPE.COEIROINK and parent_view.engines.coeiroink:
-            sp_list = parent_view.engines.coeiroink.metas
-        
-        styles = None
-        for _ in sp_list:
-            if _['name'] == voice:
-                styles = _['styles']
+        # voiceStylesの選択肢生成
+        self.voice_styles_selection.options.clear()
+        self.res_styles.clear()
+        has_default = False
+        styles:list[VLStyleMeta] = []
+        for meta in metas:
+            if self.voice.name in meta['name']:
+                styles = meta['styles']
                 break
-        if not styles:
-            voice = sp_list[0]['name']
-            styles = sp_list[0]['styles']
+        for i in range(min(len(styles), 25)):
+            style = styles[i]
+            self.res_styles.append(style)
+            if (default := (self.voice.style == style['name'] and self.voice.name == style['author'] and not has_default)): has_default = True
+            self.voice_styles_selection.add_option(label=f"{style['author']}_{style['name']}", value=str(i), default=default)
+        ### どれ一つヒットしなかった場合初期値に指定
+        if not has_default: 
+            self.voice.style = styles[0]['name']
+            self.voice_styles_selection.options[0].default = True
 
-        select_opt = [SelectOption(label=f"{_['name']}", value=_['id']) for _ in styles]
-        select_opt[0].default = True
-        self.voice_res = VoiceUnit(type=parent_view._type, id=select_opt[0].value)
-        super().__init__(placeholder='キュー表示', options=select_opt, row=2)
 
 
-    async def callback(self, interaction: Interaction):
-        self.voice_res = VoiceUnit(type=self.parent_view._type, id=self.values[0])
+    @ui.select(placeholder='キャラクター選択', row=1)
+    async def voice_authors_selection(self, interaction: Interaction, select: ui.Select):
+        asyncio.create_task(interaction.response.defer())
+        if interaction.message:
+            self.voice.name = select.values[0]
+            self.set_new_select_options()
+            await interaction.message.edit(view=self.view)
+    
+
+    row3 = ui.ActionRow()
+    @row3.select(placeholder='スタイル選択')
+    async def voice_styles_selection(self, interaction: Interaction, select:ui.Select):
+        try:
+            style = self.res_styles[int(select.values[0])]
+            self.voice.name = style['author']
+            self.voice.style = style['name']
+        except Exception as e:
+            _log.error("スタイルの取得に失敗しました", e)
         await interaction.response.defer()
 
 
-
-
-class TextPlayButton(ui.Button):
-    def __init__(self, parent_view:'CreateView') -> None:
-        self.g_opts = parent_view.g_opts
-        self.parent_view = parent_view
-        super().__init__(label='Play', style=ButtonStyle.blurple, row=3)
-
-
-    async def callback(self, interaction: Interaction):
+    row4 = ui.ActionRow()
+    @row4.button(label='Play', style=ButtonStyle.blurple)
+    async def text_play_button(self, interaction: Interaction, button: ui.Button):
         loop = asyncio.get_event_loop()
         loop.create_task(interaction.response.defer())
 
         if not interaction.guild: return
         if data := self.g_opts.get(interaction.guild.id):
-            msg = MessageUnit("テストなのだ", self.parent_view.engines)
-            msg.voice = self.parent_view.select2.voice_res
+            msg = MessageUnit("テストなのだ", self.engines)
+            msg.voice = self.voice
             await data.voice.play_message(msg)
 
 
 
-class SetVoiceButton(ui.Button):
-    def __init__(self, parent_view:'CreateView') -> None:
-        self.parent_view = parent_view
-        super().__init__(label='ボイスをセット', style=ButtonStyle.blurple, row=3)
-
-    async def callback(self, interaction: Interaction):
-        voice = self.parent_view.select2.voice_res
+    @row4.button(label='ボイスをセット', style=ButtonStyle.blurple)
+    async def set_voice_button(self, interaction: Interaction, button: ui.Button):
         if isinstance(interaction.user, Member) and interaction.user.guild_permissions.administrator:
-            new_message = EditVoiceMessage(voice)
+            new_message = EditVoiceMessage(self.voice)
             await interaction.response.send_message(embed=new_message.who_embed, view=new_message.who_view, ephemeral=True)
-
         else:
             uc = UserConfig.get(interaction.user.id)
-            uc.data.voice = voice
+            uc.data.voice = self.voice
             uc.write()
-            await interaction.response.send_message(embed=Embed(title='反映完了!', description=voice, colour=EmBase.main_color()), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(title='反映完了!', description=self.voice, colour=EmBase.main_color()), ephemeral=True)
 
 
-
-class DeleteButton(ui.Button):
-    def __init__(self) -> None:
-        super().__init__(label='Delete', style=ButtonStyle.red, row=3)
-
-    async def callback(self, interaction: Interaction):
+    @row4.button(label='Delete', style=ButtonStyle.red)
+    async def delete_button(_, interaction: Interaction, button:ui.Button):
         await interaction.response.defer()
         if interaction.message:
             await interaction.message.delete()
 
 
 
-class OpenJtalkButton(ui.Button):
-    def __init__(self, parent_view:'CreateView') -> None:
-        self.parent_view = parent_view
-        if parent_view.engines.open_jtalk:
-            super().__init__(label='Open_Jtalk', style=ButtonStyle.green, row=0)
-        else:
-            super().__init__(label='Open_Jtalk', style=ButtonStyle.gray, disabled=True, row=0)
-
+class EngineButton(ui.Button):
+    def __init__(self, root: VoiceListContainer, type: ENGINE_TYPE, enable: bool):
+        self.root = root
+        self.engine_type = type
+        super().__init__(style=ButtonStyle.green if enable else ButtonStyle.gray, label=str(type), disabled=not enable, row=0)
+        
     async def callback(self, interaction: Interaction):
-        await interaction.response.defer()
         if interaction.message:
-            await interaction.message.edit(view=CreateView(g_opts=self.parent_view.g_opts, engines=self.parent_view.engines, _type=ENGINE_TYPE.OPEN_JTALK))
+            self.root.voice.type = self.engine_type
+            self.root.voice.name = ""
+            self.root.voice.style = ""
+            self.root.set_new_select_options()
+            await interaction.message.edit(view=self.view)
+        
 
 
-class VoicevoxButton(ui.Button):
-    def __init__(self, parent_view:'CreateView') -> None:
-        self.parent_view = parent_view
-        if parent_view.engines.voicevox:
-            super().__init__(label='VoiceVox', style=ButtonStyle.green, row=0)
-        else:
-            super().__init__(label='VoiceVox', style=ButtonStyle.gray, disabled=True, row=0)
 
-    async def callback(self, interaction: Interaction):
-        await interaction.response.defer()
-        if interaction.message:
-            await interaction.message.edit(view=CreateView(g_opts=self.parent_view.g_opts, engines=self.parent_view.engines, _type=ENGINE_TYPE.VOICEVOX))
 
-class CoeiroinkButton(ui.Button):
-    def __init__(self, parent_view:'CreateView') -> None:
-        self.parent_view = parent_view
-        if parent_view.engines.coeiroink:
-            super().__init__(label='Coeiroink', style=ButtonStyle.green, row=0)
-        else:
-            super().__init__(label='Coeiroink', style=ButtonStyle.gray, disabled=True, row=0)
-
-    async def callback(self, interaction: Interaction):
-        await interaction.response.defer()
-        if interaction.message:
-            await interaction.message.edit(view=CreateView(g_opts=self.parent_view.g_opts, engines=self.parent_view.engines, _type=ENGINE_TYPE.COEIROINK))
 
 
 
@@ -247,7 +239,6 @@ class EditVoiceMessage:
             @ui.select(cls=ui.UserSelect, placeholder='ターゲットを選ぼう！')
             async def my_voice(self, interaction:Interaction, select:ui.UserSelect):
                 user = select.values[0]
-                gid = interaction.guild_id
                 uc = UserConfig.get(user.id)
                 uc.data.voice = voice
                 uc.write()

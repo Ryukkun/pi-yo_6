@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 
 
 ####  Config
-from pi_yo_6.voice_list import CreateView
+from pi_yo_6.voice_list import VoiceListContainer
 from pi_yo_6.load_config import GuildConfig
 from pi_yo_6.voice_client import MultiAudioVoiceClient
 from pi_yo_6.voice import ChatReader
@@ -111,7 +111,9 @@ class MyCog(commands.Cog):
     @commands.command(aliases=['vl'])
     async def voice_list(self, ctx:commands.Context):
         if not ctx.guild: return
-        await ctx.send(view=CreateView(g_opts=self.g_opts, engines=self.engines))
+        view = discord.ui.LayoutView(timeout=None)
+        view.add_item(VoiceListContainer(g_opts=self.g_opts, engines=self.engines))
+        await ctx.send(view=view)
 
 
 
