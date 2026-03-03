@@ -5,6 +5,7 @@ import asyncio
 import shutil
 import discord
 from discord.ext import commands
+from discord.utils import setup_logging
 
 # configを読み込む前にプロジェクトのモジュールを読み込まないこと
 
@@ -19,9 +20,11 @@ def parse_args():
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
     return parser.parse_args()
 
+args = parse_args()
+
+
 
 async def main():
-    args = parse_args()
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
 
@@ -31,7 +34,7 @@ async def main():
         raise Exception('Config ファイルを生成しました')
     
     from pi_yo_6.main import MyCog
-    from pi_yo_6.utils import set_logger
+    #from pi_yo_6.utils import set_logger
     from pi_yo_6.synthetic_voice import SyntheticEngines
 
 
@@ -50,7 +53,8 @@ async def main():
     intents.reactions = True
     intents.voice_states = True
     bot = commands.Bot(command_prefix=Config.prefix,intents=intents)
-    set_logger()
+    #set_logger()
+    setup_logging()
     
 
     engines = SyntheticEngines()
@@ -61,4 +65,4 @@ async def main():
         await bot.start(Config.token)
 
 if IS_MAIN_PROCESS:
-    asyncio.run(main(), debug=True)
+    asyncio.run(main(), debug=args.debug)

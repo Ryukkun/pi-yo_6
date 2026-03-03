@@ -1,9 +1,11 @@
+import logging
 from typing import Union
 
 try: from translation import tree
 except ModuleNotFoundError:
     from .translation import tree
 
+_log = logging.getLogger(__file__)
 
 class Romaji:
     BOIN = 'aiueon'
@@ -62,7 +64,7 @@ class Romaji:
             return ''.join(out)
         
         except Exception as e:
-            print(e)
+            _log.error(e)
             return ''.join(out) + ''.join(text_list)
 
 

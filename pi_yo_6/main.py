@@ -50,7 +50,7 @@ class MyCog(commands.Cog):
         _log.info('Logged in')
         _log.info(self.bot.user.name if self.bot.user else "error")
         _log.info(self.bot.user.id if self.bot.user else -1)
-        print('--------------------------')
+        _log.info('--------------------------')
 
         activity = discord.Activity(name='華麗なる美声', type=discord.ActivityType.listening)
         asyncio.create_task(self.bot.change_presence(activity=activity))

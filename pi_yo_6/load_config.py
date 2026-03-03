@@ -50,7 +50,7 @@ class GuildConfig:
                 return from_dict(data_class=GuildConfigData, data=json.load(f))
         except (json.JSONDecodeError, KeyError):
             # ファイルが壊れていた場合のフォールバック
-            print(f"Warning: {self.path} is corrupted. Using default.")
+            _log.warning(f"Warning: {self.path} is corrupted. Using default.")
             default_data = GuildConfigData()
             self.__write(default_data) 
             return default_data
