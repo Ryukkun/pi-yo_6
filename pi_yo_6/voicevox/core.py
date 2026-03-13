@@ -1,8 +1,6 @@
 import asyncio
-from ctypes import cdll, c_char_p
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
 import aiohttp
-import json
 import logging
 
 from pi_yo_6.message_unit import MessageUnit
@@ -10,7 +8,7 @@ from pi_yo_6.message_unit import MessageUnit
 from ..utils import NoMetas, SpeakerMeta, VoiceUnit
 
 if TYPE_CHECKING:
-    from pi_yo_6.config import VOICEVOX_Engine_Config
+    from pi_yo_6.load_config import VOICEVOX_Engine_Config
 
 
 

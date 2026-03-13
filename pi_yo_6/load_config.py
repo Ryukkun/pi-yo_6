@@ -1,119 +1,101 @@
 import logging
-import os
-import json
-from dataclasses import dataclass, field, asdict
-from dacite import from_dict
-from dacite import Config as DConfig
+from pathlib import Path
+from typing import TypeVar, Generic, Type
+from pydantic import BaseModel, Field, TypeAdapter
 
-from pi_yo_6.config import Config
+# ENGINE_TYPE, VoiceUnit, DictionaryManager も Pydantic の BaseModel を継承するように
+# 適宜修正されている前提です。もし dataclass のままなら、適宜ラップが必要です。
 from pi_yo_6.dictionary_manager import DictionaryManager
-from pi_yo_6.utils import VoiceUnit
-from pi_yo_6.utils import ENGINE_TYPE
-
-
+from pi_yo_6.utils import VoiceUnit, ENGINE_TYPE
 
 _log = logging.getLogger(__name__)
 
-@dataclass
-class GuildConfigData:
-    auto_join:bool = False
-    dic:DictionaryManager = field(default_factory=DictionaryManager)
-    """guildごとの辞書"""
+# --- Data Models (Pydantic版) ---
 
+class GuildConfigData(BaseModel):
+    auto_join: bool = False
+    # PydanticはネストしたBaseModelも自動でパースします
+    dic: DictionaryManager = Field(default_factory=DictionaryManager)
 
-class GuildConfig:
-    cache:dict[int, "GuildConfig"] = {}
-    @staticmethod
-    def get(gid:int) -> "GuildConfig":
-        if not GuildConfig.cache.get(gid):
-            GuildConfig.cache[gid] = GuildConfig(gid)
-        return GuildConfig.cache[gid]
+class UserConfigData(BaseModel):
+    voice: VoiceUnit = Field(default_factory=VoiceUnit)
 
+class Open_Jtalk_Config(BaseModel):
+    hts_path: Path = Path('./pi_yo_6/open_jtalk/voice/')
+    dictionary_path: Path = Path('./pi_yo_6/open_jtalk/dic')
 
-    def __init__(self, gid:int) -> None:
-        self.gid = gid
-        self.path = Config.guild_config / f'{gid}.json'
-        self.data = self.__read()
+class VOICEVOX_Engine_Config(BaseModel):
+    enable: bool = False
+    text_limit: int = 100
+    ip: str = 'localhost:50021'
 
+class MainConfigData(BaseModel):
+    prefix: str = '.'
+    token: str = ''
+    admin_dic: Path = Path('./dic/admin_dic.txt')
+    user_dic: Path = Path('./dic/user_dic/')
+    guild_config: Path = Path('./guild_config/')
+    user_config: Path = Path('./user_config/')
+    output: Path = Path('./output/')
+    
+    OpenJtalk: Open_Jtalk_Config = Field(default_factory=Open_Jtalk_Config)
+    VOICEVOX: VOICEVOX_Engine_Config = Field(default_factory=lambda: VOICEVOX_Engine_Config(ip='localhost:50021'))
+    Coeiroink: VOICEVOX_Engine_Config = Field(default_factory=lambda: VOICEVOX_Engine_Config(ip='localhost:50031'))
 
-    def __read(self) -> GuildConfigData:
-        # 1. ファイルが存在するかチェック
-        if not os.path.exists(self.path):
-            # ファイルがなければデフォルトのデータを作成して返す
-            # ついでに新規ファイルとして保存しておくと親切
-            default_data = GuildConfigData()
-            self.__write(default_data) 
+# --- Logic (Pydantic版) ---
+
+class ConfigUnit[T: BaseModel]:
+    def __init__(self, path: Path, cls: Type[T]) -> None:
+        self.cls = cls
+        self.path = path
+        self.data: T = self.__read()
+
+    def __read(self) -> T:
+        # ファイルが存在しない、あるいは中身が空(0バイト)の場合
+        if not self.path.exists() or self.path.stat().st_size == 0:
+            _log.info(f"Config file {self.path} not found or empty. Creating default.")
+            default_data = self.cls()
+            self.write(default_data)
             return default_data
 
         try:
-            with open(self.path, 'r', encoding='utf-8') as f:
-                return from_dict(data_class=GuildConfigData, data=json.load(f))
-        except (json.JSONDecodeError, KeyError):
-            # ファイルが壊れていた場合のフォールバック
-            _log.warning(f"Warning: {self.path} is corrupted. Using default.")
-            default_data = GuildConfigData()
-            self.__write(default_data) 
-            return default_data
-
-
-    def write(self):
-        self.__write(self.data)
-
-
-    def __write(self, gc:GuildConfigData):
-        with open(self.path,'w') as f:
-            json.dump(asdict(gc), f, indent=2)
-
-
-
-
-@dataclass
-class UserConfigData:
-    voice:VoiceUnit = field(default_factory=VoiceUnit) #TODO: デフォルト値をランダムに
-
-
-class UserConfig:
-    cache:dict[int, "UserConfig"] = {}
-    @staticmethod
-    def get(uid:int) -> "UserConfig":
-        if not UserConfig.cache.get(uid):
-            UserConfig.cache[uid] = UserConfig(uid)
-        return UserConfig.cache[uid]
-
-
-    def __init__(self, uid:int) -> None:
-        self.uid = uid
-        self.path = Config.user_config / f'{uid}.json'
-        self.data = self.__read()
-
-
-    def __read(self) -> UserConfigData:
-        # 1. ファイルが存在するかチェック
-        if not os.path.exists(self.path):
-            # ファイルがなければデフォルトのデータを作成して返す
-            # ついでに新規ファイルとして保存しておくと親切
-            default_data = UserConfigData()
-            self.__write(default_data) 
-            return default_data
-        
-        config = DConfig(
-            type_hooks={ENGINE_TYPE: lambda x: ENGINE_TYPE(x) if isinstance(x, str) else x}
-        )
-        try:
-            with open(self.path, 'r', encoding='utf-8') as f:
-                return from_dict(data_class=UserConfigData, data=json.load(f), config=config)
+            content = self.path.read_text(encoding='utf-8')
+            return self.cls.model_validate_json(content)
         except Exception as e:
-            # ファイルが壊れていた場合のフォールバック
-            _log.warning(f"UserConfig {self.path} is corrupted. Using default. Error: {e}")
-            default_data = UserConfigData()
-            self.__write(default_data) 
+            # ここでファイルが壊れている（JSONとして不正）場合の処理
+            _log.warning(f"Warning: {self.path} is corrupted. Using default. Error: {e}")
+            default_data = self.cls()
+            # 壊れたファイルを上書きして修復
+            self.write(default_data)
             return default_data
 
+    def write(self, data: T | None = None):
+        """現在のデータ（または渡されたデータ）をファイルに保存"""
+        target = data or self.data
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        # model_dump_json で Path も自動的に文字列になり、ネストも辞書化される
+        json_str = target.model_dump_json(indent=2)
+        self.path.write_text(json_str, encoding='utf-8')
 
-    def write(self):
-        self.__write(self.data)
 
+class ConfigLoader[T: BaseModel]:
+    def __init__(self, folder_path: Path, data_cls: Type[T]) -> None:
+        self.cache: dict[int, ConfigUnit[T]] = {}
+        self.folder_path = folder_path
+        self.data_cls = data_cls
 
-    def __write(self, gc:UserConfigData):
-        with open(self.path,'w') as f:
-            json.dump(asdict(gc), f, indent=2)
+    def get(self, key: int = 0) -> ConfigUnit[T]:
+        if key not in self.cache:
+            file_path = self.folder_path / f'{key}.json'
+            self.cache[key] = ConfigUnit(file_path, self.data_cls)
+        return self.cache[key]
+
+# --- Initialization ---
+
+# メイン設定
+_main_unit = ConfigUnit(Path("./pi_yo_6/config.json"), MainConfigData)
+Config = _main_unit.data
+
+# ユーザー・ギルド設定ローダー
+UserConfig = ConfigLoader(Config.user_config, UserConfigData)
+GuildConfig = ConfigLoader(Config.guild_config, GuildConfigData)

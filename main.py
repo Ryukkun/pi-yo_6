@@ -28,11 +28,7 @@ async def main():
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
 
-    try: from pi_yo_6.config import Config
-    except Exception:
-        shutil.copy("./pi_yo_6/resources/config_template.py", "./pi_yo_6/config.py")
-        raise Exception('Config ファイルを生成しました')
-    
+    from pi_yo_6.load_config import Config
     from pi_yo_6.main import MyCog
     #from pi_yo_6.utils import set_logger
     from pi_yo_6.synthetic_voice import SyntheticEngines

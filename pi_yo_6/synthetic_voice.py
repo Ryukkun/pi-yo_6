@@ -7,7 +7,7 @@ from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
 from pi_yo_6.voicevox.core import VoicevoxEngineBase
 from pi_yo_6.open_jtalk.core import CreateOpenJtalk
-from pi_yo_6.config import Config
+from pi_yo_6.load_config import Config
 
 _log = logging.getLogger(__name__)
 

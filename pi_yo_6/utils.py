@@ -1,10 +1,11 @@
 import asyncio
-from dataclasses import dataclass
+import threading
 import enum
 import logging
+
+from dataclasses import dataclass
 from discord.utils import _ColourFormatter
 from typing import List, Callable, Any, Generic, TypeVar, Self, TypedDict
-import threading
 from concurrent.futures import ThreadPoolExecutor
 
 T = TypeVar('T')

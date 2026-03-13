@@ -1,21 +1,15 @@
 import logging
-from operator import is_
 import os
 import asyncio
-from re import S
-import re
 import subprocess
-from pathlib import Path
+import wave
 
+from pathlib import Path
 from glob import glob
 from platform import system
 from typing import Optional
-from venv import create
-import wave
 
-import discord
-
-from pi_yo_6.config import Config
+from pi_yo_6.load_config import Config
 from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, NoMetas, SpeakerMeta, VoiceUnit
 

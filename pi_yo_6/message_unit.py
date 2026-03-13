@@ -7,8 +7,7 @@ import uuid
 
 import alkana
 
-from pi_yo_6.config import Config
-from pi_yo_6.load_config import GuildConfig
+from pi_yo_6.load_config import GuildConfig, Config
 from pi_yo_6.romaji.to_kana import Romaji
 from pi_yo_6.utils import VoiceUnit
 
