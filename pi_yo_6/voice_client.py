@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import io
 import logging
 from pathlib import Path
 import threading
@@ -23,7 +24,7 @@ _log = logging.getLogger(__name__)
 
 class StreamAudioData:
     def __init__(self, 
-                 st_url:str | Path,
+                 source:str | Path | io.BufferedIOBase,
                  volume:float | None = None,
                  duration:int | None = None):
         """音声データの作成
@@ -37,7 +38,7 @@ class StreamAudioData:
         duration : int | None, optional
             音声の再生時間（秒）, by default None
         """
-        self.stream_url = st_url
+        self.source = source
         self.volume = volume
         self.duration = duration
 
@@ -45,13 +46,16 @@ class StreamAudioData:
     def _get_ffmpegaudio(self, opus:bool, before_options:list[str], options:list[str]) -> Union[FFmpegOpusAudio, FFmpegPCMAudio]:
         option:str = ' '.join(options)
         before_option:str = ' '.join(before_options)
+        source = self.source
+        if isinstance(source, Path):
+            source = str(source)
         if opus:
             #options.extend(('-c:a', 'libopus', '-ar', '48000'))
-            return FFmpegOpusAudio(str(self.stream_url), before_options=before_option, options=option)
+            return FFmpegOpusAudio(source, before_options=before_option, options=option, pipe=isinstance(self.source, io.BufferedIOBase))
 
         else:
             #options.extend(('-c:a', 'pcm_s16le', '-ar', '48000'))
-            return FFmpegPCMAudio(str(self.stream_url), before_options=before_option, options=option)
+            return FFmpegPCMAudio(source, before_options=before_option, options=option, pipe=isinstance(self.source, io.BufferedIOBase))
 
 
 
@@ -64,7 +68,7 @@ class StreamAudioData:
         # Sec
         if int(sec):
             before_options.extend(('-ss' ,str(sec)))
-        if isinstance(self.stream_url, str):
+        if isinstance(self.source, str):
             before_options.extend(('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5', '-analyzeduration', '2147483647', '-probesize', '2147483647'))
         
         # Pitch

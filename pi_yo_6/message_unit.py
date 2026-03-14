@@ -1,9 +1,7 @@
 from datetime import datetime
-import os
-from pathlib import Path
+from io import BufferedIOBase
 import re
-from typing import TYPE_CHECKING
-import uuid
+from typing import TYPE_CHECKING, Optional
 
 import alkana
 
@@ -27,7 +25,7 @@ class MessageUnit:
         self.engines = engines
         self.text:str = text
         self.voice = VoiceUnit()
-        self.out_path:Path = Config.output / f'{uuid.uuid4()}.wav'
+        self.data:Optional[BufferedIOBase] = None
         self.generated = False
 
 
@@ -75,8 +73,3 @@ class MessageUnit:
     async def create_voice(self) -> None:
         await self.engines.create_voice(self)
         self.generated = True
-
-
-    def delete_file(self):
-        if os.path.isfile(self.out_path):
-            os.remove(self.out_path)

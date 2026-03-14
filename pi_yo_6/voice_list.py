@@ -2,7 +2,7 @@ import asyncio
 import copy
 import logging
 import math
-from discord import Emoji, Member, PartialEmoji, ui, Interaction, ButtonStyle, Embed
+from discord import Member, ui, Interaction, ButtonStyle, Embed
 from typing import TYPE_CHECKING, TypedDict
 
 from pi_yo_6.message_unit import MessageUnit
@@ -121,8 +121,8 @@ class VoiceListContainer(ui.Container):
             self.voice_styles_selection.options[0].default = True
 
 
-
-    @ui.select(placeholder='キャラクター選択', row=1)
+    row2 = ui.ActionRow()
+    @row2.select(placeholder='キャラクター選択')
     async def voice_authors_selection(self, interaction: Interaction, select: ui.Select):
         asyncio.create_task(interaction.response.defer())
         if interaction.message:

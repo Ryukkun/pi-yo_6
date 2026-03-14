@@ -1,4 +1,5 @@
 import asyncio
+import io
 import aiohttp
 import logging
 from typing import Optional
@@ -90,17 +91,16 @@ class SyntheticEngines:
 
     async def create_voice(self, msg:MessageUnit):
         _type = msg.voice.type
-
         if _type == ENGINE_TYPE.OPEN_JTALK and self.open_jtalk:
-            await self.open_jtalk.create_voice(msg)
-
+            msg.data = await self.open_jtalk.create_voice(msg)
         elif _type == ENGINE_TYPE.VOICEVOX and self.voicevox:
-            with open(msg.out_path, 'wb')as f:
-                f.write( await self.voicevox.create_voice(msg))
-
+            msg.data = io.BytesIO(await self.voicevox.create_voice(msg))
         elif _type == ENGINE_TYPE.COEIROINK and self.coeiroink:
-            with open(msg.out_path, 'wb')as f:
-                f.write( await self.coeiroink.create_voice(msg))
+            msg.data = io.BytesIO(await self.coeiroink.create_voice(msg))
+        else:
+            return
+        msg.data.seek(0)
+        
 
 
     def is_available(self, voice:VoiceUnit) -> bool:

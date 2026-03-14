@@ -80,12 +80,13 @@ class ChatReader:
 
         if self.Queue[0].generated:           # 再生
             msg = self.Queue.pop(0)
-            _log.info(f"Play  <{self.guild.name}> {msg.out_path}")
-            await self.track.play(StreamAudioData(msg.out_path), after=lambda: self.callback(msg))
+            if msg.data == None:
+                return
+            _log.info(f"Play  <{self.guild.name}>")
+            await self.track.play(StreamAudioData(msg.data), after=lambda: self.callback())
             return
         else:
             _log.info(f"作成途中かな {self.guild.name} {self.Queue}")
 
-    def callback(self, msg_unit:MessageUnit):
-        msg_unit.delete_file()
+    def callback(self):
         asyncio.run_coroutine_threadsafe(self.play_loop(), self.info.cog.bot.loop)
