@@ -1,14 +1,23 @@
+import atexit
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import AbstractContextManager, ExitStack
+from importlib.resources import as_file
+import io
 import logging
 import os
 import asyncio
-import subprocess
 import wave
 
 from pathlib import Path
 from glob import glob
 from platform import system
-from typing import Optional
+from typing import Callable, Optional
 
+import pyopenjtalk
+from pyopenjtalk.htsengine import HTSEngine
+
+import numpy as np
+import scipy.io
 from pi_yo_6.load_config import Config
 from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, NoMetas, SpeakerMeta, VoiceUnit
@@ -24,51 +33,75 @@ _log = logging.getLogger(__name__)
 
 
 class CreateOpenJtalk:
+    exe = ThreadPoolExecutor()
     def __init__(self) -> None:
-        try: subprocess.check_call('open_jtalk', stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError:
-            raise Exception('Open Jtalkをインストールしてください')
-        
-        self.hts_path = Config.OpenJtalk.hts_path
+        self.hts_folder = Config.OpenJtalk.hts_path
         self.metas = self.get_metas()
         if not self.metas:
             raise NoMetas('再生可能な htsvoice が存在しません')
         
+        self.hts:dict[str, Callable[[], AbstractContextManager[HTSEngine]]] = {}
+        for meta in self.metas:
+            for style in meta['styles']:
+                path = style['id']
+                _file = ExitStack()
+                atexit.register(_file.close)
+                voice = str(_file.enter_context(as_file(Path(path)))).encode("utf-8")
+                self.hts[path] = pyopenjtalk._global_instance_manager(lambda v=voice: HTSEngine(v))
+        
 
     async def run_test(self):
-        path = Config.output / f"test.wav"
-        await self.create_voice('テスト', VoiceUnit(ENGINE_TYPE.OPEN_JTALK ,name=self.metas[0]['name'], style=self.metas[0]['styles'][0]['name']), path)
-        if self.__playable_wav(path):
-            os.remove(path)
-        else:
+        data = await self.create_voice('テスト', VoiceUnit(ENGINE_TYPE.OPEN_JTALK ,name=self.metas[0]['name'], style=self.metas[0]['styles'][0]['name']))
+        if data.getbuffer().nbytes == 0:
             raise Exception('Open Jtalkの動作確認に失敗しました。htsvoiceのパスや、辞書のパスが正しいか確認してください。')
 
 
-    async def create_voice(self, msg: str|MessageUnit, _voice: Optional[VoiceUnit] = None, _out_path: Optional[Path] = None) -> None:
-        if isinstance(msg, str) and _voice != None and _out_path != None:
+    async def generate_voice(self, msg:str, hts_id:str, speed:float=1.2, tone:float=0.0) -> tuple[np.typing.NDArray[np.float64], int]:
+        """Run OpenJTalk's speech synthesis backend
+
+        Args:
+            speed (float): speech speed rate. Default is 1.2.
+            tone (float): additional half-tone. Default is 0.
+
+        Returns:
+            np.ndarray: speech waveform (dtype: np.float64)
+            int: sampling frequency (defualt: 48000)
+        """
+        labels = pyopenjtalk.extract_fullcontext(msg)
+        if isinstance(labels, tuple) and len(labels) == 2:
+            labels = labels[1]
+
+        hts = self.hts[hts_id]
+        def block():
+            with hts() as htsengine:
+                sr = htsengine.get_sampling_frequency()
+                htsengine.set_speed(speed)
+                htsengine.add_half_tone(tone)
+                return htsengine.synthesize(labels), sr
+            
+        return await asyncio.get_event_loop().run_in_executor(self.exe, block)
+
+
+    async def create_voice(self, msg: str|MessageUnit, _voice: Optional[VoiceUnit] = None) -> io.BytesIO:
+        buffer = io.BytesIO()
+        if isinstance(msg, str) and _voice != None:
             voice = _voice
-            out_path = _out_path
         elif isinstance(msg, MessageUnit):
             voice = msg.voice
-            out_path = msg.out_path
             msg = msg.text
         else:
             _log.error('Invalid arguments for create_voice')
-            return
+            return buffer
 
         speaker_path = self.to_speaker_id(voice)
         if speaker_path == None: speaker_path = self.metas[0]['styles'][0]['id'] # デフォルトは最初のhtsvoice
 
-        options:list[str] = []
-        options.append(f"-r {voice.speed}")
-
-        if voice.tone:
-            options.append(f"-fm {voice.tone}")
-    
-        cmd=f'open_jtalk -x "{Config.OpenJtalk.dictionary_path}" -ow "{out_path}" -m "{speaker_path}" {" ".join(options)}'
-        _log.info(f"Running command: {cmd}")
-        prog = await asyncio.create_subprocess_shell(cmd,stdin=asyncio.subprocess.PIPE)
-        await prog.communicate(input= msg.encode(EFormat))
+        data, sr = await self.generate_voice(msg, speaker_path, speed=voice.speed, tone=voice.tone)
+        max_val = np.abs(data).max()
+        if max_val > 0:
+            data = data / max_val
+        scipy.io.wavfile.write(buffer, sr, data)
+        return buffer
 
 
     def to_speaker_id(self, voice:VoiceUnit) -> Optional[str]:
