@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pi_yo_6.main import DataInfo
 
 
-_log = logging.getLogger(__file__)
+_log = logging.getLogger(__name__)
 
 
 class VLStyleMeta(TypedDict):
@@ -31,40 +31,39 @@ class VLSpeakerMeta(TypedDict):
 
 # Button
 class VoiceListContainer(ui.Container):
-    def __init__(self, g_opts:dict[int, "DataInfo"], engines:SyntheticEngines, voice:VoiceUnit=VoiceUnit(ENGINE_TYPE.OPEN_JTALK, "mei", "normal")):
-        super().__init__()
-        self.engines = engines
+    def __init__(self, g_opts:dict[int, "DataInfo"], voice:VoiceUnit|None=None):
+        super().__init__(accent_color=EmBase.main_color())
         self.g_opts = g_opts
-        self.voice = voice
+        self.voice = copy.deepcopy(voice) if voice else VoiceUnit(ENGINE_TYPE.OPEN_JTALK, "mei", "normal")
         self.res_styles:list[VLStyleMeta] = []
-        self.accent_color = EmBase.main_color()
 
-        self.clear_items()
-        self.add_item(EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None))
-        self.add_item(EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None))
-        self.add_item(EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None))
+        engines = SyntheticEngines.current
+        self.add_item(ui.ActionRow(
+            EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None),
+            EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None),
+            EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None)
+        ))
         self.voice_authors_selection = ui.Select(placeholder='キャラクター選択', row=1)
         self.voice_authors_selection.callback = self._voice_authors_selection_callback
+        self.add_item(ui.ActionRow(self.voice_authors_selection))
         self.voice_styles_selection = ui.Select(placeholder='スタイル選択', row=2)
         self.voice_styles_selection.callback = self._voice_styles_selection_callback
-        self.add_item(self.voice_authors_selection)
-        self.add_item(self.voice_styles_selection)
-        for child in self.row4.children:
-            self.add_item(child)
-
+        self.add_item(ui.ActionRow(self.voice_styles_selection))
+        self.add_item(ControllerRow(self))
+    
         self.set_new_select_options()
-
 
 
     def set_new_select_options(self):
         # typeが機能していなかった時のため
-        if self.voice.type == ENGINE_TYPE.VOICEVOX and self.engines.voicevox:
-            _metas = copy.deepcopy(self.engines.voicevox.metas)
-        elif self.voice.type == ENGINE_TYPE.COEIROINK and self.engines.coeiroink:
-            _metas = copy.deepcopy(self.engines.coeiroink.metas)
+        engines = SyntheticEngines.current
+        if self.voice.type == ENGINE_TYPE.VOICEVOX and engines.voicevox:
+            _metas = copy.deepcopy(engines.voicevox.metas)
+        elif self.voice.type == ENGINE_TYPE.COEIROINK and engines.coeiroink:
+            _metas = copy.deepcopy(engines.coeiroink.metas)
         else:
             self.voice.type = ENGINE_TYPE.OPEN_JTALK
-            _metas = copy.deepcopy(self.engines.open_jtalk.metas)
+            _metas = copy.deepcopy(engines.open_jtalk.metas)
 
 
         """
@@ -146,33 +145,42 @@ class VoiceListContainer(ui.Container):
         await interaction.response.defer()
 
 
-    row4 = ui.ActionRow()
-    @row4.button(label='Play', style=ButtonStyle.blurple)
-    async def text_play_button(self, interaction: Interaction, button: ui.Button):
-        loop = asyncio.get_event_loop()
-        loop.create_task(interaction.response.defer())
+
+'''
+@ui.button(...)とかはfunctionに...のデータを埋め込むだけ
+インスタンスを作る際にButtonクラスなどは作られる様子。
+'''
+
+class ControllerRow(ui.ActionRow):
+    def __init__(self, root:VoiceListContainer) -> None:
+        super().__init__()
+        self.root = root
+
+    @ui.button(label='Play', style=ButtonStyle.blurple)
+    async def text_play_button(self, interaction: Interaction, button: ui.Button, row=3):
+        asyncio.create_task(interaction.response.defer())
 
         if not interaction.guild: return
-        if data := self.g_opts.get(interaction.guild.id):
-            msg = MessageUnit("テストなのだ", self.engines)
-            msg.voice = self.voice
+        if data := self.root.g_opts.get(interaction.guild.id):
+            msg = MessageUnit("テストなのだ")
+            msg.voice = self.root.voice
             await data.voice.play_message(msg)
 
 
 
-    @row4.button(label='ボイスをセット', style=ButtonStyle.blurple)
+    @ui.button(label='ボイスをセット', style=ButtonStyle.blurple)
     async def set_voice_button(self, interaction: Interaction, button: ui.Button):
         if isinstance(interaction.user, Member) and interaction.user.guild_permissions.administrator:
-            new_message = EditVoiceMessage(self.voice)
+            new_message = EditVoiceMessage(self.root.voice)
             await interaction.response.send_message(embed=new_message.who_embed, view=new_message.who_view, ephemeral=True)
         else:
             uc = UserConfig.get(interaction.user.id)
-            uc.data.voice = self.voice
+            uc.data.voice = self.root.voice
             uc.write()
-            await interaction.response.send_message(embed=Embed(title='反映完了!', description=self.voice, colour=EmBase.main_color()), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(title='反映完了!', description=self.root.voice, colour=EmBase.main_color()), ephemeral=True)
 
 
-    @row4.button(label='Delete', style=ButtonStyle.red)
+    @ui.button(label='Delete', style=ButtonStyle.red)
     async def delete_button(_, interaction: Interaction, button:ui.Button):
         await interaction.response.defer()
         if interaction.message:
@@ -184,7 +192,7 @@ class EngineButton(ui.Button):
     def __init__(self, root: VoiceListContainer, type: ENGINE_TYPE, enable: bool):
         self.root = root
         self.engine_type = type
-        super().__init__(style=ButtonStyle.green if enable else ButtonStyle.gray, label=str(type), disabled=not enable, row=0)
+        super().__init__(style=ButtonStyle.green if enable else ButtonStyle.gray, label=type, disabled=not enable, row=0)
         
     async def callback(self, interaction: Interaction):
         if interaction.message:
