@@ -29,29 +29,28 @@ class VLSpeakerMeta(TypedDict):
     styles:list[VLStyleMeta]
 
 
-# Button
+
+'''
+@ui.button(...)とかはfunctionに...のデータを埋め込むだけ
+インスタンスを作る際にButtonインスタンスなどは作られる様子。
+'''
+
 class VoiceListContainer(ui.Container):
     def __init__(self, g_opts:dict[int, "DataInfo"], voice:VoiceUnit|None=None):
         super().__init__(accent_color=EmBase.main_color())
         self.g_opts = g_opts
         self.voice = copy.deepcopy(voice) if voice else VoiceUnit(ENGINE_TYPE.OPEN_JTALK, "mei", "normal")
+        
+        engines = SyntheticEngines.current
+        row0 = next(self.walk_children())
+        if isinstance(row0, ui.ActionRow):
+            row0.add_item(EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None))
+            row0.add_item(EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None))
+            row0.add_item(EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None))
         self.res_styles:list[VLStyleMeta] = []
 
-        engines = SyntheticEngines.current
-        self.add_item(ui.ActionRow(
-            EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None),
-            EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None),
-            EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None)
-        ))
-        self.voice_authors_selection = ui.Select(placeholder='キャラクター選択', row=1)
-        self.voice_authors_selection.callback = self._voice_authors_selection_callback
-        self.add_item(ui.ActionRow(self.voice_authors_selection))
-        self.voice_styles_selection = ui.Select(placeholder='スタイル選択', row=2)
-        self.voice_styles_selection.callback = self._voice_styles_selection_callback
-        self.add_item(ui.ActionRow(self.voice_styles_selection))
-        self.add_item(ControllerRow(self))
-    
         self.set_new_select_options()
+
 
 
     def set_new_select_options(self):
@@ -126,8 +125,11 @@ class VoiceListContainer(ui.Container):
             self.voice.style = styles[0]['name']
             self.voice_styles_selection.options[0].default = True
 
+    row0 = ui.ActionRow()
 
-    async def _voice_authors_selection_callback(self, interaction: Interaction):
+    row1 = ui.ActionRow()
+    @row1.select(placeholder='キャラクター選択')
+    async def voice_authors_selection(self, interaction: Interaction, select: ui.Select):
         asyncio.create_task(interaction.response.defer())
         if interaction.message:
             self.voice.name = self.voice_authors_selection.values[0]
@@ -135,7 +137,9 @@ class VoiceListContainer(ui.Container):
             await interaction.message.edit(view=self.view)
     
 
-    async def _voice_styles_selection_callback(self, interaction: Interaction):
+    row2 = ui.ActionRow()
+    @row2.select(placeholder='スタイル選択')
+    async def voice_styles_selection(self, interaction: Interaction, select: ui.Select):
         try:
             style = self.res_styles[int(self.voice_styles_selection.values[0])]
             self.voice.name = style['author']
@@ -146,41 +150,31 @@ class VoiceListContainer(ui.Container):
 
 
 
-'''
-@ui.button(...)とかはfunctionに...のデータを埋め込むだけ
-インスタンスを作る際にButtonクラスなどは作られる様子。
-'''
-
-class ControllerRow(ui.ActionRow):
-    def __init__(self, root:VoiceListContainer) -> None:
-        super().__init__()
-        self.root = root
-
-    @ui.button(label='Play', style=ButtonStyle.blurple)
-    async def text_play_button(self, interaction: Interaction, button: ui.Button, row=3):
+    row3 = ui.ActionRow()
+    @row3.button(label='Play', style=ButtonStyle.blurple)
+    async def text_play_button(self, interaction: Interaction, button: ui.Button):
         asyncio.create_task(interaction.response.defer())
 
         if not interaction.guild: return
-        if data := self.root.g_opts.get(interaction.guild.id):
+        if data := self.g_opts.get(interaction.guild.id):
             msg = MessageUnit("テストなのだ")
-            msg.voice = self.root.voice
+            msg.voice = self.voice
             await data.voice.play_message(msg)
 
 
-
-    @ui.button(label='ボイスをセット', style=ButtonStyle.blurple)
+    @row3.button(label='ボイスをセット', style=ButtonStyle.blurple)
     async def set_voice_button(self, interaction: Interaction, button: ui.Button):
         if isinstance(interaction.user, Member) and interaction.user.guild_permissions.administrator:
-            new_message = EditVoiceMessage(self.root.voice)
+            new_message = EditVoiceMessage(self.voice)
             await interaction.response.send_message(embed=new_message.who_embed, view=new_message.who_view, ephemeral=True)
         else:
             uc = UserConfig.get(interaction.user.id)
-            uc.data.voice = self.root.voice
+            uc.data.voice = self.voice
             uc.write()
-            await interaction.response.send_message(embed=Embed(title='反映完了!', description=self.root.voice, colour=EmBase.main_color()), ephemeral=True)
+            await interaction.response.send_message(embed=Embed(title='反映完了!', description=self.voice, colour=EmBase.main_color()), ephemeral=True)
 
 
-    @ui.button(label='Delete', style=ButtonStyle.red)
+    @row3.button(label='Delete', style=ButtonStyle.red)
     async def delete_button(_, interaction: Interaction, button:ui.Button):
         await interaction.response.defer()
         if interaction.message:
