@@ -10,7 +10,6 @@ from pi_yo_6.load_config import GuildConfig
 from pi_yo_6.voice_client import MultiAudioVoiceClient
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.embeds import EmBase
-from pi_yo_6.synthetic_voice import SyntheticEngines
 
 
 _log = logging.getLogger(__name__)
@@ -24,9 +23,8 @@ _log = logging.getLogger(__name__)
 
 
 class MyCog(commands.Cog):
-    def __init__(self, bot:commands.Bot, engines:SyntheticEngines) -> None:
+    def __init__(self, bot:commands.Bot) -> None:
         self.bot = bot
-        self.engines = engines
         self.g_opts:dict[int, 'DataInfo'] = {}
 
 
@@ -112,7 +110,7 @@ class MyCog(commands.Cog):
     async def voice_list(self, ctx:commands.Context):
         if not ctx.guild: return
         view = discord.ui.LayoutView(timeout=None)
-        view.add_item(VoiceListContainer(g_opts=self.g_opts, engines=self.engines))
+        view.add_item(VoiceListContainer(g_opts=self.g_opts))
         await ctx.send(view=view)
 
 

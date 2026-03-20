@@ -2,19 +2,23 @@ import asyncio
 import io
 import aiohttp
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
 from pi_yo_6.voicevox.core import VoicevoxEngineBase
 from pi_yo_6.open_jtalk.core import CreateOpenJtalk
 from pi_yo_6.load_config import Config
+
+if TYPE_CHECKING:
+    from pi_yo_6.message_unit import MessageUnit
+
 
 _log = logging.getLogger(__name__)
 
 
 
 class SyntheticEngines:
+    current:"SyntheticEngines"
     _session: Optional[aiohttp.ClientSession] = None
     def __init__(self) -> None:
         """OpenJtalkは標準で読み込み"""
@@ -33,6 +37,7 @@ class SyntheticEngines:
             tasks.append(self._init_coeiroink())
         if tasks:
             await asyncio.gather(*tasks)
+        SyntheticEngines.current = self
 
 
     @staticmethod
@@ -89,7 +94,7 @@ class SyntheticEngines:
 
 
 
-    async def create_voice(self, msg:MessageUnit):
+    async def create_voice(self, msg:"MessageUnit"):
         _type = msg.voice.type
         if _type == ENGINE_TYPE.OPEN_JTALK and self.open_jtalk:
             msg.data = await self.open_jtalk.create_voice(msg)
@@ -111,3 +116,5 @@ class SyntheticEngines:
         elif voice.style == ENGINE_TYPE.COEIROINK and self.coeiroink:
             return self.coeiroink.to_speaker_id(voice) != None
         return False
+    
+

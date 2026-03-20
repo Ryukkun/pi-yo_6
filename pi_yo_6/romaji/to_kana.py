@@ -5,7 +5,7 @@ try: from translation import tree
 except ModuleNotFoundError:
     from .translation import tree
 
-_log = logging.getLogger(__file__)
+_log = logging.getLogger(__name__)
 
 class Romaji:
     BOIN = 'aiueon'

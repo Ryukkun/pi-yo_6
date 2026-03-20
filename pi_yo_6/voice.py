@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.load_config import UserConfig
+from pi_yo_6.synthetic_voice import SyntheticEngines
 from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
 from pi_yo_6.voice_client import StreamAudioData
 
@@ -33,11 +34,11 @@ class ChatReader:
             # ボイス初期設定
             text = message.content
             user_config = UserConfig.get(message.author.id)
-            if not self.info.cog.engines.is_available(user_config.data.voice):
+            if not SyntheticEngines.current.is_available(user_config.data.voice):
                 user_config.data.voice = self.random_voice()
                 user_config.write()
 
-            msg_unit = MessageUnit(text, self.info.cog.engines, message.created_at)
+            msg_unit = MessageUnit(text, message.created_at)
             msg_unit.voice = user_config.data.voice
             await msg_unit.normalize_text(self.guild.id)
             await self.play_message(msg_unit)
@@ -45,7 +46,7 @@ class ChatReader:
 
     def random_voice(self) -> VoiceUnit:
         """ランダムなVoiceUnitを返す"""
-        metas = self.info.cog.engines.open_jtalk.metas
+        metas = SyntheticEngines.current.open_jtalk.metas
         for meta in metas:
             if meta['name'] == 'mei':
                 style = random.choice(meta['styles'])

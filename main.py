@@ -57,7 +57,7 @@ async def main():
     await engines.init_all()
 
     async with bot:
-        await bot.add_cog(MyCog(bot, engines))
+        await bot.add_cog(MyCog(bot))
         await bot.start(Config.token)
 
 if IS_MAIN_PROCESS:

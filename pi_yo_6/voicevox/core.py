@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING, Any, Optional, TypedDict
 import aiohttp
 import logging
 
-from pi_yo_6.message_unit import MessageUnit
 
 from ..utils import NoMetas, SpeakerMeta, VoiceUnit
 
 if TYPE_CHECKING:
     from pi_yo_6.load_config import VOICEVOX_Engine_Config
+    from pi_yo_6.message_unit import MessageUnit
 
 
 
@@ -57,7 +57,7 @@ class VoicevoxEngineBase:
             raise ConnectionError(f'Engine が、見つかりませんでした！')
 
 
-    async def create_voice(self, msg:MessageUnit) -> bytes:
+    async def create_voice(self, msg:"MessageUnit") -> bytes:
         """メッセージから音声データを作成
 
         Parameters

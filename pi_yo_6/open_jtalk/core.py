@@ -11,7 +11,7 @@ import wave
 from pathlib import Path
 from glob import glob
 from platform import system
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import pyopenjtalk
 from pyopenjtalk.htsengine import HTSEngine
@@ -19,8 +19,12 @@ from pyopenjtalk.htsengine import HTSEngine
 import numpy as np
 import scipy.io
 from pi_yo_6.load_config import Config
-from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, NoMetas, SpeakerMeta, VoiceUnit
+
+
+if TYPE_CHECKING:
+    from pi_yo_6.message_unit import MessageUnit
+
 
 _os = system().lower()
 if _os == 'windows':
@@ -82,16 +86,18 @@ class CreateOpenJtalk:
         return await asyncio.get_event_loop().run_in_executor(self.exe, block)
 
 
-    async def create_voice(self, msg: str|MessageUnit, _voice: Optional[VoiceUnit] = None) -> io.BytesIO:
+    async def create_voice(self, msg: "str|MessageUnit", _voice: Optional[VoiceUnit] = None) -> io.BytesIO:
         buffer = io.BytesIO()
-        if isinstance(msg, str) and _voice != None:
-            voice = _voice
-        elif isinstance(msg, MessageUnit):
+        if isinstance(msg, str):
+            if _voice == None:
+                _log.error('Invalid arguments for create_voice')
+                return buffer
+            else:
+                voice = _voice
+        else:
             voice = msg.voice
             msg = msg.text
-        else:
-            _log.error('Invalid arguments for create_voice')
-            return buffer
+
 
         speaker_path = self.to_speaker_id(voice)
         if speaker_path == None: speaker_path = self.metas[0]['styles'][0]['id'] # デフォルトは最初のhtsvoice

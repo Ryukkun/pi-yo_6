@@ -1,16 +1,14 @@
 from datetime import datetime
 from io import BufferedIOBase
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import alkana
 
-from pi_yo_6.load_config import GuildConfig, Config
+from pi_yo_6.load_config import GuildConfig
 from pi_yo_6.romaji.to_kana import Romaji
 from pi_yo_6.utils import VoiceUnit
-
-if TYPE_CHECKING:
-    from pi_yo_6.synthetic_voice import SyntheticEngines
+from pi_yo_6.synthetic_voice import SyntheticEngines
 
 
 re_mention = re.compile(r'<(@&|@)\d+>')
@@ -20,9 +18,8 @@ re_romaji_unit = re.compile(r'\b([a-zA-Z\-]+)\b') #(単語境界)(英単語)(単
 
 
 class MessageUnit:
-    def __init__(self, text:str, engines:"SyntheticEngines", time:datetime = datetime.now()) -> None:
+    def __init__(self, text:str, time:datetime = datetime.now()) -> None:
         self.time = time
-        self.engines = engines
         self.text:str = text
         self.voice = VoiceUnit()
         self.data:Optional[BufferedIOBase] = None
@@ -71,5 +68,5 @@ class MessageUnit:
 
 
     async def create_voice(self) -> None:
-        await self.engines.create_voice(self)
+        await SyntheticEngines.current.create_voice(self)
         self.generated = True
