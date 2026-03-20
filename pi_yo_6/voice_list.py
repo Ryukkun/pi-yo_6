@@ -39,11 +39,18 @@ class VoiceListContainer(ui.Container):
         self.res_styles:list[VLStyleMeta] = []
         self.accent_color = EmBase.main_color()
 
-        self.add_item(ui.ActionRow(
-            EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None),
-            EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None),
-            EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None)
-        ))
+        self.clear_items()
+        self.add_item(EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None))
+        self.add_item(EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None))
+        self.add_item(EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None))
+        self.voice_authors_selection = ui.Select(placeholder='キャラクター選択', row=1)
+        self.voice_authors_selection.callback = self._voice_authors_selection_callback
+        self.voice_styles_selection = ui.Select(placeholder='スタイル選択', row=2)
+        self.voice_styles_selection.callback = self._voice_styles_selection_callback
+        self.add_item(self.voice_authors_selection)
+        self.add_item(self.voice_styles_selection)
+        for child in self.row4.children:
+            self.add_item(child)
 
         self.set_new_select_options()
 
@@ -121,21 +128,17 @@ class VoiceListContainer(ui.Container):
             self.voice_styles_selection.options[0].default = True
 
 
-    row2 = ui.ActionRow()
-    @row2.select(placeholder='キャラクター選択')
-    async def voice_authors_selection(self, interaction: Interaction, select: ui.Select):
+    async def _voice_authors_selection_callback(self, interaction: Interaction):
         asyncio.create_task(interaction.response.defer())
         if interaction.message:
-            self.voice.name = select.values[0]
+            self.voice.name = self.voice_authors_selection.values[0]
             self.set_new_select_options()
             await interaction.message.edit(view=self.view)
     
 
-    row3 = ui.ActionRow()
-    @row3.select(placeholder='スタイル選択')
-    async def voice_styles_selection(self, interaction: Interaction, select:ui.Select):
+    async def _voice_styles_selection_callback(self, interaction: Interaction):
         try:
-            style = self.res_styles[int(select.values[0])]
+            style = self.res_styles[int(self.voice_styles_selection.values[0])]
             self.voice.name = style['author']
             self.voice.style = style['name']
         except Exception as e:
