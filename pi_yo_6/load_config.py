@@ -93,7 +93,7 @@ class ConfigLoader[T: BaseModel]:
 # --- Initialization ---
 
 # メイン設定
-_main_unit = ConfigUnit(Path("./pi_yo_6/config.json"), MainConfigData)
+_main_unit = ConfigUnit(Path("./config.json"), MainConfigData)
 Config = _main_unit.data
 
 # ユーザー・ギルド設定ローダー
