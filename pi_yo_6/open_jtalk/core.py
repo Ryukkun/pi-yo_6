@@ -10,7 +10,6 @@ import wave
 
 from pathlib import Path
 from glob import glob
-from platform import system
 from typing import TYPE_CHECKING, Callable, Optional
 
 import pyopenjtalk
@@ -24,13 +23,6 @@ from pi_yo_6.utils import ENGINE_TYPE, NoMetas, SpeakerMeta, VoiceUnit
 
 if TYPE_CHECKING:
     from pi_yo_6.message_unit import MessageUnit
-
-
-_os = system().lower()
-if _os == 'windows':
-    EFormat = 'shift_jis'
-else:
-    EFormat = 'utf-8'
 
 
 _log = logging.getLogger(__name__)
@@ -105,7 +97,7 @@ class CreateOpenJtalk:
         data, sr = await self.generate_voice(msg, speaker_path, speed=voice.speed, tone=voice.tone)
         max_val = np.abs(data).max()
         if max_val > 0:
-            data = data / max_val
+            data = data / max_val / 6
         scipy.io.wavfile.write(buffer, sr, data)
         return buffer
 
@@ -154,23 +146,3 @@ class CreateOpenJtalk:
                 ]
             } for k, v in hts_dic.items()
         ]
-
-
-    def __playable_wav(self, path:Path) -> bool:
-        if not (path.is_file() and path.suffix.lower() == '.wav'):
-            return False
-        
-        size = os.path.getsize(path)
-        # 一般的なWAVヘッダーは約44バイトなので、それ以下なら確実にデータがありません
-        if size <= 44:
-            return False
-        
-        try:
-            with wave.open(str(path.resolve()), 'rb') as f:
-                # 基本情報を取得（チャンネル数、サンプルサイズ、サンプリングレート、フレーム数）
-                # フレーム数が0なら、中身が空（無音ではなくデータ自体がない）
-                if f.getparams().nframes == 0:
-                    return False
-                return True
-        except Exception as e:
-            return False
