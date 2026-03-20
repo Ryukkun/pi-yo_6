@@ -206,7 +206,9 @@ class EngineButton(ui.Button):
             self.root.voice.name = ""
             self.root.voice.style = ""
             self.root.set_new_select_options()
-            await interaction.message.edit(view=self.view)
+            await interaction.response.edit_message(view=self.view)
+        else:
+            await interaction.response.defer()
         
 
 
