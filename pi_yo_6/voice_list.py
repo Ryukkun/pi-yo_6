@@ -2,15 +2,14 @@ import asyncio
 import copy
 import logging
 import math
-from discord import Member, ui, Interaction, ButtonStyle, Embed
+from discord import ui, Interaction, ButtonStyle, Embed
 from typing import TYPE_CHECKING, TypedDict
 
 from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
-
-from .load_config import  UserConfig
-from .embeds import EmBase
-from .synthetic_voice import SyntheticEngines
+from pi_yo_6.load_config import  UserConfig
+from pi_yo_6.embeds import EmBase
+from pi_yo_6.synthetic_voice import SyntheticEngines
 
 if TYPE_CHECKING:
     from pi_yo_6.main import DataInfo
@@ -40,13 +39,15 @@ class VoiceListContainer(ui.Container):
         super().__init__(accent_color=EmBase.main_color())
         self.g_opts = g_opts
         self.voice = copy.deepcopy(voice) if voice else VoiceUnit(ENGINE_TYPE.OPEN_JTALK, "mei", "normal")
-        
+
+        self.set_num()
         engines = SyntheticEngines.current
-        row0 = next(self.walk_children())
-        if isinstance(row0, ui.ActionRow):
-            row0.add_item(EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None))
-            row0.add_item(EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None))
-            row0.add_item(EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None))
+        for row in self.walk_children():
+            if isinstance(row, ui.ActionRow) and len(row.children) == 0:
+                row.add_item(EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk != None))
+                row.add_item(EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox != None))
+                row.add_item(EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink != None))
+                break
         self.res_styles:list[VLStyleMeta] = []
 
         self.set_new_select_options()
@@ -124,17 +125,18 @@ class VoiceListContainer(ui.Container):
         if not has_default: 
             self.voice.style = styles[0]['name']
             self.voice_styles_selection.options[0].default = True
+    
+    row_1 = ui.TextDisplay("## ボイス設定")
 
     row0 = ui.ActionRow()
 
     row1 = ui.ActionRow()
     @row1.select(placeholder='キャラクター選択')
     async def voice_authors_selection(self, interaction: Interaction, select: ui.Select):
-        asyncio.create_task(interaction.response.defer())
         if interaction.message:
             self.voice.name = self.voice_authors_selection.values[0]
             self.set_new_select_options()
-            await interaction.message.edit(view=self.view)
+            await interaction.response.edit_message(view=self.view)
     
 
     row2 = ui.ActionRow()
@@ -144,6 +146,9 @@ class VoiceListContainer(ui.Container):
             style = self.res_styles[int(self.voice_styles_selection.values[0])]
             self.voice.name = style['author']
             self.voice.style = style['name']
+            self.set_new_select_options()
+            await interaction.response.edit_message(view=self.view)
+            return
         except Exception as e:
             _log.error("スタイルの取得に失敗しました", e)
         await interaction.response.defer()
@@ -151,10 +156,21 @@ class VoiceListContainer(ui.Container):
 
 
     row3 = ui.ActionRow()
-    @row3.button(label='Play', style=ButtonStyle.blurple)
+    @row3.button(style=ButtonStyle.blurple)
+    async def speed_button(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.send_modal(SpeedPitchModal(self))
+
+
+    def set_num(self, speed:float|None = None, tone:float|None = None, intonation:float|None = None):
+        if speed != None: self.voice.speed = speed
+        if tone != None: self.voice.tone = tone
+        if intonation != None: self.voice.intonation = intonation
+        self.speed_button.label = f"Speed: {self.voice.speed},  Tone: {self.voice.tone}, Intonation: {self.voice.intonation}"
+
+
+    @row3.button(label='Play', style=ButtonStyle.green)
     async def text_play_button(self, interaction: Interaction, button: ui.Button):
         asyncio.create_task(interaction.response.defer())
-
         if not interaction.guild: return
         if data := self.g_opts.get(interaction.guild.id):
             msg = MessageUnit("テストなのだ")
@@ -162,16 +178,12 @@ class VoiceListContainer(ui.Container):
             await data.voice.play_message(msg)
 
 
-    @row3.button(label='ボイスをセット', style=ButtonStyle.blurple)
+    @row3.button(label='ボイスをセット', style=ButtonStyle.green)
     async def set_voice_button(self, interaction: Interaction, button: ui.Button):
-        if isinstance(interaction.user, Member) and interaction.user.guild_permissions.administrator:
-            new_message = EditVoiceMessage(self.voice)
-            await interaction.response.send_message(embed=new_message.who_embed, view=new_message.who_view, ephemeral=True)
-        else:
-            uc = UserConfig.get(interaction.user.id)
-            uc.data.voice = self.voice
-            uc.write()
-            await interaction.response.send_message(embed=Embed(title='反映完了!', description=self.voice, colour=EmBase.main_color()), ephemeral=True)
+        uc = UserConfig.get(interaction.user.id)
+        uc.data.voice = self.voice
+        uc.write()
+        await interaction.response.send_message(embed=Embed(title='反映完了!', description=self.voice, colour=EmBase.main_color()), ephemeral=True)
 
 
     @row3.button(label='Delete', style=ButtonStyle.red)
@@ -198,68 +210,49 @@ class EngineButton(ui.Button):
         
 
 
+class SpeedPitchModal(ui.Modal):
+    def __init__(self, root:"VoiceListContainer") -> None:
+        super().__init__(title="詳細設定")
+        self.root = root
+        self.speed = ui.TextInput(
+            label="speed [0.5~100.0]",
+            placeholder="1.2",
+            default=str(root.voice.speed)
+            )
+        self.add_item(self.speed)
+
+        self.tone = ui.TextInput(
+            label="tone [-100.0~100.0]",
+            placeholder="0.0",
+            default=str(root.voice.tone)
+            )
+        self.add_item(self.tone)
+
+        self.intonation = None
+        if root.voice.type != ENGINE_TYPE.OPEN_JTALK:
+            self.intonation = ui.TextInput(
+                label="intonation [-100.0~100.0]",
+                placeholder="0.0",
+                default=str(root.voice.intonation)
+            )
+            self.add_item(self.intonation)
 
 
+    async def on_submit(self, interaction: Interaction) -> None:
+        try:
+            speed = float(self.speed.value)
+            tone = float(self.tone.value)
+            intonation = float(self.intonation.value) if self.intonation != None else None
+            if (speed < 0.5):
+                await interaction.response.send_message("⚠⚠ speedは0.5以上にしてください ⚠⚠", delete_after=5.0, ephemeral=True)
+                return
+            
+            if (-100 <= speed <= 100 and -100 <= tone <= 100 and (intonation == None or -100 <= intonation <= 100)):
+                self.root.set_num(speed, tone, intonation)
+                await interaction.response.edit_message(view=self.root.view)
+                return
+            
+            await interaction.response.send_message("⚠⚠ -100以上100以下でおねがい ⚠⚠", delete_after=5.0, ephemeral=True)
 
-
-
-class EditVoiceMessage:
-    def __init__(self, voice) -> None:
-
-        # ネストclass 閉じるの推奨 ------------------------------------------
-        class WhoView(ui.View):
-            def __init__(self, parent:'EditVoiceMessage'):
-                self.parent = parent
-                super().__init__(timeout=None)
-
-
-            @ui.button(label='自分', style=ButtonStyle.green)
-            async def my_voice(self, interaction:Interaction, button:ui.Button):
-                if not interaction.guild: return 
-
-                uc = UserConfig.get(interaction.user.id)
-                uc.data.voice = voice
-                uc.write()
-                
-                await interaction.response.edit_message(embed=self.parent.success_embed, view=None)
-                
-
-            @ui.button(label='他人', style=ButtonStyle.green)
-            async def another_voice(self, interaction:Interaction, button:ui.Button):
-                if not interaction.guild: return 
-                if not isinstance(interaction.user, Member): return
-                
-                if interaction.user.guild_permissions.administrator:
-                    await interaction.response.edit_message(embed=self.parent.who_other_embed, view=self.parent.who_other_view)
-                else:
-                    await interaction.response.edit_message(embed=EmBase.no_perm(), view=None)
-
-
-
-        class WhoOtherView(ui.View):
-            def __init__(self, parent:'EditVoiceMessage'):
-                self.parent = parent
-                super().__init__(timeout=None)
-
-            @ui.select(cls=ui.UserSelect, placeholder='ターゲットを選ぼう！')
-            async def my_voice(self, interaction:Interaction, select:ui.UserSelect):
-                user = select.values[0]
-                uc = UserConfig.get(user.id)
-                uc.data.voice = voice
-                uc.write()
-                embed = Embed(title='反映完了!', description=f'{user.name} : {voice}', colour=EmBase.main_color())
-
-                await interaction.response.edit_message(embed=embed, view=None)
-
-
-
-        self.voice = voice
-        self.who_embed = Embed(title=voice, description='誰のボイスを変更しますか？', colour=EmBase.main_color())
-        self.who_other_embed = Embed(title=voice, description='誰のボイスを変更しますか？\n※このサーバーにだけ反映されます', colour=EmBase.main_color())
-        self.success_embed = Embed(title='反映完了!', description=voice, colour=EmBase.main_color())
-        self.who_view = WhoView(self)
-        self.who_other_view = WhoOtherView(self)
-
-
-
-
+        except Exception:
+            await interaction.response.send_message("⚠⚠ 数値を入力してください ⚠⚠", delete_after=5.0, ephemeral=True)

@@ -201,4 +201,4 @@ class VoiceUnit:
     speed:float = 1.2
     tone:float = 0.0
     """= pitch"""
-    intnation:float = 0.0
+    intonation:float = 0.0

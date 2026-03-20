@@ -91,8 +91,8 @@ class VoicevoxEngineBase:
             audio_query['speedScale'] = msg.voice.speed
         if msg.voice.tone != 0.0:
             audio_query['pitchScale'] = msg.voice.tone
-        if msg.voice.intnation != 0.0:
-            audio_query['intonationScale'] = msg.voice.intnation
+        if msg.voice.intonation != 0.0:
+            audio_query['intonationScale'] = msg.voice.intonation
 
         headers = {
             'accept': 'audio/wav',

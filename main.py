@@ -49,8 +49,9 @@ async def main():
     intents.reactions = True
     intents.voice_states = True
     bot = commands.Bot(command_prefix=Config.prefix,intents=intents)
-    #set_logger()
+
     setup_logging()
+    logging.getLogger('discord.player').setLevel(logging.WARNING)
     
 
     engines = SyntheticEngines()
