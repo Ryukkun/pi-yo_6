@@ -1,4 +1,7 @@
 #!/bin/sh
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")"
+git pull
+mkdir -p logs
 uv sync --upgrade
-screen -mdS "pi-yo6" uv run main.py 
+
+screen -L -Logfile "./logs/screen-$(date +%Y%m%d_%H%M%S).log" -dmS pi-yo_6 uv run main.py 
