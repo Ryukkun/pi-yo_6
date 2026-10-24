@@ -6,6 +6,8 @@ from discord.ext import commands
 ####  Config
 from pi_yo_6.embeds import EmBase
 from pi_yo_6.load_config import GuildConfig, UserConfig
+from pi_yo_6.message_unit import MessageUnit
+from pi_yo_6.utils import VoiceUnit
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.voice_client import MultiAudioVoiceClient
 from pi_yo_6.voice_list import VoiceListContainer
@@ -36,6 +38,21 @@ class MyCog(commands.Cog):
         )
         await ctx.response.send_message(embed=embed, ephemeral=True)
 
+    @discord.app_commands.command(name="announce", description="VC入退室アナウンスの切り替え 要権限")
+    async def announce(self, ctx: discord.Interaction, action: bool) -> None:
+        if not ctx.guild:
+            return
+        if not ctx.permissions.administrator:
+            await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral=True)
+            return
+        gc = GuildConfig.get(ctx.guild.id)
+        gc.data.announce_join_leave = action
+        gc.write()
+        embed = discord.Embed(
+            title=f'VC入退室アナウンスを {action} に変更しました', colour=EmBase.main_color()
+        )
+        await ctx.response.send_message(embed=embed, ephemeral=True)
+
     ####  基本的コマンド
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -59,7 +76,9 @@ class MyCog(commands.Cog):
                 ):
                     await ctx.author.voice.channel.connect(self_deaf=True)
                     _log.info(f'{ctx.guild.name} : #join')
-                    self.g_opts[ctx.guild.id] = DataInfo(ctx.guild, self)
+                    self.g_opts[ctx.guild.id] = DataInfo(
+                        ctx.guild, self, initial_channel_id=ctx.channel.id
+                    )
                     return True
             except Exception:
                 _log.exception(f"func:join  guild:{ctx.guild.name}")
@@ -118,6 +137,22 @@ class MyCog(commands.Cog):
         view.add_item(VoiceListContainer(g_opts=self.g_opts, voice=uc.data.voice))
         await ctx.send(view=view)
 
+    @commands.command(aliases=['ch'])
+    async def channel(self, ctx: commands.Context) -> None:
+        if not ctx.guild:
+            return
+        info = self.g_opts.get(ctx.guild.id)
+        if not info:
+            await ctx.send("Botがボイスチャンネルに接続していません。")
+            return
+        ch_id = ctx.channel.id
+        if ch_id in info.target_channels:
+            info.target_channels.remove(ch_id)
+            await ctx.send(f"このチャンネル（{ctx.channel.mention}）を読み上げ対象から解除しました。")
+        else:
+            info.target_channels.add(ch_id)
+            await ctx.send(f"このチャンネル（{ctx.channel.mention}）を読み上げ対象に追加しました！")
+
     @commands.Cog.listener()
     async def on_voice_state_update(
         self,
@@ -134,6 +169,19 @@ class MyCog(commands.Cog):
             if after.channel is None:
                 await info.bye('強制切断')
             return
+
+        # VC入退室アナウンス
+        gc = GuildConfig.get(member.guild.id)
+        if gc.data.announce_join_leave and info.vc.channel:
+            vc_channel = info.vc.channel
+            # 誰かがBotのいるVCに入室した
+            if before.channel != vc_channel and after.channel == vc_channel and not member.bot:
+                msg_unit = MessageUnit(f"{member.display_name}さんが入室しました")
+                await info.voice.play_message(msg_unit)
+            # 誰かがBotのいるVCから退出した
+            elif before.channel == vc_channel and after.channel != vc_channel and not member.bot:
+                msg_unit = MessageUnit(f"{member.display_name}さんが退室しました")
+                await info.voice.play_message(msg_unit)
 
         # ボイスチャンネルにBot以外のメンバーがいなくなったか確認
         vc_channel = info.vc.channel
@@ -174,16 +222,25 @@ class MyCog(commands.Cog):
                 await self.join(await self.bot.get_context(msg))
 
         if info := self.g_opts.get(msg.guild.id):
-            await info.voice.on_message(msg)
+            if not info.target_channels or msg.channel.id in info.target_channels:
+                await info.voice.on_message(msg)
 
 
 class DataInfo:
-    def __init__(self, guild: discord.Guild, cog: MyCog) -> None:
+    def __init__(
+        self, guild: discord.Guild, cog: MyCog, initial_channel_id: int | None = None
+    ) -> None:
         self.guild = guild
         self.cog = cog
         self._closing = False
+        self.target_channels: set[int] = set()
+        if initial_channel_id:
+            self.target_channels.add(initial_channel_id)
+
         if isinstance(guild.voice_client, discord.VoiceClient):
             self.vc: discord.VoiceClient = guild.voice_client
+            if self.vc.channel:
+                self.target_channels.add(self.vc.channel.id)
         else:
             _log.error("vcがVoiceClientじゃない")
             asyncio.create_task(self.bye())

@@ -14,6 +14,7 @@ _log = logging.getLogger(__name__)
 
 class GuildConfigData(BaseModel):
     auto_join: bool = False
+    announce_join_leave: bool = False
     # PydanticはネストしたBaseModelも自動でパースします
     dic: DictionaryManager = Field(default_factory=DictionaryManager)
 
