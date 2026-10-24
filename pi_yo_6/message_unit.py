@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 import alkana
 
-from pi_yo_6.load_config import Config, GuildConfig
+from pi_yo_6.load_config import AdminDic, Config, GuildConfig
 from pi_yo_6.romaji.to_kana import Romaji
 from pi_yo_6.synthetic_voice import SyntheticEngines
 from pi_yo_6.utils import VoiceUnit
@@ -36,6 +36,8 @@ class MessageUnit:
         if gid:
             gc = GuildConfig.get(gid)
             self.text = gc.data.dic.replace(self.text)
+        if AdminDic.words:
+            self.text = AdminDic.replace(self.text)
 
     # -----------------------------------------------------------
     def _replace_english_kana(self) -> None:

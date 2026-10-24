@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 ####  Config
+from pi_yo_6.dictionary_view import DictionaryView
 from pi_yo_6.embeds import EmBase
 from pi_yo_6.load_config import GuildConfig, UserConfig
 from pi_yo_6.message_unit import MessageUnit
@@ -122,6 +123,15 @@ class MyCog(commands.Cog):
                 colour=EmBase.main_color(),
             )
             await ctx.send(embed=embed)
+
+    @commands.command(aliases=['dictionary', 'dics'])
+    async def dic(self, ctx: commands.Context) -> None:
+        if not ctx.guild:
+            return
+        gc = GuildConfig.get(ctx.guild.id)
+        view = DictionaryView(guild_id=ctx.guild.id, dic=gc.data.dic)
+        embed = view.create_embed(ctx.guild.name)
+        await ctx.send(embed=embed, view=view)
 
     @commands.command(aliases=['s'])
     async def shutup(self, ctx: commands.Context) -> None:

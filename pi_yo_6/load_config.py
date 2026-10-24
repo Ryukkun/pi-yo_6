@@ -111,6 +111,28 @@ class ConfigLoader[T: BaseModel]:
 _main_unit = ConfigUnit(Path("./config.json"), MainConfigData)
 Config = _main_unit.data
 
+
+def load_admin_dic(path: Path) -> DictionaryManager:
+    dm = DictionaryManager()
+    if path.exists() and path.stat().st_size > 0:
+        try:
+            content = path.read_text(encoding='utf-8')
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split(maxsplit=1)
+                if len(parts) == 2:
+                    dm.put(parts[0], parts[1])
+            _log.info(f"Loaded {len(dm.words)} words from admin_dic ({path})")
+        except Exception as e:
+            _log.warning(f"Failed to load admin_dic from {path}: {e}")
+    return dm
+
+
+# 共通辞書
+AdminDic = load_admin_dic(Config.admin_dic)
+
 # ユーザー・ギルド設定ローダー
 UserConfig = ConfigLoader(Config.user_config, UserConfigData)
 GuildConfig = ConfigLoader(Config.guild_config, GuildConfigData)
