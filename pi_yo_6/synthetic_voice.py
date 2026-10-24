@@ -1,36 +1,34 @@
 import asyncio
 import io
-import aiohttp
 import logging
 from typing import TYPE_CHECKING, Optional
+import aiohttp
 
+from pi_yo_6.load_config import Config
+from pi_yo_6.open_jtalk.core import CreateOpenJtalk
 from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
 from pi_yo_6.voicevox.core import VoicevoxEngineBase
-from pi_yo_6.open_jtalk.core import CreateOpenJtalk
-from pi_yo_6.load_config import Config
 
 if TYPE_CHECKING:
     from pi_yo_6.message_unit import MessageUnit
 
-
 _log = logging.getLogger(__name__)
 
 
-
 class SyntheticEngines:
-    current:"SyntheticEngines"
+    current: "SyntheticEngines"
     _session: Optional[aiohttp.ClientSession] = None
+
     def __init__(self) -> None:
         """OpenJtalkは標準で読み込み"""
         self.open_jtalk: CreateOpenJtalk = CreateOpenJtalk()
         _log.info('Loaded Open_Jtalk!!')
         self.voicevox: Optional[VoicevoxEngineBase] = None
         self.coeiroink: Optional[VoicevoxEngineBase] = None
-    
-    async def init_all(self):
+
+    async def init_all(self) -> None:
         """gather を使って全エンジンを爆速で初期化する"""
-        tasks = []
-        tasks.append(self.open_jtalk.run_test())
+        tasks = [self.open_jtalk.run_test()]
         if Config.VOICEVOX.enable:
             tasks.append(self._init_voicevox())
         if Config.Coeiroink.enable:
@@ -38,7 +36,6 @@ class SyntheticEngines:
         if tasks:
             await asyncio.gather(*tasks)
         SyntheticEngines.current = self
-
 
     @staticmethod
     async def get_session() -> aiohttp.ClientSession:
@@ -48,38 +45,38 @@ class SyntheticEngines:
         return SyntheticEngines._session
 
     @staticmethod
-    async def close():
+    async def close() -> None:
         """Bot終了時にセッションを閉じるためのメソッド"""
         if SyntheticEngines._session and not SyntheticEngines._session.closed:
             await SyntheticEngines._session.close()
-
 
     async def _init_voicevox(self) -> None:
         try:
             session = await self.get_session()
             engine: VoicevoxEngineBase = VoicevoxEngineBase(Config.VOICEVOX, session=session)
-            
-            async def check_ver():
-                async with session.get(f'{engine.url_base}/core_versions', timeout=aiohttp.ClientTimeout(total=1.0)) as r:
+
+            async def check_ver() -> tuple[str, str]:
+                async with session.get(
+                    f'{engine.url_base}/core_versions', timeout=aiohttp.ClientTimeout(total=1.0)
+                ) as r:
                     ver = (await r.json())[0]
-                async with session.get('https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest', timeout=aiohttp.ClientTimeout(total=1.5)) as r:
+                async with session.get(
+                    'https://api.github.com/repos/VOICEVOX/voicevox_core/releases/latest',
+                    timeout=aiohttp.ClientTimeout(total=1.5),
+                ) as r:
                     latest = (await r.json())['tag_name']
                     return ver, latest
 
-            _, (ver, latest) = await asyncio.gather(
-                engine.initialize(),
-                check_ver()
-            )
+            _, (ver, latest) = await asyncio.gather(engine.initialize(), check_ver())
             _log.info(f'Loaded Voicevox!! - Ver.{ver}')
             self.voicevox = engine
             if ver == latest:
-                _log.info(f'最新バージョンです')
+                _log.info('最新バージョンです')
             else:
                 _log.warning(f'最新バージョンは {latest} です')
         except Exception as e:
-            _log.warning(f'\033[0mVoiceVoxの読み込みに失敗しました。 : {e}')
+            _log.warning(f'VoiceVoxの読み込みに失敗しました。 : {e}')
             self.voicevox = None
-
 
     async def _init_coeiroink(self) -> None:
         """Coeiroink専用の初期化タスク"""
@@ -91,30 +88,31 @@ class SyntheticEngines:
             self.coeiroink = engine
         except Exception as e:
             _log.warning(f'Coeiroink失敗: {e}')
+            self.coeiroink = None
 
-
-
-    async def create_voice(self, msg:"MessageUnit"):
+    async def create_voice(self, msg: "MessageUnit") -> None:
         _type = msg.voice.type
         if _type == ENGINE_TYPE.OPEN_JTALK and self.open_jtalk:
             msg.data = await self.open_jtalk.create_voice(msg)
         elif _type == ENGINE_TYPE.VOICEVOX and self.voicevox:
-            msg.data = io.BytesIO(await self.voicevox.create_voice(msg))
+            raw = await self.voicevox.create_voice(msg)
+            if raw:
+                msg.data = io.BytesIO(raw)
         elif _type == ENGINE_TYPE.COEIROINK and self.coeiroink:
-            msg.data = io.BytesIO(await self.coeiroink.create_voice(msg))
+            raw = await self.coeiroink.create_voice(msg)
+            if raw:
+                msg.data = io.BytesIO(raw)
         else:
             return
-        msg.data.seek(0)
-        
 
+        if msg.data is not None:
+            msg.data.seek(0)
 
-    def is_available(self, voice:VoiceUnit) -> bool:
-        if voice.type == ENGINE_TYPE.OPEN_JTALK:
-            return self.open_jtalk.to_speaker_id(voice) != None
-        elif voice.style == ENGINE_TYPE.VOICEVOX and self.voicevox:
-            return self.voicevox.to_speaker_id(voice) != None
-        elif voice.style == ENGINE_TYPE.COEIROINK and self.coeiroink:
-            return self.coeiroink.to_speaker_id(voice) != None
+    def is_available(self, voice: VoiceUnit) -> bool:
+        if voice.type == ENGINE_TYPE.OPEN_JTALK and self.open_jtalk:
+            return self.open_jtalk.to_speaker_id(voice) is not None
+        elif voice.type == ENGINE_TYPE.VOICEVOX and self.voicevox:
+            return self.voicevox.to_speaker_id(voice) is not None
+        elif voice.type == ENGINE_TYPE.COEIROINK and self.coeiroink:
+            return self.coeiroink.to_speaker_id(voice) is not None
         return False
-    
-

@@ -1,33 +1,36 @@
 import logging
 from pathlib import Path
-from typing import TypeVar, Generic, Type
-from pydantic import BaseModel, Field, TypeAdapter
+from typing import Type
+from pydantic import BaseModel, Field
 
-# ENGINE_TYPE, VoiceUnit, DictionaryManager も Pydantic の BaseModel を継承するように
-# 適宜修正されている前提です。もし dataclass のままなら、適宜ラップが必要です。
 from pi_yo_6.dictionary_manager import DictionaryManager
-from pi_yo_6.utils import VoiceUnit, ENGINE_TYPE
+from pi_yo_6.utils import VoiceUnit
 
 _log = logging.getLogger(__name__)
 
 # --- Data Models (Pydantic版) ---
+
 
 class GuildConfigData(BaseModel):
     auto_join: bool = False
     # PydanticはネストしたBaseModelも自動でパースします
     dic: DictionaryManager = Field(default_factory=DictionaryManager)
 
+
 class UserConfigData(BaseModel):
     voice: VoiceUnit = Field(default_factory=VoiceUnit)
+
 
 class Open_Jtalk_Config(BaseModel):
     hts_path: Path = Path('./pi_yo_6/open_jtalk/voice/')
     dictionary_path: Path = Path('./pi_yo_6/open_jtalk/dic')
 
+
 class VOICEVOX_Engine_Config(BaseModel):
     enable: bool = False
     text_limit: int = 100
     ip: str = 'localhost:50021'
+
 
 class MainConfigData(BaseModel):
     prefix: str = '.'
@@ -37,12 +40,18 @@ class MainConfigData(BaseModel):
     guild_config: Path = Path('./guild_config/')
     user_config: Path = Path('./user_config/')
     output: Path = Path('./output/')
-    
+
     OpenJtalk: Open_Jtalk_Config = Field(default_factory=Open_Jtalk_Config)
-    VOICEVOX: VOICEVOX_Engine_Config = Field(default_factory=lambda: VOICEVOX_Engine_Config(ip='localhost:50021'))
-    Coeiroink: VOICEVOX_Engine_Config = Field(default_factory=lambda: VOICEVOX_Engine_Config(ip='localhost:50031'))
+    VOICEVOX: VOICEVOX_Engine_Config = Field(
+        default_factory=lambda: VOICEVOX_Engine_Config(ip='localhost:50021')
+    )
+    Coeiroink: VOICEVOX_Engine_Config = Field(
+        default_factory=lambda: VOICEVOX_Engine_Config(ip='localhost:50031')
+    )
+
 
 # --- Logic (Pydantic版) ---
+
 
 class ConfigUnit[T: BaseModel]:
     def __init__(self, path: Path, cls: Type[T]) -> None:
@@ -69,7 +78,7 @@ class ConfigUnit[T: BaseModel]:
             self.write(default_data)
             return default_data
 
-    def write(self, data: T | None = None):
+    def write(self, data: T | None = None) -> None:
         """現在のデータ（または渡されたデータ）をファイルに保存"""
         target = data or self.data
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +98,7 @@ class ConfigLoader[T: BaseModel]:
             file_path = self.folder_path / f'{key}.json'
             self.cache[key] = ConfigUnit(file_path, self.data_cls)
         return self.cache[key]
+
 
 # --- Initialization ---
 
