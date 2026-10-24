@@ -15,6 +15,8 @@ _log = logging.getLogger(__name__)
 class GuildConfigData(BaseModel):
     auto_join: bool = False
     announce_join_leave: bool = False
+    overlap_mode: bool = False
+    max_tracks: int = 3
     # PydanticはネストしたBaseModelも自動でパースします
     dic: DictionaryManager = Field(default_factory=DictionaryManager)
 

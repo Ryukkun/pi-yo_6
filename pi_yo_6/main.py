@@ -55,6 +55,30 @@ class MyCog(commands.Cog):
         )
         await ctx.response.send_message(embed=embed, ephemeral=True)
 
+    @discord.app_commands.command(name="overlap", description="複数人同時読み上げの切り替え 要権限")
+    @discord.app_commands.describe(action="有効にするかどうか", max_tracks="最大同時読み上げ数 (2~3)")
+    async def overlap(
+        self, ctx: discord.Interaction, action: bool, max_tracks: int = 3
+    ) -> None:
+        if not ctx.guild:
+            return
+        if not ctx.permissions.administrator:
+            await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral=True)
+            return
+        gc = GuildConfig.get(ctx.guild.id)
+        gc.data.overlap_mode = action
+        gc.data.max_tracks = max(2, min(3, max_tracks))
+        gc.write()
+        if info := self.g_opts.get(ctx.guild.id):
+            info.voice._sync_track_pool()
+        desc = f"最大同時読み上げ数: {gc.data.max_tracks}" if action else "順次読み上げモードに戻しました"
+        embed = discord.Embed(
+            title=f'複数人同時読み上げを {"有効" if action else "無効"} に変更しました',
+            description=desc,
+            colour=EmBase.main_color(),
+        )
+        await ctx.response.send_message(embed=embed, ephemeral=True)
+
     ####  基本的コマンド
     @commands.Cog.listener()
     async def on_ready(self) -> None:
@@ -137,7 +161,7 @@ class MyCog(commands.Cog):
     @commands.command(aliases=['s'])
     async def shutup(self, ctx: commands.Context) -> None:
         if ctx.guild and ctx.guild.voice_client and (data := self.g_opts.get(ctx.guild.id)):
-            data.voice.track._finish()
+            data.voice.stop_all()
 
     @commands.command(aliases=['vl'])
     async def voice_list(self, ctx: commands.Context) -> None:

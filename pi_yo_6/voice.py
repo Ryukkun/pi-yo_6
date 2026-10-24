@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 
 from discord import Message
 
-from pi_yo_6.load_config import UserConfig
+from pi_yo_6.load_config import GuildConfig, UserConfig
 from pi_yo_6.message_unit import MessageUnit
 from pi_yo_6.synthetic_voice import SyntheticEngines
 from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
-from pi_yo_6.voice_client import StreamAudioData
+from pi_yo_6.voice_client import AudioTrack, StreamAudioData
 
 if TYPE_CHECKING:
     from pi_yo_6.main import DataInfo
@@ -22,14 +22,55 @@ _log = logging.getLogger(__name__)
 class ChatReader:
     def __init__(self, Info: "DataInfo") -> None:
         self.info = Info
-        self.track = self.info.MA.add_track(opus=True)
         self.guild = self.info.guild
+        # 最大3トラックを事前に確保
+        self.tracks: list[AudioTrack] = [self.info.MA.add_track(opus=True) for _ in range(3)]
+        self.track = self.tracks[0]  # 後方互換用参照
         self._queue: asyncio.Queue[tuple[MessageUnit, asyncio.Task[None]]] = asyncio.Queue()
+        self._available_tracks: asyncio.Queue[AudioTrack] = asyncio.Queue()
+        self._active_track_count = 1
+        self._sync_track_pool()
         self._worker_task: asyncio.Task[None] = asyncio.create_task(self._play_worker())
+
+    def _sync_track_pool(self) -> None:
+        gc = GuildConfig.get(self.guild.id)
+        desired = (
+            min(max(1, gc.data.max_tracks), len(self.tracks)) if gc.data.overlap_mode else 1
+        )
+        if desired != self._active_track_count:
+            # 現在の利用可能キューをリセットして再構築
+            while not self._available_tracks.empty():
+                try:
+                    self._available_tracks.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+            self._active_track_count = desired
+            for i in range(desired):
+                self._available_tracks.put_nowait(self.tracks[i])
+        elif self._available_tracks.empty() and not any(
+            t.has_play_data() for t in self.tracks[: self._active_track_count]
+        ):
+            for i in range(self._active_track_count):
+                self._available_tracks.put_nowait(self.tracks[i])
+
+    def stop_all(self) -> None:
+        """すべてのトラックの再生を即座に停止し、待ち行列をクリア"""
+        while not self._queue.empty():
+            try:
+                _, gen_task = self._queue.get_nowait()
+                if not gen_task.done():
+                    gen_task.cancel()
+                self._queue.task_done()
+            except asyncio.QueueEmpty:
+                break
+
+        for track in self.tracks:
+            track._finish()
 
     def close(self) -> None:
         if not self._worker_task.done():
             self._worker_task.cancel()
+        self.stop_all()
 
     async def on_message(self, message: Message) -> None:
         raw_content = message.content or ""
@@ -130,11 +171,27 @@ class ChatReader:
                 self._queue.task_done()
                 continue
 
-            done_event = asyncio.Event()
-            _log.info(f"Play  <{self.guild.name}>")
-            await self.track.play(
-                StreamAudioData(msg_unit.data),
-                after=lambda: loop.call_soon_threadsafe(done_event.set),
-            )
-            await done_event.wait()
+            self._sync_track_pool()
+            # 空きトラックの取得を待機
+            track = await self._available_tracks.get()
+
+            # トラック再生を開始
+            asyncio.create_task(self._play_on_track(track, msg_unit, loop))
             self._queue.task_done()
+
+    async def _play_on_track(
+        self, track: AudioTrack, msg_unit: MessageUnit, loop: asyncio.AbstractEventLoop
+    ) -> None:
+        done_event = asyncio.Event()
+        _log.info(f"Play <{self.guild.name}> on track")
+        try:
+            if msg_unit.data is not None:
+                await track.play(
+                    StreamAudioData(msg_unit.data),
+                    after=lambda: loop.call_soon_threadsafe(done_event.set),
+                )
+                await done_event.wait()
+        except Exception as e:
+            _log.error(f"Error during playback: {e}")
+        finally:
+            self._available_tracks.put_nowait(track)
