@@ -32,21 +32,55 @@ class ChatReader:
             self._worker_task.cancel()
 
     async def on_message(self, message: Message) -> None:
-        if not message.content:
+        raw_content = message.content or ""
+        # プレフィックスコマンドの場合はスキップ
+        if raw_content and raw_content[0] in bot_prefix:
             return
-        # コマンドではなく なおかつ Joinしている場合
-        if message.content[0] not in bot_prefix and self.guild.voice_client:
-            # ボイス初期設定
-            text = message.content
-            user_config = UserConfig.get(message.author.id)
-            if not SyntheticEngines.current.is_available(user_config.data.voice):
-                user_config.data.voice = self.random_voice()
-                user_config.write()
+        if not self.guild.voice_client:
+            return
 
-            msg_unit = MessageUnit(text, message.created_at)
-            msg_unit.voice = user_config.data.voice
-            await msg_unit.normalize_text(self.guild.id)
-            await self.play_message(msg_unit)
+        text_parts: list[str] = []
+        if raw_content:
+            text_parts.append(raw_content)
+
+        # 添付ファイル対応
+        if message.attachments:
+            attach_types: list[str] = []
+            for a in message.attachments:
+                ctype = a.content_type or ""
+                if ctype.startswith("image/"):
+                    attach_types.append("画像")
+                elif ctype.startswith("video/"):
+                    attach_types.append("動画")
+                elif ctype.startswith("audio/"):
+                    attach_types.append("音声")
+                else:
+                    attach_types.append("ファイル")
+            if attach_types:
+                text_parts.append(f"{'と'.join(attach_types)}が送信されました")
+
+        # スタンプ対応
+        if message.stickers:
+            sticker_names = [s.name for s in message.stickers]
+            text_parts.append(f"スタンプ、{', '.join(sticker_names)}")
+
+        if not text_parts:
+            return
+
+        full_text = " ".join(text_parts).strip()
+        if not full_text:
+            return
+
+        # ボイス初期設定
+        user_config = UserConfig.get(message.author.id)
+        if not SyntheticEngines.current.is_available(user_config.data.voice):
+            user_config.data.voice = self.random_voice()
+            user_config.write()
+
+        msg_unit = MessageUnit(full_text, message.created_at)
+        msg_unit.voice = user_config.data.voice
+        await msg_unit.normalize_text(guild=self.guild)
+        await self.play_message(msg_unit)
 
     def random_voice(self) -> VoiceUnit:
         """ランダムなVoiceUnitを返す"""

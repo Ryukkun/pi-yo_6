@@ -37,6 +37,7 @@ class VOICEVOX_Engine_Config(BaseModel):
 class MainConfigData(BaseModel):
     prefix: str = '.'
     token: str = ''
+    text_limit: int = 100
     admin_dic: Path = Path('./dic/admin_dic.txt')
     user_dic: Path = Path('./dic/user_dic/')
     guild_config: Path = Path('./guild_config/')
