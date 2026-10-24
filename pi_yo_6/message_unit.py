@@ -22,6 +22,10 @@ re_romaji_unit = re.compile(r'\b([a-zA-Z\-]+)\b')  # (単語境界)(英単語)(�
 re_code_block = re.compile(r'```[\s\S]*?```')
 re_inline_code = re.compile(r'`[^`]+`')
 re_spoiler = re.compile(r'\|\|[\s\S]*?\|\|')
+re_inline_voice = re.compile(r'\bvoice:\s*([^\s]+)')
+re_inline_speed = re.compile(r'\bspeed:\s*([\d.]+)')
+re_inline_tone = re.compile(r'\btone:\s*([-\d.]+)')
+re_inline_intonation = re.compile(r'\bintonation:\s*([-\d.]+)')
 
 
 class MessageUnit:
@@ -87,9 +91,56 @@ class MessageUnit:
             self.text = re_role_mention.sub('ロール ', self.text)
             self.text = re_channel_mention.sub('チャンネル ', self.text)
 
+    def _extract_inline_voice(self) -> None:
+        # voice:xxx_yyy or voice:xxx
+        if m := re_inline_voice.search(self.text):
+            voice_spec = m.group(1)
+            self.text = re_inline_voice.sub('', self.text)
+            if '_' in voice_spec:
+                speaker_name, style_name = voice_spec.split('_', 1)
+            else:
+                speaker_name, style_name = voice_spec, None
+
+            found = SyntheticEngines.current.find_voice(speaker_name, style_name)
+            if found:
+                self.voice.type = found.type
+                self.voice.name = found.name
+                self.voice.style = found.style
+
+        # speed:xxx
+        if m := re_inline_speed.search(self.text):
+            try:
+                spd = float(m.group(1))
+                if 0.2 <= spd <= 5.0:
+                    self.voice.speed = spd
+                self.text = re_inline_speed.sub('', self.text)
+            except ValueError:
+                pass
+
+        # tone:xxx
+        if m := re_inline_tone.search(self.text):
+            try:
+                tn = float(m.group(1))
+                if -50.0 <= tn <= 50.0:
+                    self.voice.tone = tn
+                self.text = re_inline_tone.sub('', self.text)
+            except ValueError:
+                pass
+
+        # intonation:xxx
+        if m := re_inline_intonation.search(self.text):
+            try:
+                into = float(m.group(1))
+                if 0.0 <= into <= 5.0:
+                    self.voice.intonation = into
+                self.text = re_inline_intonation.sub('', self.text)
+            except ValueError:
+                pass
+
     async def normalize_text(
         self, guild_id: int | None = None, guild: Optional["discord.Guild"] = None
     ) -> None:  # コマンドは読み上げない
+        self._extract_inline_voice()
         gid = guild.id if guild else (guild_id or 0)
         self.text = re.sub(r'^\s+', ' ', self.text)
         self.text = re_url.sub('ユーアールエルは省略するのです！ ', self.text)  # URL省略

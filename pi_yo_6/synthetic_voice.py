@@ -37,6 +37,66 @@ class SyntheticEngines:
             await asyncio.gather(*tasks)
         SyntheticEngines.current = self
 
+    async def reload_unloaded_engines(self) -> list[str]:
+        """未読み込みのVOICEVOX / Coeiroinkエンジンの再接続を試行"""
+        reloaded: list[str] = []
+        if Config.VOICEVOX.enable and self.voicevox is None:
+            await self._init_voicevox()
+            if self.voicevox is not None:
+                reloaded.append('VOICEVOX')
+        if Config.Coeiroink.enable and self.coeiroink is None:
+            await self._init_coeiroink()
+            if self.coeiroink is not None:
+                reloaded.append('Coeiroink')
+        return reloaded
+
+    def find_voice(self, name: str, style: str | None = None) -> VoiceUnit | None:
+        """指定された名前とスタイルを持つVoiceUnitを検索"""
+        name_lower = name.lower()
+        # 1. OpenJTalk
+        if self.open_jtalk:
+            for meta in self.open_jtalk.metas:
+                if meta['name'].lower() == name_lower:
+                    matched_style = style or meta['styles'][0]['name']
+                    for s in meta['styles']:
+                        if s['name'].lower() == (style or '').lower():
+                            matched_style = s['name']
+                            break
+                    return VoiceUnit(
+                        type=ENGINE_TYPE.OPEN_JTALK,
+                        name=meta['name'],
+                        style=matched_style,
+                    )
+        # 2. VOICEVOX
+        if self.voicevox:
+            for meta in self.voicevox.metas:
+                if meta['name'].lower() == name_lower:
+                    matched_style = style or meta['styles'][0]['name']
+                    for s in meta['styles']:
+                        if s['name'].lower() == (style or '').lower():
+                            matched_style = s['name']
+                            break
+                    return VoiceUnit(
+                        type=ENGINE_TYPE.VOICEVOX,
+                        name=meta['name'],
+                        style=matched_style,
+                    )
+        # 3. Coeiroink
+        if self.coeiroink:
+            for meta in self.coeiroink.metas:
+                if meta['name'].lower() == name_lower:
+                    matched_style = style or meta['styles'][0]['name']
+                    for s in meta['styles']:
+                        if s['name'].lower() == (style or '').lower():
+                            matched_style = s['name']
+                            break
+                    return VoiceUnit(
+                        type=ENGINE_TYPE.COEIROINK,
+                        name=meta['name'],
+                        style=matched_style,
+                    )
+        return None
+
     @staticmethod
     async def get_session() -> aiohttp.ClientSession:
         """セッションを使い回すためのゲッター"""

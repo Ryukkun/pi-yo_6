@@ -8,6 +8,7 @@ from pi_yo_6.dictionary_view import DictionaryView
 from pi_yo_6.embeds import EmBase
 from pi_yo_6.load_config import GuildConfig, UserConfig
 from pi_yo_6.message_unit import MessageUnit
+from pi_yo_6.synthetic_voice import SyntheticEngines
 from pi_yo_6.utils import VoiceUnit
 from pi_yo_6.voice import ChatReader
 from pi_yo_6.voice_client import MultiAudioVoiceClient
@@ -142,10 +143,21 @@ class MyCog(commands.Cog):
     async def voice_list(self, ctx: commands.Context) -> None:
         if not ctx.guild:
             return
+        await SyntheticEngines.current.reload_unloaded_engines()
         uc = UserConfig.get(ctx.author.id)
         view = discord.ui.LayoutView(timeout=None)
         view.add_item(VoiceListContainer(g_opts=self.g_opts, voice=uc.data.voice))
         await ctx.send(view=view)
+
+    @commands.command(aliases=['reload_engine', 'reload_engines'])
+    async def reload(self, ctx: commands.Context) -> None:
+        """後から起動したVOICEVOX / Coeiroinkエンジンの再接続を試行"""
+        msg = await ctx.send("音声エンジンを再探索中...")
+        reloaded = await SyntheticEngines.current.reload_unloaded_engines()
+        if reloaded:
+            await msg.edit(content=f"新しいエンジンを読み込みました: {', '.join(reloaded)}")
+        else:
+            await msg.edit(content="追加で接続された音声エンジンはありませんでした。")
 
     @commands.command(aliases=['ch'])
     async def channel(self, ctx: commands.Context) -> None:
