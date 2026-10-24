@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Type
 from pydantic import BaseModel, Field
@@ -79,12 +80,14 @@ class ConfigUnit[T: BaseModel]:
             return default_data
 
     def write(self, data: T | None = None) -> None:
-        """現在のデータ（または渡されたデータ）をファイルに保存"""
+        """現在のデータ（または渡されたデータ）をファイルに保存（アトミック書き込み）"""
         target = data or self.data
         self.path.parent.mkdir(parents=True, exist_ok=True)
         # model_dump_json で Path も自動的に文字列になり、ネストも辞書化される
         json_str = target.model_dump_json(indent=2)
-        self.path.write_text(json_str, encoding='utf-8')
+        temp_path = self.path.with_suffix(self.path.suffix + '.tmp')
+        temp_path.write_text(json_str, encoding='utf-8')
+        os.replace(temp_path, self.path)
 
 
 class ConfigLoader[T: BaseModel]:

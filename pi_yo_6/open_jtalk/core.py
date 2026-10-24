@@ -102,8 +102,10 @@ class CreateOpenJtalk:
         data, sr = await self.generate_voice(text, speaker_path, speed=voice.speed, tone=voice.tone)
         max_val = np.abs(data).max()
         if max_val > 0:
-            data = data / max_val / 6
-        scipy.io.wavfile.write(buffer, sr, data)
+            pcm_data = (data / max_val / 6 * 32767).astype(np.int16)
+        else:
+            pcm_data = data.astype(np.int16)
+        scipy.io.wavfile.write(buffer, sr, pcm_data)
         buffer.seek(0)
         return buffer
 
