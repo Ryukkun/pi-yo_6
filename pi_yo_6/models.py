@@ -1,5 +1,3 @@
-from dataclasses import dataclass, field
-from datetime import datetime
 import enum
 from typing import TypedDict
 
@@ -41,12 +39,3 @@ class VoiceSetting(BaseModel):
             f"**Voice**: `{self.name}` (`{self.style}`)\n"
             f"**Speed**: `{self.speed}` / **Tone**: `{self.tone}` / **Intonation**: `{self.intonation}`"
         )
-
-
-@dataclass
-class SpeechItem:
-    """読み上げキューに投入される1件のテキストとボイス設定"""
-
-    text: str
-    voice: VoiceSetting = field(default_factory=VoiceSetting)
-    created_at: datetime = field(default_factory=datetime.now)
