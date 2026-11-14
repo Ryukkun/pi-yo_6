@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 import alkana
 
-from pi_yo_6.config import admin_dic, app_config, guild_configs
+from pi_yo_6 import config
 from pi_yo_6.models import VoiceSetting
 from pi_yo_6.text.romaji import RomajiConverter
 
@@ -83,7 +83,7 @@ class TextNormalizer:
         text = TextNormalizer._replace_english_kana(text)
         text = TextNormalizer._replace_w(text)
 
-        limit = app_config.text_limit
+        limit = config.app_config.text_limit
         if len(text) > limit:
             text = text[:limit] + " 以下略"
 
@@ -167,10 +167,10 @@ class TextNormalizer:
     @staticmethod
     def _apply_dictionaries(text: str, gid: int) -> str:
         if gid:
-            gc = guild_configs.get(gid)
+            gc = config.guild_configs.get(gid)
             text = gc.data.dic.replace(text)
-        if admin_dic.words:
-            text = admin_dic.replace(text)
+        if config.admin_dic.words:
+            text = config.admin_dic.replace(text)
         return text
 
     @staticmethod
