@@ -255,17 +255,18 @@ class MultiAudioVoiceClient:
                         byte_list.append(_byte)
 
                 active_track = len(byte_list)
-                if active_track >= 1:
+                if active_track == 1:
+                    audio_bytes = byte_list[0]
+                elif active_track >= 2:
                     if self.enc_bool:
+                        max_len = max(len(b) for b in byte_list)
+                        arrays = [
+                            np.frombuffer(b.ljust(max_len, b'\x00'), dtype=np.int16)
+                            for b in byte_list
+                        ]
                         adjust_vol = 1 / sqrt(active_track)
-                        audio_numpy: np.ndarray = np.sum(
-                            [
-                                np.frombuffer(byte_list[i], dtype=np.int16) * adjust_vol
-                                for i in range(active_track)
-                            ],
-                            axis=0,
-                        )
-                        audio_bytes = audio_numpy.astype(np.int16).tobytes()
+                        audio_numpy = np.sum(arrays, axis=0) * adjust_vol
+                        audio_bytes = np.clip(audio_numpy, -32768, 32767).astype(np.int16).tobytes()
                     else:
                         audio_bytes = byte_list[0]
 

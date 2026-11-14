@@ -159,5 +159,8 @@ class MessageUnit:
             self.text = self.text[:limit] + " 以下略"
 
     async def create_voice(self) -> None:
+        if not self.text.strip():
+            self.generated = False
+            return
         await SyntheticEngines.current.create_voice(self)
         self.generated = self.data is not None

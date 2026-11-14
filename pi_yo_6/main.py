@@ -218,15 +218,24 @@ class MyCog(commands.Cog):
 
         # VC入退室アナウンス
         gc = GuildConfig.get(member.guild.id)
-        if gc.data.announce_join_leave and info.vc.channel:
+        if gc.data.announce_join_leave and info.vc.channel and not member.bot:
             vc_channel = info.vc.channel
-            # 誰かがBotのいるVCに入室した
-            if before.channel != vc_channel and after.channel == vc_channel and not member.bot:
-                msg_unit = MessageUnit(f"{member.display_name}さんが入室しました")
-                await info.voice.play_message(msg_unit)
-            # 誰かがBotのいるVCから退出した
-            elif before.channel == vc_channel and after.channel != vc_channel and not member.bot:
-                msg_unit = MessageUnit(f"{member.display_name}さんが退室しました")
+            announce_text: str | None = None
+            if before.channel != vc_channel and after.channel == vc_channel:
+                announce_text = f"{member.display_name}さんが入室しました"
+            elif before.channel == vc_channel and after.channel != vc_channel:
+                announce_text = f"{member.display_name}さんが退室しました"
+
+            if announce_text:
+                uc = UserConfig.get(member.id)
+                voice = (
+                    uc.data.voice.model_copy()
+                    if SyntheticEngines.current.is_available(uc.data.voice)
+                    else info.voice.random_voice()
+                )
+                msg_unit = MessageUnit(announce_text)
+                msg_unit.voice = voice
+                await msg_unit.normalize_text(guild=member.guild)
                 await info.voice.play_message(msg_unit)
 
         # ボイスチャンネルにBot以外のメンバーがいなくなったか確認

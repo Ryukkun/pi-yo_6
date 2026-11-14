@@ -23,35 +23,27 @@ class ChatReader:
     def __init__(self, Info: "DataInfo") -> None:
         self.info = Info
         self.guild = self.info.guild
-        # 最大3トラックを事前に確保
-        self.tracks: list[AudioTrack] = [self.info.MA.add_track(opus=True) for _ in range(3)]
+        # PCMトラックを最大3つ事前に確保（MultiAudioVoiceClientでミックスするためopus=False）
+        self.tracks: list[AudioTrack] = [self.info.MA.add_track(opus=False) for _ in range(3)]
         self.track = self.tracks[0]  # 後方互換用参照
         self._queue: asyncio.Queue[tuple[MessageUnit, asyncio.Task[None]]] = asyncio.Queue()
-        self._available_tracks: asyncio.Queue[AudioTrack] = asyncio.Queue()
-        self._active_track_count = 1
-        self._sync_track_pool()
+        self._busy_tracks: set[int] = set()
+        self._track_free_event = asyncio.Event()
         self._worker_task: asyncio.Task[None] = asyncio.create_task(self._play_worker())
 
-    def _sync_track_pool(self) -> None:
+    def _get_free_track_idx(self) -> int | None:
         gc = GuildConfig.get(self.guild.id)
-        desired = (
+        max_active = (
             min(max(1, gc.data.max_tracks), len(self.tracks)) if gc.data.overlap_mode else 1
         )
-        if desired != self._active_track_count:
-            # 現在の利用可能キューをリセットして再構築
-            while not self._available_tracks.empty():
-                try:
-                    self._available_tracks.get_nowait()
-                except asyncio.QueueEmpty:
-                    break
-            self._active_track_count = desired
-            for i in range(desired):
-                self._available_tracks.put_nowait(self.tracks[i])
-        elif self._available_tracks.empty() and not any(
-            t.has_play_data() for t in self.tracks[: self._active_track_count]
-        ):
-            for i in range(self._active_track_count):
-                self._available_tracks.put_nowait(self.tracks[i])
+        for idx in range(max_active):
+            if idx not in self._busy_tracks and not self.tracks[idx].has_play_data():
+                return idx
+        return None
+
+    def _sync_track_pool(self) -> None:
+        """設定変更時に待機中のワーカーへ通知する"""
+        self._track_free_event.set()
 
     def stop_all(self) -> None:
         """すべてのトラックの再生を即座に停止し、待ち行列をクリア"""
@@ -66,6 +58,8 @@ class ChatReader:
 
         for track in self.tracks:
             track._finish()
+        self._busy_tracks.clear()
+        self._track_free_event.set()
 
     def close(self) -> None:
         if not self._worker_task.done():
@@ -119,8 +113,10 @@ class ChatReader:
             user_config.write()
 
         msg_unit = MessageUnit(full_text, message.created_at)
-        msg_unit.voice = user_config.data.voice
+        msg_unit.voice = user_config.data.voice.model_copy()
         await msg_unit.normalize_text(guild=self.guild)
+        if not msg_unit.text.strip():
+            return
         await self.play_message(msg_unit)
 
     def random_voice(self) -> VoiceUnit:
@@ -171,19 +167,25 @@ class ChatReader:
                 self._queue.task_done()
                 continue
 
-            self._sync_track_pool()
-            # 空きトラックの取得を待機
-            track = await self._available_tracks.get()
+            while True:
+                track_idx = self._get_free_track_idx()
+                if track_idx is not None:
+                    break
+                self._track_free_event.clear()
+                if (track_idx := self._get_free_track_idx()) is not None:
+                    break
+                await self._track_free_event.wait()
 
-            # トラック再生を開始
-            asyncio.create_task(self._play_on_track(track, msg_unit, loop))
+            self._busy_tracks.add(track_idx)
+            asyncio.create_task(self._play_on_track(track_idx, msg_unit, loop))
             self._queue.task_done()
 
     async def _play_on_track(
-        self, track: AudioTrack, msg_unit: MessageUnit, loop: asyncio.AbstractEventLoop
+        self, track_idx: int, msg_unit: MessageUnit, loop: asyncio.AbstractEventLoop
     ) -> None:
+        track = self.tracks[track_idx]
         done_event = asyncio.Event()
-        _log.info(f"Play <{self.guild.name}> on track")
+        _log.info(f"Play <{self.guild.name}> on track[{track_idx}]")
         try:
             if msg_unit.data is not None:
                 await track.play(
@@ -194,4 +196,5 @@ class ChatReader:
         except Exception as e:
             _log.error(f"Error during playback: {e}")
         finally:
-            self._available_tracks.put_nowait(track)
+            self._busy_tracks.discard(track_idx)
+            self._track_free_event.set()

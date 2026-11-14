@@ -67,12 +67,11 @@ class VoicevoxEngineBase:
             return b''
 
         tlimit = self.config.text_limit
-        # 文字数上限
-        if len(msg.text) > tlimit:
-            msg.text = msg.text[:tlimit]
+        # 文字数上限（元のmsg.textを破壊しない）
+        text = msg.text[:tlimit] if len(msg.text) > tlimit else msg.text
 
         audio_query_url = f'{self.url_base}/audio_query'
-        audio_query_params = {"text": msg.text, "speaker": speaker}
+        audio_query_params = {"text": text, "speaker": speaker}
         synthesis_url = f'{self.url_base}/synthesis'
         synthesis_params = {"speaker": speaker}
 
@@ -86,7 +85,8 @@ class VoicevoxEngineBase:
         if msg.voice.speed != 1.0:
             audio_query['speedScale'] = msg.voice.speed
         if msg.voice.tone != 0.0:
-            audio_query['pitchScale'] = msg.voice.tone
+            # VOICEVOXのpitchScaleは±0.15前後が標準のため安全範囲にクランプ
+            audio_query['pitchScale'] = max(-0.5, min(0.5, msg.voice.tone))
         if msg.voice.intonation != 0.0:
             audio_query['intonationScale'] = msg.voice.intonation
 
