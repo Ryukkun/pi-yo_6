@@ -1,4 +1,3 @@
-import copy
 import logging
 import math
 from typing import TYPE_CHECKING, TypedDict
@@ -39,25 +38,22 @@ class VoiceListContainer(ui.Container):
         super().__init__(accent_color=EmBase.main_color())
         self.g_opts = g_opts
         self.voice = (
-            copy.deepcopy(voice)
+            voice.model_copy()
             if voice
             else VoiceUnit(type=ENGINE_TYPE.OPEN_JTALK, name="mei", style="normal")
         )
 
         self.set_num()
         engines = SyntheticEngines.current
-        for row in self.walk_children():
-            if isinstance(row, ui.ActionRow) and len(row.children) == 0:
-                row.add_item(
-                    EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk is not None)
-                )
-                row.add_item(
-                    EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox is not None)
-                )
-                row.add_item(
-                    EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink is not None)
-                )
-                break
+        self.row0.add_item(
+            EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk is not None)
+        )
+        self.row0.add_item(
+            EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox is not None)
+        )
+        self.row0.add_item(
+            EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink is not None)
+        )
         self.res_styles: list[VLStyleMeta] = []
 
         self.set_new_select_options()
@@ -66,12 +62,12 @@ class VoiceListContainer(ui.Container):
         # typeが機能していなかった時のため
         engines = SyntheticEngines.current
         if self.voice.type == ENGINE_TYPE.VOICEVOX and engines.voicevox:
-            _metas = copy.deepcopy(engines.voicevox.metas)
+            _metas = engines.voicevox.metas
         elif self.voice.type == ENGINE_TYPE.COEIROINK and engines.coeiroink:
-            _metas = copy.deepcopy(engines.coeiroink.metas)
+            _metas = engines.coeiroink.metas
         else:
             self.voice.type = ENGINE_TYPE.OPEN_JTALK
-            _metas = copy.deepcopy(engines.open_jtalk.metas)
+            _metas = engines.open_jtalk.metas
 
         """
         25人以上のボイスに対応する都合上、注意事項が何個か
@@ -199,13 +195,14 @@ class VoiceListContainer(ui.Container):
             return
         if data := self.g_opts.get(interaction.guild.id):
             msg = MessageUnit("テストなのだ")
-            msg.voice = copy.deepcopy(self.voice)
+            msg.voice = self.voice.model_copy()
+            await msg.normalize_text(guild=interaction.guild)
             await data.voice.play_message(msg)
 
     @row3.button(label='ボイスをセット', style=ButtonStyle.green)
     async def set_voice_button(self, interaction: Interaction, button: ui.Button) -> None:
         uc = UserConfig.get(interaction.user.id)
-        uc.data.voice = copy.deepcopy(self.voice)
+        uc.data.voice = self.voice.model_copy()
         uc.write()
         await interaction.response.send_message(
             embed=Embed(
@@ -254,8 +251,13 @@ class SpeedPitchModal(ui.Modal):
         )
         self.add_item(self.speed)
 
+        tone_label = (
+            "tone [-50.0~50.0]"
+            if root.voice.type == ENGINE_TYPE.OPEN_JTALK
+            else "tone [-0.5~0.5]"
+        )
         self.tone = ui.TextInput(
-            label="tone [-100.0~100.0]",
+            label=tone_label,
             placeholder="0.0",
             default=str(root.voice.tone),
         )

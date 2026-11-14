@@ -10,21 +10,14 @@ from discord.utils import setup_logging
 # configを読み込む前にプロジェクトのモジュールを読み込まないこと
 
 
-IS_MAIN_PROCESS = __name__ == "__main__"
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="読み上げBotの起動スクリプト")
-    # 引数の設定
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
     return parser.parse_args()
 
 
-args = parse_args()
-
-
-async def main() -> None:
-    if args.debug:
+async def main(debug: bool = False) -> None:
+    if debug:
         logging.basicConfig(level=logging.DEBUG)
 
     from pi_yo_6.load_config import Config
@@ -57,5 +50,6 @@ async def main() -> None:
         await SyntheticEngines.close()
 
 
-if IS_MAIN_PROCESS:
-    asyncio.run(main(), debug=args.debug)
+if __name__ == "__main__":
+    args = parse_args()
+    asyncio.run(main(debug=args.debug), debug=args.debug)

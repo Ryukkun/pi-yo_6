@@ -26,11 +26,10 @@ class MyCog(commands.Cog):
         self.g_opts: dict[int, 'DataInfo'] = {}
 
     @discord.app_commands.command(name="auto_join", description="自動接続 要権限")
+    @discord.app_commands.guild_only()
+    @discord.app_commands.default_permissions(administrator=True)
     async def auto_join(self, ctx: discord.Interaction, action: bool) -> None:
         if not ctx.guild:
-            return
-        if not ctx.permissions.administrator:
-            await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral=True)
             return
         gc = GuildConfig.get(ctx.guild.id)
         gc.data.auto_join = action
@@ -41,11 +40,10 @@ class MyCog(commands.Cog):
         await ctx.response.send_message(embed=embed, ephemeral=True)
 
     @discord.app_commands.command(name="announce", description="VC入退室アナウンスの切り替え 要権限")
+    @discord.app_commands.guild_only()
+    @discord.app_commands.default_permissions(administrator=True)
     async def announce(self, ctx: discord.Interaction, action: bool) -> None:
         if not ctx.guild:
-            return
-        if not ctx.permissions.administrator:
-            await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral=True)
             return
         gc = GuildConfig.get(ctx.guild.id)
         gc.data.announce_join_leave = action
@@ -56,14 +54,13 @@ class MyCog(commands.Cog):
         await ctx.response.send_message(embed=embed, ephemeral=True)
 
     @discord.app_commands.command(name="overlap", description="複数人同時読み上げの切り替え 要権限")
+    @discord.app_commands.guild_only()
+    @discord.app_commands.default_permissions(administrator=True)
     @discord.app_commands.describe(action="有効にするかどうか", max_tracks="最大同時読み上げ数 (2~3)")
     async def overlap(
         self, ctx: discord.Interaction, action: bool, max_tracks: int = 3
     ) -> None:
         if not ctx.guild:
-            return
-        if not ctx.permissions.administrator:
-            await ctx.response.send_message(embed=EmBase.no_perm(), ephemeral=True)
             return
         gc = GuildConfig.get(ctx.guild.id)
         gc.data.overlap_mode = action
@@ -92,24 +89,22 @@ class MyCog(commands.Cog):
         asyncio.create_task(self.bot.tree.sync())
 
     @commands.command()
-    async def join(self, ctx: commands.Context) -> bool | None:
-        if ctx.guild and not self.g_opts.get(ctx.guild.id):
-            try:
-                if (
-                    isinstance(ctx.author, discord.Member)
-                    and ctx.author.voice
-                    and ctx.author.voice.channel
-                ):
-                    await ctx.author.voice.channel.connect(self_deaf=True)
-                    _log.info(f'{ctx.guild.name} : #join')
-                    self.g_opts[ctx.guild.id] = DataInfo(
-                        ctx.guild, self, initial_channel_id=ctx.channel.id
-                    )
-                    return True
-            except Exception:
-                _log.exception(f"func:join  guild:{ctx.guild.name}")
-            return True
-        return None
+    async def join(self, ctx: commands.Context) -> None:
+        if not ctx.guild or self.g_opts.get(ctx.guild.id):
+            return
+        try:
+            if (
+                isinstance(ctx.author, discord.Member)
+                and ctx.author.voice
+                and ctx.author.voice.channel
+            ):
+                await ctx.author.voice.channel.connect(self_deaf=True)
+                _log.info(f'{ctx.guild.name} : #join')
+                self.g_opts[ctx.guild.id] = DataInfo(
+                    ctx.guild, self, initial_channel_id=ctx.channel.id
+                )
+        except Exception:
+            _log.exception(f"func:join  guild:{ctx.guild.name}")
 
     @commands.command()
     async def bye(self, ctx: commands.Context) -> None:
