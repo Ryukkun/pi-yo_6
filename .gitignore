@@ -3,7 +3,7 @@ __pycache__
 dic
 voice
 .DS_Store
-config.py
+/config.py
 guild_config
 test
 voicevox_core-linux
