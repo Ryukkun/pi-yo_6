@@ -1,11 +1,11 @@
 import math
-from typing import TYPE_CHECKING
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from pi_yo_6.embeds import EmBase
-from pi_yo_6.load_config import GuildConfig
+from pi_yo_6.config import guild_configs
 from pi_yo_6.text.dictionary import DictionaryManager
+from pi_yo_6.ui.embeds import MAIN_COLOR
 
 PAGE_SIZE = 10
 
@@ -30,7 +30,6 @@ class DictionaryView(ui.View):
         self.clear_items()
         max_p = self.max_page
 
-        # ページネーションボタン
         prev_btn = ui.Button(
             label="◀ 前へ",
             style=ButtonStyle.secondary,
@@ -57,7 +56,6 @@ class DictionaryView(ui.View):
         next_btn.callback = self.on_next  # type: ignore[assignment]
         self.add_item(next_btn)
 
-        # 現在のページの単語削除セレクトメニュー
         start = self.page * PAGE_SIZE
         page_items = self.words_list[start : start + PAGE_SIZE]
         if page_items:
@@ -68,16 +66,18 @@ class DictionaryView(ui.View):
                 custom_id="delete_select",
             )
             for word, reading in page_items:
-                label = word[:50]
-                desc = f"→ {reading}"[:100]
-                select.add_option(label=label, value=word, description=desc)
+                select.add_option(
+                    label=word[:50],
+                    value=word,
+                    description=f"→ {reading}"[:100],
+                )
             select.callback = self.on_delete_select  # type: ignore[assignment]
             self.add_item(select)
 
     def create_embed(self, guild_name: str) -> discord.Embed:
         embed = discord.Embed(
             title=f"📖 辞書一覧 ({guild_name})",
-            colour=EmBase.main_color(),
+            colour=MAIN_COLOR,
         )
         items = self.words_list
         if not items:
@@ -118,13 +118,12 @@ class DictionaryView(ui.View):
         if not interaction.data or "values" not in interaction.data:
             return
         selected_word = interaction.data["values"][0]  # type: ignore[index]
-        gc = GuildConfig.get(self.guild_id)
+        gc = guild_configs.get(self.guild_id)
         if gc.data.dic.contains(selected_word):
             gc.data.dic.remove(selected_word)
             gc.write()
             self.dic = gc.data.dic
 
-        # ページ調整
         if self.page >= self.max_page and self.page > 0:
             self.page = self.max_page - 1
 

@@ -4,82 +4,73 @@ from typing import TYPE_CHECKING, TypedDict
 
 from discord import ButtonStyle, Embed, Interaction, ui
 
-from pi_yo_6.embeds import EmBase
-from pi_yo_6.load_config import UserConfig
-from pi_yo_6.message_unit import MessageUnit
-from pi_yo_6.synthetic_voice import SyntheticEngines
-from pi_yo_6.utils import ENGINE_TYPE, VoiceUnit
+from pi_yo_6.config import user_configs
+from pi_yo_6.models import EngineType, VoiceSetting
+from pi_yo_6.tts.manager import TTSManager
+from pi_yo_6.ui.embeds import MAIN_COLOR
 
 if TYPE_CHECKING:
-    from pi_yo_6.main import DataInfo
+    from pi_yo_6.session import GuildVoiceSession
 
 _log = logging.getLogger(__name__)
 
 
-class VLStyleMeta(TypedDict):
+class _StyleOption(TypedDict):
     name: str
     id: str
     author: str
 
 
-class VLSpeakerMeta(TypedDict):
+class _SpeakerGroup(TypedDict):
     name: list[str]
-    styles: list[VLStyleMeta]
+    styles: list[_StyleOption]
 
 
-'''
-@ui.button(...)とかはfunctionに...のデータを埋め込むだけ
-インスタンスを作る際にButtonインスタンスなどは作られる様子。
-'''
+class VoiceSelectorContainer(ui.Container):
+    """話者・スタイル・速度・ピッチを設定するためのインタラクティブUI"""
 
-
-class VoiceListContainer(ui.Container):
-    def __init__(self, g_opts: dict[int, "DataInfo"], voice: VoiceUnit | None = None) -> None:
-        super().__init__(accent_color=EmBase.main_color())
-        self.g_opts = g_opts
+    def __init__(
+        self,
+        sessions: dict[int, "GuildVoiceSession"],
+        tts: TTSManager,
+        voice: VoiceSetting | None = None,
+    ) -> None:
+        super().__init__(accent_color=MAIN_COLOR)
+        self.sessions = sessions
+        self.tts = tts
         self.voice = (
             voice.model_copy()
             if voice
-            else VoiceUnit(type=ENGINE_TYPE.OPEN_JTALK, name="mei", style="normal")
+            else VoiceSetting(type=EngineType.OPEN_JTALK, name="mei", style="normal")
         )
 
-        self.set_num()
-        engines = SyntheticEngines.current
+        self._update_params_button_label()
         self.row0.add_item(
-            EngineButton(self, ENGINE_TYPE.OPEN_JTALK, engines.open_jtalk is not None)
-        )
-        self.row0.add_item(
-            EngineButton(self, ENGINE_TYPE.VOICEVOX, engines.voicevox is not None)
+            EngineButton(self, EngineType.OPEN_JTALK, self.tts.open_jtalk is not None)
         )
         self.row0.add_item(
-            EngineButton(self, ENGINE_TYPE.COEIROINK, engines.coeiroink is not None)
+            EngineButton(self, EngineType.VOICEVOX, self.tts.voicevox is not None)
         )
-        self.res_styles: list[VLStyleMeta] = []
+        self.row0.add_item(
+            EngineButton(self, EngineType.COEIROINK, self.tts.coeiroink is not None)
+        )
+        self.res_styles: list[_StyleOption] = []
 
-        self.set_new_select_options()
+        self.refresh_select_options()
 
-    def set_new_select_options(self) -> None:
-        # typeが機能していなかった時のため
-        engines = SyntheticEngines.current
-        if self.voice.type == ENGINE_TYPE.VOICEVOX and engines.voicevox:
-            _metas = engines.voicevox.metas
-        elif self.voice.type == ENGINE_TYPE.COEIROINK and engines.coeiroink:
-            _metas = engines.coeiroink.metas
-        else:
-            self.voice.type = ENGINE_TYPE.OPEN_JTALK
-            _metas = engines.open_jtalk.metas
+    def refresh_select_options(self) -> None:
+        engine = self.tts.get_engine(self.voice.type)
+        if engine is None:
+            self.voice.type = EngineType.OPEN_JTALK
+            engine = self.tts.open_jtalk
+        raw_metas = engine.metas
 
-        """
-        25人以上のボイスに対応する都合上、注意事項が何個か
-        - Speakerのnameには複数の名前が含まれることがある (list[str])
-        - Styleにauthor追加 そのスタイルの声の主
-        """
-        # 25以上の場合圧縮処理
-        metas: list[VLSpeakerMeta] = []
-        booking = max(1, math.ceil(len(_metas) / 25))
-        for i in range(0, len(_metas), booking):
-            parts = _metas[i : i + booking]
-            flat_style: list[VLStyleMeta] = []
+        # Discord Select の上限(25件)に収めるためのグルーピング処理
+        groups: list[_SpeakerGroup] = []
+        booking = max(1, math.ceil(len(raw_metas) / 25))
+        for i in range(0, len(raw_metas), booking):
+            parts = raw_metas[i : i + booking]
+            flat_style: list[_StyleOption] = []
             for part in parts:
                 for style in part['styles']:
                     flat_style.append(
@@ -89,39 +80,39 @@ class VoiceListContainer(ui.Container):
                             "id": str(style["id"]),
                         }
                     )
-            merged: VLSpeakerMeta = {
-                "name": [_['name'] for _ in parts],
-                "styles": flat_style,
-            }
-            metas.append(merged)
+            groups.append(
+                {
+                    "name": [_['name'] for _ in parts],
+                    "styles": flat_style,
+                }
+            )
 
-        # voiceAuthorsの選択肢生成
+        # キャラクター選択オプション構築
         self.voice_authors_selection.options.clear()
         has_default = False
-        for i in range(min(len(metas), 25)):
-            meta = metas[i]
-            default = self.voice.name in meta['name'] and not has_default
+        for group in groups[:25]:
+            default = self.voice.name in group['name'] and not has_default
             if default:
                 has_default = True
             self.voice_authors_selection.add_option(
-                label=", ".join(meta["name"]), value=meta["name"][0], default=default
+                label=", ".join(group["name"]),
+                value=group["name"][0],
+                default=default,
             )
-        ### どれ一つヒットしなかった場合初期値に指定
-        if not has_default and metas:
-            self.voice.name = metas[0]['styles'][0]['author']
+        if not has_default and groups:
+            self.voice.name = groups[0]['styles'][0]['author']
             self.voice_authors_selection.options[0].default = True
 
-        # voiceStylesの選択肢生成
+        # スタイル選択オプション構築
         self.voice_styles_selection.options.clear()
         self.res_styles.clear()
         has_default = False
-        styles: list[VLStyleMeta] = []
-        for meta in metas:
-            if self.voice.name in meta['name']:
-                styles = meta['styles']
+        styles: list[_StyleOption] = []
+        for group in groups:
+            if self.voice.name in group['name']:
+                styles = group['styles']
                 break
-        for i in range(min(len(styles), 25)):
-            style = styles[i]
+        for i, style in enumerate(styles[:25]):
             self.res_styles.append(style)
             default = (
                 self.voice.style == style['name']
@@ -131,24 +122,23 @@ class VoiceListContainer(ui.Container):
             if default:
                 has_default = True
             self.voice_styles_selection.add_option(
-                label=f"{style['author']}_{style['name']}", value=str(i), default=default
+                label=f"{style['author']}_{style['name']}",
+                value=str(i),
+                default=default,
             )
-        ### どれ一つヒットしなかった場合初期値に指定
         if not has_default and styles:
             self.voice.style = styles[0]['name']
             self.voice_styles_selection.options[0].default = True
 
     row_1 = ui.TextDisplay("## ボイス設定")
-
     row0 = ui.ActionRow()
-
     row1 = ui.ActionRow()
 
     @row1.select(placeholder='キャラクター選択')
     async def voice_authors_selection(self, interaction: Interaction, select: ui.Select) -> None:
         if interaction.message:
             self.voice.name = self.voice_authors_selection.values[0]
-            self.set_new_select_options()
+            self.refresh_select_options()
             await interaction.response.edit_message(view=self.view)
 
     row2 = ui.ActionRow()
@@ -159,7 +149,7 @@ class VoiceListContainer(ui.Container):
             style = self.res_styles[int(self.voice_styles_selection.values[0])]
             self.voice.name = style['author']
             self.voice.style = style['name']
-            self.set_new_select_options()
+            self.refresh_select_options()
             await interaction.response.edit_message(view=self.view)
             return
         except Exception as e:
@@ -170,9 +160,9 @@ class VoiceListContainer(ui.Container):
 
     @row3.button(style=ButtonStyle.blurple)
     async def speed_button(self, interaction: Interaction, button: ui.Button) -> None:
-        await interaction.response.send_modal(SpeedPitchModal(self))
+        await interaction.response.send_modal(VoiceParamsModal(self))
 
-    def set_num(
+    def update_params(
         self,
         speed: float | None = None,
         tone: float | None = None,
@@ -184,6 +174,9 @@ class VoiceListContainer(ui.Container):
             self.voice.tone = tone
         if intonation is not None:
             self.voice.intonation = intonation
+        self._update_params_button_label()
+
+    def _update_params_button_label(self) -> None:
         self.speed_button.label = (
             f"Speed: {self.voice.speed},  Tone: {self.voice.tone}, Intonation: {self.voice.intonation}"
         )
@@ -193,20 +186,21 @@ class VoiceListContainer(ui.Container):
         await interaction.response.defer()
         if not interaction.guild:
             return
-        if data := self.g_opts.get(interaction.guild.id):
-            msg = MessageUnit("テストなのだ")
-            msg.voice = self.voice.model_copy()
-            await msg.normalize_text(guild=interaction.guild)
-            await data.voice.play_message(msg)
+        if session := self.sessions.get(interaction.guild.id):
+            await session.enqueue_speech(
+                "テストなのだ",
+                self.voice.model_copy(),
+                guild=interaction.guild,
+            )
 
     @row3.button(label='ボイスをセット', style=ButtonStyle.green)
     async def set_voice_button(self, interaction: Interaction, button: ui.Button) -> None:
-        uc = UserConfig.get(interaction.user.id)
+        uc = user_configs.get(interaction.user.id)
         uc.data.voice = self.voice.model_copy()
         uc.write()
         await interaction.response.send_message(
             embed=Embed(
-                title='反映完了!', description=str(self.voice), colour=EmBase.main_color()
+                title='反映完了!', description=str(self.voice), colour=MAIN_COLOR
             ),
             ephemeral=True,
         )
@@ -219,12 +213,12 @@ class VoiceListContainer(ui.Container):
 
 
 class EngineButton(ui.Button):
-    def __init__(self, root: VoiceListContainer, type: ENGINE_TYPE, enable: bool) -> None:
+    def __init__(self, root: VoiceSelectorContainer, engine_type: EngineType, enable: bool) -> None:
         self.root = root
-        self.engine_type = type
+        self.engine_type = engine_type
         super().__init__(
             style=ButtonStyle.green if enable else ButtonStyle.gray,
-            label=type.value,
+            label=engine_type.value,
             disabled=not enable,
             row=0,
         )
@@ -234,14 +228,14 @@ class EngineButton(ui.Button):
             self.root.voice.type = self.engine_type
             self.root.voice.name = ""
             self.root.voice.style = ""
-            self.root.set_new_select_options()
+            self.root.refresh_select_options()
             await interaction.response.edit_message(view=self.view)
         else:
             await interaction.response.defer()
 
 
-class SpeedPitchModal(ui.Modal):
-    def __init__(self, root: "VoiceListContainer") -> None:
+class VoiceParamsModal(ui.Modal):
+    def __init__(self, root: VoiceSelectorContainer) -> None:
         super().__init__(title="詳細設定")
         self.root = root
         self.speed = ui.TextInput(
@@ -253,7 +247,7 @@ class SpeedPitchModal(ui.Modal):
 
         tone_label = (
             "tone [-50.0~50.0]"
-            if root.voice.type == ENGINE_TYPE.OPEN_JTALK
+            if root.voice.type == EngineType.OPEN_JTALK
             else "tone [-0.5~0.5]"
         )
         self.tone = ui.TextInput(
@@ -264,7 +258,7 @@ class SpeedPitchModal(ui.Modal):
         self.add_item(self.tone)
 
         self.intonation = None
-        if root.voice.type != ENGINE_TYPE.OPEN_JTALK:
+        if root.voice.type != EngineType.OPEN_JTALK:
             self.intonation = ui.TextInput(
                 label="intonation [-100.0~100.0]",
                 placeholder="0.0",
@@ -288,14 +282,13 @@ class SpeedPitchModal(ui.Modal):
                 and -100 <= tone <= 100
                 and (intonation is None or -100 <= intonation <= 100)
             ):
-                self.root.set_num(speed, tone, intonation)
+                self.root.update_params(speed, tone, intonation)
                 await interaction.response.edit_message(view=self.root.view)
                 return
 
             await interaction.response.send_message(
                 "⚠⚠ -100以上100以下でおねがい ⚠⚠", delete_after=5.0, ephemeral=True
             )
-
         except Exception:
             await interaction.response.send_message(
                 "⚠⚠ 数値を入力してください ⚠⚠", delete_after=5.0, ephemeral=True

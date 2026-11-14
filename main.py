@@ -20,34 +20,34 @@ async def main(debug: bool = False) -> None:
     if debug:
         logging.basicConfig(level=logging.DEBUG)
 
-    from pi_yo_6.load_config import Config
-    from pi_yo_6.main import MyCog
-    from pi_yo_6.synthetic_voice import SyntheticEngines
+    from pi_yo_6.cog import TTSCog
+    from pi_yo_6.config import app_config
+    from pi_yo_6.tts import TTSManager
 
-    os.makedirs(Config.guild_config, exist_ok=True)
-    os.makedirs(Config.user_config, exist_ok=True)
-    os.makedirs(Config.OpenJtalk.hts_path, exist_ok=True)
-    os.makedirs(Config.OpenJtalk.dictionary_path, exist_ok=True)
+    os.makedirs(app_config.guild_config, exist_ok=True)
+    os.makedirs(app_config.user_config, exist_ok=True)
+    os.makedirs(app_config.OpenJtalk.hts_path, exist_ok=True)
+    os.makedirs(app_config.OpenJtalk.dictionary_path, exist_ok=True)
 
     ####  起動準備 And 初期設定
     intents = discord.Intents.default()
     intents.message_content = True
     intents.reactions = True
     intents.voice_states = True
-    bot = commands.Bot(command_prefix=Config.prefix, intents=intents)
+    bot = commands.Bot(command_prefix=app_config.prefix, intents=intents)
 
     setup_logging()
     logging.getLogger('discord.player').setLevel(logging.WARNING)
 
-    engines = SyntheticEngines()
-    await engines.init_all()
+    tts = TTSManager()
+    await tts.init_all()
 
     try:
         async with bot:
-            await bot.add_cog(MyCog(bot))
-            await bot.start(Config.token)
+            await bot.add_cog(TTSCog(bot, tts))
+            await bot.start(app_config.token)
     finally:
-        await SyntheticEngines.close()
+        await tts.close()
 
 
 if __name__ == "__main__":
