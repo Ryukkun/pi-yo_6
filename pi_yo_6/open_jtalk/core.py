@@ -1,11 +1,13 @@
 import asyncio
 import atexit
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import AbstractContextManager, ExitStack
+from contextlib import AbstractContextManager, ExitStack, contextmanager
 from importlib.resources import as_file
 import io
 import logging
 from pathlib import Path
+import threading
 from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
@@ -20,6 +22,22 @@ if TYPE_CHECKING:
     from pi_yo_6.message_unit import MessageUnit
 
 _log = logging.getLogger(__name__)
+
+
+def _lazy_hts_manager(voice_path: bytes) -> Callable[[], AbstractContextManager[HTSEngine]]:
+    """HTSEngineインスタンスをスレッドセーフかつ遅延初期化するマネージャー"""
+    instance: HTSEngine | None = None
+    mutex = threading.Lock()
+
+    @contextmanager
+    def manager() -> Generator[HTSEngine, None, None]:
+        nonlocal instance
+        with mutex:
+            if instance is None:
+                instance = HTSEngine(voice_path)
+            yield instance
+
+    return manager
 
 
 class CreateOpenJtalk:
@@ -38,7 +56,7 @@ class CreateOpenJtalk:
                 _file = ExitStack()
                 atexit.register(_file.close)
                 voice = str(_file.enter_context(as_file(Path(path)))).encode("utf-8")
-                self.hts[path] = pyopenjtalk._global_instance_manager(lambda v=voice: HTSEngine(v))
+                self.hts[path] = _lazy_hts_manager(voice)
 
     async def run_test(self) -> None:
         default_voice = VoiceUnit(
