@@ -102,18 +102,6 @@ class VoicevoxEngineBase:
                 return b''
             return await res.read()
 
-    def name_list(self) -> list[list[str]]:
-        res = []
-        for name_dic in self.metas:
-            name = name_dic['name']
-            _res = [name]
-            for style_dic in name_dic['styles']:
-                style = style_dic['name']
-                _res.append(f'{style}')
-            res.append(_res)
-
-        return res
-
     def to_speaker_id(self, voice: VoiceUnit) -> Optional[str | int]:
         for meta in self.metas:
             if meta['name'] == voice.name:

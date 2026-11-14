@@ -1,9 +1,7 @@
 import asyncio
-import atexit
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import AbstractContextManager, ExitStack, contextmanager
-from importlib.resources import as_file
+from contextlib import AbstractContextManager, contextmanager
 import io
 import logging
 from pathlib import Path
@@ -53,9 +51,7 @@ class CreateOpenJtalk:
         for meta in self.metas:
             for style in meta['styles']:
                 path = style['id']
-                _file = ExitStack()
-                atexit.register(_file.close)
-                voice = str(_file.enter_context(as_file(Path(path)))).encode("utf-8")
+                voice = str(Path(path).resolve()).encode("utf-8")
                 self.hts[path] = _lazy_hts_manager(voice)
 
     async def run_test(self) -> None:

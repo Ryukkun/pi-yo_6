@@ -53,45 +53,24 @@ class SyntheticEngines:
     def find_voice(self, name: str, style: str | None = None) -> VoiceUnit | None:
         """指定された名前とスタイルを持つVoiceUnitを検索"""
         name_lower = name.lower()
-        # 1. OpenJTalk
-        if self.open_jtalk:
-            for meta in self.open_jtalk.metas:
+        style_lower = (style or '').lower()
+        candidates = (
+            (ENGINE_TYPE.OPEN_JTALK, self.open_jtalk),
+            (ENGINE_TYPE.VOICEVOX, self.voicevox),
+            (ENGINE_TYPE.COEIROINK, self.coeiroink),
+        )
+        for engine_type, engine in candidates:
+            if not engine:
+                continue
+            for meta in engine.metas:
                 if meta['name'].lower() == name_lower:
                     matched_style = style or meta['styles'][0]['name']
                     for s in meta['styles']:
-                        if s['name'].lower() == (style or '').lower():
+                        if s['name'].lower() == style_lower:
                             matched_style = s['name']
                             break
                     return VoiceUnit(
-                        type=ENGINE_TYPE.OPEN_JTALK,
-                        name=meta['name'],
-                        style=matched_style,
-                    )
-        # 2. VOICEVOX
-        if self.voicevox:
-            for meta in self.voicevox.metas:
-                if meta['name'].lower() == name_lower:
-                    matched_style = style or meta['styles'][0]['name']
-                    for s in meta['styles']:
-                        if s['name'].lower() == (style or '').lower():
-                            matched_style = s['name']
-                            break
-                    return VoiceUnit(
-                        type=ENGINE_TYPE.VOICEVOX,
-                        name=meta['name'],
-                        style=matched_style,
-                    )
-        # 3. Coeiroink
-        if self.coeiroink:
-            for meta in self.coeiroink.metas:
-                if meta['name'].lower() == name_lower:
-                    matched_style = style or meta['styles'][0]['name']
-                    for s in meta['styles']:
-                        if s['name'].lower() == (style or '').lower():
-                            matched_style = s['name']
-                            break
-                    return VoiceUnit(
-                        type=ENGINE_TYPE.COEIROINK,
+                        type=engine_type,
                         name=meta['name'],
                         style=matched_style,
                     )
