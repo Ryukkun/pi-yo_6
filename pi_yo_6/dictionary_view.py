@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from pi_yo_6.dictionary_manager import DictionaryManager
 from pi_yo_6.embeds import EmBase
 from pi_yo_6.load_config import GuildConfig
+from pi_yo_6.text.dictionary import DictionaryManager
 
 PAGE_SIZE = 10
 

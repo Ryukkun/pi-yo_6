@@ -5,8 +5,8 @@ from typing import Type
 
 from pydantic import BaseModel, Field
 
-from pi_yo_6.dictionary_manager import DictionaryManager
 from pi_yo_6.models import VoiceSetting
+from pi_yo_6.text.dictionary import DictionaryManager
 
 _log = logging.getLogger(__name__)
 

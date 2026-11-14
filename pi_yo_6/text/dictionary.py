@@ -6,7 +6,7 @@ class DictionaryManager(BaseModel):
     words: dict[str, str] = Field(default_factory=dict)
     _automaton: ahocorasick.Automaton | None = PrivateAttr(default=None)
 
-    def new_automaton(self) -> ahocorasick.Automaton:
+    def _build_automaton(self) -> ahocorasick.Automaton:
         automaton = ahocorasick.Automaton()
         for key, value in self.words.items():
             automaton.add_word(key, (key, value))
@@ -18,7 +18,7 @@ class DictionaryManager(BaseModel):
             return text
 
         if self._automaton is None:
-            self._automaton = self.new_automaton()
+            self._automaton = self._build_automaton()
         automaton = self._automaton
 
         # Aho-Corasickでマッチした箇所を取得
@@ -52,23 +52,12 @@ class DictionaryManager(BaseModel):
 
     def put(self, key: str, value: str) -> None:
         self.words[key] = value
-        self._automaton = None  # 変更があったらオートマトンを再構築する必要があることを示す
+        self._automaton = None
 
     def remove(self, key: str) -> None:
         if key in self.words:
             del self.words[key]
-            self._automaton = None  # 変更があったらオートマトンを再構築する必要があることを示す
+            self._automaton = None
 
     def contains(self, key: str) -> bool:
         return key in self.words
-
-
-if __name__ == "__main__":
-    dm = DictionaryManager()
-    dm.put("東京", "Tokyoooooo")
-    dm.put("東京都", "Tokyo Metropolis")
-    dm.put("大阪", "Osaka")
-
-    text = "私は東京都に住んでいます。大阪も好きです。大阪"
-    replaced_text = dm.replace(text)
-    print(replaced_text)  # 私はTokyo Metropolisに住んでいます。Osakaも好きです。
