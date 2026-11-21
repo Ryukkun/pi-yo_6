@@ -6,6 +6,7 @@ import time
 from typing import Callable, Optional
 
 import discord
+from discord.ext import tasks
 
 from pi_yo_6.audio.mixer import AudioMixer, AudioTrack, StreamAudioData
 from pi_yo_6.config import guild_configs, user_configs
@@ -46,7 +47,9 @@ class GuildVoiceSession:
         self._queue: asyncio.Queue[asyncio.Task[Optional[io.BytesIO]]] = asyncio.Queue()
         self._busy_tracks: set[int] = set()
         self._track_free_event = asyncio.Event()
+        self._empty_channel_loop_count = 0
         self._worker_task: asyncio.Task[None] = asyncio.create_task(self._play_worker())
+        self._inactivity_check_loop.start()
 
     def _get_free_track_idx(self) -> int | None:
         gc = guild_configs.get(self.guild.id)
@@ -85,6 +88,7 @@ class GuildVoiceSession:
         asyncio.create_task(self._shutdown(reason))
 
     async def _shutdown(self, reason: str) -> None:
+        self._inactivity_check_loop.cancel()
         if not self._worker_task.done():
             self._worker_task.cancel()
         self.stop_all()
@@ -217,3 +221,24 @@ class GuildVoiceSession:
         finally:
             self._busy_tracks.discard(track_idx)
             self._track_free_event.set()
+
+    @tasks.loop(seconds=5.0)
+    async def _inactivity_check_loop(self) -> None:
+        if self._closing:
+            return
+        channel = self.vc.channel
+        if not channel:
+            await self.close(reason="チャンネル未存在のため切断")
+            return
+
+        members = channel.members
+        if self.guild.me and self.guild.me not in members:
+            await self.close(reason="強制切断検知")
+            return
+
+        if not any(not m.bot for m in members):
+            self._empty_channel_loop_count += 1
+            if self._empty_channel_loop_count >= 2:
+                await self.close(reason="誰もいなくなったため切断")
+        else:
+            self._empty_channel_loop_count = 0

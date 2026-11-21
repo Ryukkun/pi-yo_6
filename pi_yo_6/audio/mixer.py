@@ -192,7 +192,8 @@ class AudioMixer:
 
                 _start += 0.02
                 delay = max(0.0, _start - time.perf_counter())
-                time.sleep(delay)
+                if delay > 0:
+                    time.sleep(delay)
 
                 if audio_bytes:
                     send_audio(audio_bytes, encode=self.encode_pcm)
@@ -265,6 +266,3 @@ class AudioTrack:
             self.after = None
         if after_cb:
             after_cb()
-
-    # 後方互換エイリアス
-    _finish = stop

@@ -255,6 +255,12 @@ class TTSCog(commands.Cog):
     # --- イベントリスナー ---
 
     @commands.Cog.listener()
+    async def on_command_error(self, ctx: commands.Context, error: Exception) -> None:
+        if isinstance(error, commands.CommandNotFound):
+            return
+        _log.error("Command '%s' failed: %s", ctx.command or ctx.message.content, error, exc_info=error)
+
+    @commands.Cog.listener()
     async def on_ready(self) -> None:
         try:
             synced = await self.bot.tree.sync()
