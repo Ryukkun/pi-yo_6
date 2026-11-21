@@ -10,7 +10,7 @@ from pi_yo_6.session import GuildVoiceSession
 from pi_yo_6.tts.manager import TTSManager
 from pi_yo_6.ui import (
     DictionaryView,
-    VoiceSelectorContainer,
+    VoiceSelectorView,
     make_failed_embed,
     make_info_embed,
 )
@@ -220,7 +220,7 @@ class TTSCog(commands.Cog):
         if not ctx.guild:
             return
         uc = user_configs.get(ctx.author.id)
-        view = VoiceSelectorContainer(self.sessions, self.tts, voice=uc.data.voice)
+        view = VoiceSelectorView(self.sessions, self.tts, voice=uc.data.voice)
         await ctx.reply(view=view)
 
     @commands.command(aliases=["reload_engine", "reload_engines"])

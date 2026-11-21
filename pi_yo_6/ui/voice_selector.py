@@ -293,3 +293,17 @@ class VoiceParamsModal(ui.Modal):
             await interaction.response.send_message(
                 "⚠⚠ 数値を入力してください ⚠⚠", delete_after=5.0, ephemeral=True
             )
+
+
+class VoiceSelectorView(ui.LayoutView):
+    """VoiceSelectorContainer を保持する LayoutView"""
+
+    def __init__(
+        self,
+        sessions: dict[int, "GuildVoiceSession"],
+        tts: TTSManager,
+        voice: VoiceSetting | None = None,
+    ) -> None:
+        super().__init__()
+        self.container = VoiceSelectorContainer(sessions, tts, voice=voice)
+        self.add_item(self.container)
