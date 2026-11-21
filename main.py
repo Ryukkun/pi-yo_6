@@ -46,7 +46,10 @@ async def main(debug: bool = False) -> None:
             await bot.add_cog(TTSCog(bot, tts))
             await bot.start(app_config.token)
     finally:
-        await tts.close()
+        try:
+            await asyncio.wait_for(tts.close(), timeout=5.0)
+        except asyncio.TimeoutError:
+            _log.warning("TTSManager.close() timed out.")
 
 
 if __name__ == "__main__":

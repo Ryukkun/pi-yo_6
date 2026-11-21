@@ -39,6 +39,10 @@ class OpenJTalkEngine:
 
     _executor = ThreadPoolExecutor()
 
+    @classmethod
+    def shutdown_executor(cls) -> None:
+        cls._executor.shutdown(wait=False, cancel_futures=True)
+
     def __init__(self, hts_folder: Path | None = None) -> None:
         self.hts_folder = hts_folder or app_config.OpenJtalk.hts_path
         self.metas = self._load_metas()

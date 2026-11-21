@@ -101,6 +101,7 @@ class TTSManager:
     async def close(self) -> None:
         if self._session and not self._session.closed:
             await self._session.close()
+        OpenJTalkEngine.shutdown_executor()
 
     async def _init_voicevox(self) -> None:
         try:

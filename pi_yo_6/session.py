@@ -35,6 +35,7 @@ class GuildVoiceSession:
         self.tts = tts
         self._on_close = on_close
         self._closing = False
+        self._shutdown_task: asyncio.Task[None] | None = None
 
         self.target_channels: set[int] = set()
         if initial_channel_id:
@@ -81,11 +82,12 @@ class GuildVoiceSession:
         self._busy_tracks.clear()
         self._track_free_event.set()
 
-    async def close(self, reason: str = '切断') -> None:
-        if self._closing:
-            return
-        self._closing = True
-        asyncio.create_task(self._shutdown(reason))
+    async def close(self, reason: str = '切断', wait: bool = False) -> None:
+        if not self._closing:
+            self._closing = True
+            self._shutdown_task = asyncio.create_task(self._shutdown(reason))
+        if wait and self._shutdown_task is not None:
+            await self._shutdown_task
 
     async def _shutdown(self, reason: str) -> None:
         self._inactivity_check_loop.cancel()
@@ -100,7 +102,7 @@ class GuildVoiceSession:
         await asyncio.sleep(0.02)
         try:
             if self.vc.is_connected():
-                await self.vc.disconnect()
+                await asyncio.wait_for(self.vc.disconnect(), timeout=3.0)
         except Exception:
             pass
 

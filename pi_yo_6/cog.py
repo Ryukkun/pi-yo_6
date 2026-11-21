@@ -27,6 +27,21 @@ class TTSCog(commands.Cog):
         self.sessions: dict[int, GuildVoiceSession] = {}
         self._empty_vc_tasks: dict[int, asyncio.Task] = {}
 
+    async def cog_unload(self) -> None:
+        for task in list(self._empty_vc_tasks.values()):
+            if not task.done():
+                task.cancel()
+        self._empty_vc_tasks.clear()
+
+        if self.sessions:
+            await asyncio.gather(
+                *(
+                    session.close(reason="bot_shutdown", wait=True)
+                    for session in list(self.sessions.values())
+                ),
+                return_exceptions=True,
+            )
+
     def _remove_session(self, guild_id: int) -> None:
         self.sessions.pop(guild_id, None)
         self._cancel_empty_timer(guild_id)
