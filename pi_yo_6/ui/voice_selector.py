@@ -26,6 +26,49 @@ class _SpeakerGroup(TypedDict):
     styles: list[_StyleOption]
 
 
+class _EngineParamLimits(TypedDict):
+    speed: tuple[float, float]
+    tone: tuple[float, float]
+    intonation: tuple[float, float] | None
+
+
+_VOICEVOX_LIMITS: _EngineParamLimits = {
+    "speed": (0.5, 2.0),
+    "tone": (-0.15, 0.15),
+    "intonation": (0.0, 2.0),
+}
+
+_ENGINE_PARAM_LIMITS: dict[EngineType, _EngineParamLimits] = {
+    EngineType.OPEN_JTALK: {
+        "speed": (0.5, 100.0),
+        "tone": (-50.0, 50.0),
+        "intonation": None,
+    },
+    EngineType.VOICEVOX: _VOICEVOX_LIMITS,
+    EngineType.COEIROINK: _VOICEVOX_LIMITS,
+}
+
+
+def _get_param_warnings(voice: VoiceSetting) -> list[str]:
+    """選択中エンジンの規定値を超えているパラメーターの警告文を返す"""
+    limits = _ENGINE_PARAM_LIMITS[voice.type]
+    warnings: list[str] = []
+    checks: list[tuple[str, float, tuple[float, float] | None]] = [
+        ("Speed", voice.speed, limits["speed"]),
+        ("Tone", voice.tone, limits["tone"]),
+        ("Intonation", voice.intonation, limits["intonation"]),
+    ]
+    for label, value, bounds in checks:
+        if bounds is None:
+            continue
+        low, high = bounds
+        if not (low <= value <= high):
+            warnings.append(
+                f"⚠ {label} ({value}) が {voice.type.value} の規定値 [{low} ~ {high}] を超えています"
+            )
+    return warnings
+
+
 class VoiceSelectorContainer(ui.Container):
     """話者・スタイル・速度・ピッチを設定するためのインタラクティブUI"""
 
@@ -177,9 +220,18 @@ class VoiceSelectorContainer(ui.Container):
         self._update_params_button_label()
 
     def _update_params_button_label(self) -> None:
-        self.speed_button.label = (
+        warnings = _get_param_warnings(self.voice)
+        base_label = (
             f"Speed: {self.voice.speed},  Tone: {self.voice.tone}, Intonation: {self.voice.intonation}"
         )
+        if warnings:
+            self.speed_button.style = ButtonStyle.red
+            self.speed_button.label = f"⚠ {base_label}"[:80]
+            self.row_1.content = "## ボイス設定\n" + "\n".join(warnings)
+        else:
+            self.speed_button.style = ButtonStyle.blurple
+            self.speed_button.label = base_label[:80]
+            self.row_1.content = "## ボイス設定"
 
     @row3.button(label='Play', style=ButtonStyle.green)
     async def text_play_button(self, interaction: Interaction, button: ui.Button) -> None:
@@ -229,6 +281,7 @@ class EngineButton(ui.Button):
             self.root.voice.name = ""
             self.root.voice.style = ""
             self.root.refresh_select_options()
+            self.root._update_params_button_label()
             await interaction.response.edit_message(view=self.view)
         else:
             await interaction.response.defer()
@@ -238,30 +291,30 @@ class VoiceParamsModal(ui.Modal):
     def __init__(self, root: VoiceSelectorContainer) -> None:
         super().__init__(title="詳細設定")
         self.root = root
+        self.limits = _ENGINE_PARAM_LIMITS[root.voice.type]
+        speed_min, speed_max = self.limits["speed"]
+        tone_min, tone_max = self.limits["tone"]
+
         self.speed = ui.TextInput(
-            label="speed [0.5~100.0]",
-            placeholder="1.2",
+            label=f"speed [{speed_min}~{speed_max}]",
+            placeholder="1.2" if root.voice.type == EngineType.OPEN_JTALK else "1.0",
             default=str(root.voice.speed),
         )
         self.add_item(self.speed)
 
-        tone_label = (
-            "tone [-50.0~50.0]"
-            if root.voice.type == EngineType.OPEN_JTALK
-            else "tone [-0.5~0.5]"
-        )
         self.tone = ui.TextInput(
-            label=tone_label,
+            label=f"tone [{tone_min}~{tone_max}]",
             placeholder="0.0",
             default=str(root.voice.tone),
         )
         self.add_item(self.tone)
 
         self.intonation = None
-        if root.voice.type != EngineType.OPEN_JTALK:
+        if (intonation_limits := self.limits["intonation"]) is not None:
+            int_min, int_max = intonation_limits
             self.intonation = ui.TextInput(
-                label="intonation [-100.0~100.0]",
-                placeholder="0.0",
+                label=f"intonation [{int_min}~{int_max}]",
+                placeholder="1.0",
                 default=str(root.voice.intonation),
             )
             self.add_item(self.intonation)
@@ -271,24 +324,38 @@ class VoiceParamsModal(ui.Modal):
             speed = float(self.speed.value)
             tone = float(self.tone.value)
             intonation = float(self.intonation.value) if self.intonation is not None else None
-            if speed < 0.5:
+            speed_min, speed_max = self.limits["speed"]
+            tone_min, tone_max = self.limits["tone"]
+            intonation_limits = self.limits["intonation"]
+
+            if not (speed_min <= speed <= speed_max):
                 await interaction.response.send_message(
-                    "⚠⚠ speedは0.5以上にしてください ⚠⚠", delete_after=5.0, ephemeral=True
+                    f"⚠⚠ speedは {speed_min} ~ {speed_max} の範囲で入力してください ⚠⚠",
+                    delete_after=5.0,
+                    ephemeral=True,
                 )
                 return
 
-            if (
-                -100 <= speed <= 100
-                and -100 <= tone <= 100
-                and (intonation is None or -100 <= intonation <= 100)
-            ):
-                self.root.update_params(speed, tone, intonation)
-                await interaction.response.edit_message(view=self.root.view)
+            if not (tone_min <= tone <= tone_max):
+                await interaction.response.send_message(
+                    f"⚠⚠ toneは {tone_min} ~ {tone_max} の範囲で入力してください ⚠⚠",
+                    delete_after=5.0,
+                    ephemeral=True,
+                )
                 return
 
-            await interaction.response.send_message(
-                "⚠⚠ -100以上100以下でおねがい ⚠⚠", delete_after=5.0, ephemeral=True
-            )
+            if intonation_limits is not None and intonation is not None:
+                int_min, int_max = intonation_limits
+                if not (int_min <= intonation <= int_max):
+                    await interaction.response.send_message(
+                        f"⚠⚠ intonationは {int_min} ~ {int_max} の範囲で入力してください ⚠⚠",
+                        delete_after=5.0,
+                        ephemeral=True,
+                    )
+                    return
+
+            self.root.update_params(speed, tone, intonation)
+            await interaction.response.edit_message(view=self.root.view)
         except Exception:
             await interaction.response.send_message(
                 "⚠⚠ 数値を入力してください ⚠⚠", delete_after=5.0, ephemeral=True
