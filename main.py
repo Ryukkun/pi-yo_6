@@ -5,9 +5,9 @@ import os
 
 import discord
 from discord.ext import commands
-from discord.utils import setup_logging
 
 # configを読み込む前にプロジェクトのモジュールを読み込まないこと
+_log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -17,12 +17,14 @@ def parse_args() -> argparse.Namespace:
 
 
 async def main(debug: bool = False) -> None:
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-
+    from pi_yo_6.audio.discord_patch import apply_discord_patch
     from pi_yo_6.cog import TTSCog
     from pi_yo_6.config import app_config
+    from pi_yo_6.logging import setup_logger
     from pi_yo_6.tts import TTSManager
+
+    setup_logger(logging.DEBUG if debug else logging.INFO)
+    apply_discord_patch()
 
     os.makedirs(app_config.guild_config, exist_ok=True)
     os.makedirs(app_config.user_config, exist_ok=True)
@@ -35,9 +37,6 @@ async def main(debug: bool = False) -> None:
     intents.reactions = True
     intents.voice_states = True
     bot = commands.Bot(command_prefix=app_config.prefix, intents=intents)
-
-    setup_logging()
-    logging.getLogger('discord.player').setLevel(logging.WARNING)
 
     tts = TTSManager()
     await tts.init_all()
@@ -52,4 +51,7 @@ async def main(debug: bool = False) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
-    asyncio.run(main(debug=args.debug), debug=args.debug)
+    try:
+        asyncio.run(main(debug=args.debug), debug=args.debug)
+    except KeyboardInterrupt:
+        _log.info("Bot has stopped (Ctrl+C).")
