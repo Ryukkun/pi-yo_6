@@ -107,8 +107,10 @@ class TTSManager:
         try:
             session = await self._get_session()
             engine = VoicevoxEngine(app_config.VOICEVOX, session=session)
+            await engine.initialize()
+            self.voicevox = engine
 
-            async def check_ver() -> tuple[str, str]:
+            try:
                 async with session.get(
                     f'{engine.url_base}/core_versions', timeout=aiohttp.ClientTimeout(total=1.0)
                 ) as r:
@@ -118,15 +120,14 @@ class TTSManager:
                     timeout=aiohttp.ClientTimeout(total=1.5),
                 ) as r:
                     latest = (await r.json())['tag_name']
-                    return ver, latest
-
-            _, (ver, latest) = await asyncio.gather(engine.initialize(), check_ver())
-            _log.info(f'Loaded Voicevox!! - Ver.{ver}')
-            self.voicevox = engine
-            if ver == latest:
-                _log.info('最新バージョンです')
-            else:
-                _log.warning(f'最新バージョンは {latest} です')
+                _log.info(f'Loaded Voicevox!! - Ver.{ver}')
+                if ver == latest:
+                    _log.info('最新バージョンです')
+                else:
+                    _log.warning(f'最新バージョンは {latest} です')
+            except Exception as e:
+                _log.info('Loaded Voicevox!!')
+                _log.debug(f'Voicevox バージョン確認をスキップしました: {e}')
         except Exception as e:
             _log.warning(f'VoiceVoxの読み込みに失敗しました。 : {e}')
             self.voicevox = None

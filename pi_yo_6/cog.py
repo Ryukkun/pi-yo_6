@@ -276,6 +276,8 @@ class TTSCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
+        if self.bot.user:
+            _log.info("ログインしました: %s (ID: %s)", self.bot.user, self.bot.user.id)
         try:
             synced = await self.bot.tree.sync()
             _log.info("スラッシュコマンドを同期しました (%d件)", len(synced))

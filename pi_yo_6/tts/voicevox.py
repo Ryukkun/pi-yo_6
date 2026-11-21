@@ -40,8 +40,7 @@ class VoicevoxEngine:
                     raise NoMetasError(f'metasを読み込めません (Status: {res.status})')
                 self.metas = await res.json()
         except (TimeoutError, aiohttp.ClientConnectorError) as e:
-            _log.error(f"Engine ({url}) が見つかりませんでした。")
-            raise ConnectionError('Engine が、見つかりませんでした！') from e
+            raise ConnectionError(f'Engine ({url}) が見つかりませんでした。') from e
 
     async def synthesize(self, text: str, voice: VoiceSetting) -> io.BytesIO | None:
         speaker = self.to_speaker_id(voice)
