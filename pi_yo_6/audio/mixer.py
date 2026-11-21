@@ -1,15 +1,16 @@
 import asyncio
-from collections import deque
 import io
 import logging
-from math import sqrt
-from pathlib import Path
 import threading
 import time
-from typing import Any, Callable, Union
+from collections import deque
+from collections.abc import Callable
+from math import sqrt
+from pathlib import Path
+from typing import Any
 
-from discord import FFmpegAudio, FFmpegOpusAudio, FFmpegPCMAudio, SpeakingState, VoiceClient, opus
 import numpy as np
+from discord import FFmpegAudio, FFmpegOpusAudio, FFmpegPCMAudio, SpeakingState, VoiceClient, opus
 
 _log = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class StreamAudioData:
 
     def _create_ffmpeg_audio(
         self, use_opus: bool, before_options: list[str], options: list[str]
-    ) -> Union[FFmpegOpusAudio, FFmpegPCMAudio]:
+    ) -> FFmpegOpusAudio | FFmpegPCMAudio:
         option = ' '.join(options)
         before_option = ' '.join(before_options)
         source = str(self.source) if isinstance(self.source, Path) else self.source
@@ -126,7 +127,7 @@ class AudioMixer:
         self.loop = loop
         self.guild_name = guild_name
         self.enable_loop = True
-        self.tracks: list['AudioTrack'] = []
+        self.tracks: list[AudioTrack] = []
         self.encode_pcm = False
         self.vc.encoder = opus.Encoder()
         self._thread_lock = threading.Lock()

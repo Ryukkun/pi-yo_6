@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 
 from pi_yo_6.text.romaji_table import ROMAJI_TREE
 
@@ -28,7 +27,7 @@ class RomajiConverter:
                     text_list.pop(0)
                     continue
 
-                current_tree: Union[dict[str, str | dict], str, None] = ROMAJI_TREE
+                current_tree: dict[str, str | dict] | str | None = ROMAJI_TREE
                 match_len = 0
                 found_str: str | None = None
 

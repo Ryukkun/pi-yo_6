@@ -1,17 +1,16 @@
 import asyncio
-from collections.abc import Generator
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import AbstractContextManager, contextmanager
 import io
 import logging
-from pathlib import Path
 import threading
-from typing import Callable, Optional
+from collections.abc import Callable, Generator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import AbstractContextManager, contextmanager
+from pathlib import Path
 
 import numpy as np
 import pyopenjtalk
-from pyopenjtalk.htsengine import HTSEngine
 import scipy.io
+from pyopenjtalk.htsengine import HTSEngine
 
 from pi_yo_6.config import app_config
 from pi_yo_6.models import EngineType, NoMetasError, SpeakerMeta, VoiceSetting
@@ -25,7 +24,7 @@ def _lazy_hts_manager(voice_path: bytes) -> Callable[[], AbstractContextManager[
     mutex = threading.Lock()
 
     @contextmanager
-    def manager() -> Generator[HTSEngine, None, None]:
+    def manager() -> Generator[HTSEngine]:
         nonlocal instance
         with mutex:
             if instance is None:
@@ -105,7 +104,7 @@ class OpenJTalkEngine:
         buffer.seek(0)
         return buffer
 
-    def to_speaker_id(self, voice: VoiceSetting) -> Optional[str]:
+    def to_speaker_id(self, voice: VoiceSetting) -> str | None:
         for meta in self.metas:
             if meta['name'] == voice.name:
                 for style in meta['styles']:

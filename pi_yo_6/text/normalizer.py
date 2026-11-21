@@ -1,5 +1,6 @@
 import re
-from typing import TYPE_CHECKING, Callable, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Optional
 
 import alkana
 
@@ -65,7 +66,7 @@ class TextNormalizer:
         voice: VoiceSetting,
         guild: Optional["discord.Guild"] = None,
         guild_id: int | None = None,
-        voice_resolver: Optional[VoiceResolver] = None,
+        voice_resolver: VoiceResolver | None = None,
     ) -> tuple[str, VoiceSetting]:
         """テキストの正規化とインライン声帯パラメータの抽出を行う（元のVoiceSettingは変更しない）"""
         updated_voice = voice.model_copy()
@@ -93,7 +94,7 @@ class TextNormalizer:
     def _extract_inline_voice(
         text: str,
         voice: VoiceSetting,
-        voice_resolver: Optional[VoiceResolver],
+        voice_resolver: VoiceResolver | None,
     ) -> str:
         if m := _RE_INLINE_VOICE.search(text):
             voice_spec = m.group(1)

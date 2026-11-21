@@ -1,7 +1,6 @@
 import logging
 import os
 from pathlib import Path
-from typing import Type
 
 from pydantic import BaseModel, Field
 
@@ -57,7 +56,7 @@ class AppConfig(BaseModel):
 class ConfigFile[T: BaseModel]:
     """1つのJSON設定ファイルの読み込み・アトミック保存を管理する"""
 
-    def __init__(self, path: Path, cls: Type[T]) -> None:
+    def __init__(self, path: Path, cls: type[T]) -> None:
         self.cls = cls
         self.path = path
         self.data: T = self._read()
@@ -91,7 +90,7 @@ class ConfigFile[T: BaseModel]:
 class ConfigStore[T: BaseModel]:
     """IDごとにJSON設定ファイルをキャッシュ・管理するストア"""
 
-    def __init__(self, folder_path: Path, data_cls: Type[T]) -> None:
+    def __init__(self, folder_path: Path, data_cls: type[T]) -> None:
         self.cache: dict[int, ConfigFile[T]] = {}
         self.folder_path = folder_path
         self.data_cls = data_cls

@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import Optional
 
 import discord
 from discord import app_commands
@@ -59,7 +58,7 @@ class TTSCog(commands.Cog):
     async def _join_vc(
         self,
         channel: discord.VoiceChannel | discord.StageChannel,
-        text_channel_id: Optional[int] = None,
+        text_channel_id: int | None = None,
     ) -> GuildVoiceSession:
         guild = channel.guild
         existing = self.sessions.get(guild.id)

@@ -1,7 +1,6 @@
 import asyncio
 import io
 import logging
-from typing import Optional
 
 import aiohttp
 
@@ -18,11 +17,11 @@ class TTSManager:
     """全音声合成エンジンのライフサイクルとルーティングを管理する"""
 
     def __init__(self) -> None:
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
         self.open_jtalk: OpenJTalkEngine = OpenJTalkEngine()
         _log.info('Loaded Open_Jtalk!!')
-        self.voicevox: Optional[VoicevoxEngine] = None
-        self.coeiroink: Optional[VoicevoxEngine] = None
+        self.voicevox: VoicevoxEngine | None = None
+        self.coeiroink: VoicevoxEngine | None = None
 
     async def init_all(self) -> None:
         """有効な全エンジンを並列で初期化する"""
@@ -46,7 +45,7 @@ class TTSManager:
                 reloaded.append('Coeiroink')
         return reloaded
 
-    def get_engine(self, engine_type: EngineType) -> Optional[TTSEngine]:
+    def get_engine(self, engine_type: EngineType) -> TTSEngine | None:
         if engine_type == EngineType.OPEN_JTALK:
             return self.open_jtalk
         if engine_type == EngineType.VOICEVOX:
@@ -55,7 +54,7 @@ class TTSManager:
             return self.coeiroink
         return None
 
-    def find_voice(self, name: str, style: str | None = None) -> Optional[VoiceSetting]:
+    def find_voice(self, name: str, style: str | None = None) -> VoiceSetting | None:
         """指定された名前とスタイルを持つVoiceSettingを検索"""
         name_lower = name.lower()
         style_lower = (style or '').lower()
@@ -77,7 +76,7 @@ class TTSManager:
                     )
         return None
 
-    async def synthesize(self, text: str, voice: VoiceSetting) -> Optional[io.BytesIO]:
+    async def synthesize(self, text: str, voice: VoiceSetting) -> io.BytesIO | None:
         if not text.strip():
             return None
         engine = self.get_engine(voice.type)

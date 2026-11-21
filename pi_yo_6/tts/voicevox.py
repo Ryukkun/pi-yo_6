@@ -1,7 +1,6 @@
-import asyncio
 import io
 import logging
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 import aiohttp
 
@@ -21,7 +20,7 @@ class AudioQuery(TypedDict):
     postPhonemeLength: float
     outputSamplingRate: int
     outputStereo: bool
-    kana: Optional[str]
+    kana: str | None
 
 
 class VoicevoxEngine:
@@ -40,11 +39,11 @@ class VoicevoxEngine:
                 if res.status != 200:
                     raise NoMetasError(f'metasを読み込めません (Status: {res.status})')
                 self.metas = await res.json()
-        except (aiohttp.ClientConnectorError, asyncio.TimeoutError) as e:
+        except (TimeoutError, aiohttp.ClientConnectorError) as e:
             _log.error(f"Engine ({url}) が見つかりませんでした。")
             raise ConnectionError('Engine が、見つかりませんでした！') from e
 
-    async def synthesize(self, text: str, voice: VoiceSetting) -> Optional[io.BytesIO]:
+    async def synthesize(self, text: str, voice: VoiceSetting) -> io.BytesIO | None:
         speaker = self.to_speaker_id(voice)
         if speaker is None:
             _log.error(f"Speaker ID {voice} not found.")
@@ -91,7 +90,7 @@ class VoicevoxEngine:
             buf.seek(0)
             return buf
 
-    def to_speaker_id(self, voice: VoiceSetting) -> Optional[str | int]:
+    def to_speaker_id(self, voice: VoiceSetting) -> str | int | None:
         for meta in self.metas:
             if meta['name'] == voice.name:
                 for style in meta['styles']:

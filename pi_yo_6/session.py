@@ -3,7 +3,7 @@ import io
 import logging
 import random
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import discord
 from discord.ext import tasks
@@ -28,7 +28,7 @@ class GuildVoiceSession:
         loop: asyncio.AbstractEventLoop,
         tts: TTSManager,
         initial_channel_id: int | None = None,
-        on_close: Optional[Callable[[int], None]] = None,
+        on_close: Callable[[int], None] | None = None,
     ) -> None:
         self.guild = guild
         self.vc = vc
@@ -44,7 +44,7 @@ class GuildVoiceSession:
 
         self.mixer = AudioMixer(vc=vc, loop=loop, guild_name=guild.name)
         self.tracks: list[AudioTrack] = [self.mixer.add_track(opus=False) for _ in range(3)]
-        self._queue: asyncio.Queue[asyncio.Task[Optional[io.BytesIO]]] = asyncio.Queue()
+        self._queue: asyncio.Queue[asyncio.Task[io.BytesIO | None]] = asyncio.Queue()
         self._busy_tracks: set[int] = set()
         self._track_free_event = asyncio.Event()
         self._empty_channel_loop_count = 0
@@ -152,7 +152,7 @@ class GuildVoiceSession:
         self,
         text: str,
         voice: VoiceSetting,
-        guild: Optional[discord.Guild] = None,
+        guild: discord.Guild | None = None,
     ) -> None:
         """テキストを正規化し、非同期合成タスクを開始して再生キューへ投入する"""
         normalized_text, final_voice = TextNormalizer.normalize(
@@ -167,7 +167,7 @@ class GuildVoiceSession:
         gen_task = asyncio.create_task(self._synthesize(normalized_text, final_voice))
         await self._queue.put(gen_task)
 
-    async def _synthesize(self, text: str, voice: VoiceSetting) -> Optional[io.BytesIO]:
+    async def _synthesize(self, text: str, voice: VoiceSetting) -> io.BytesIO | None:
         started = time.perf_counter()
         data = await self.tts.synthesize(text, voice)
         _log.info(f'生成時間 : {time.perf_counter() - started:.4f}s')
