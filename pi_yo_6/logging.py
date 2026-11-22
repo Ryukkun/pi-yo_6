@@ -15,6 +15,13 @@ def setup_logger(level: int = logging.INFO) -> None:
             logger.addHandler(handler)
 
     player_logger = logging.getLogger("discord.player")
-    player_logger.setLevel(logging.WARNING)
+    player_logger.setLevel(logging.DEBUG if level == logging.DEBUG else logging.WARNING)
     if not player_logger.handlers:
         player_logger.addHandler(handler)
+
+    if level == logging.DEBUG:
+        for name in ("discord.voice_client", "discord.voice_state"):
+            v_logger = logging.getLogger(name)
+            v_logger.setLevel(logging.DEBUG)
+            if not v_logger.handlers:
+                v_logger.addHandler(handler)

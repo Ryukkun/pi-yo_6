@@ -44,7 +44,7 @@ class StreamAudioData:
 
     def open_reader(self, use_opus: bool) -> 'FFmpegReader':
         before_options: list[str] = []
-        options = ['-vn', '-loglevel', 'quiet']
+        options = ['-vn', '-loglevel', 'error']
         if use_opus:
             options.extend(['-application', 'audio'])
 
@@ -80,9 +80,13 @@ class FFmpegReader:
         self._done = False
 
         def read_all() -> None:
+            total_bytes = 0
             try:
                 while not self.stop_flag.is_set() and (data := self.ffmpeg.read()):
+                    total_bytes += len(data)
                     self.next_q.append(data)
+                if total_bytes == 0 and not self.stop_flag.is_set():
+                    _log.warning("FFmpegReader finished with 0 bytes of audio data")
             finally:
                 self._done = True
 
