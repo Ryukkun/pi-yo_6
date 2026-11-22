@@ -29,7 +29,6 @@ async def main(debug: bool = False) -> None:
     os.makedirs(app_config.guild_config, exist_ok=True)
     os.makedirs(app_config.user_config, exist_ok=True)
     os.makedirs(app_config.OpenJtalk.hts_path, exist_ok=True)
-    os.makedirs(app_config.OpenJtalk.dictionary_path, exist_ok=True)
 
     ####  起動準備 And 初期設定
     intents = discord.Intents.default()

@@ -118,7 +118,7 @@ class OpenJTalkEngine:
 
     def _load_metas(self) -> list[SpeakerMeta]:
         hts_dic: dict[str, list[tuple[str, str]]] = {}
-        for path in sorted(self.hts_folder.glob('*.htsvoice')):
+        for path in sorted(self.hts_folder.rglob('*.htsvoice')):
             hts_name = path.stem
             hts_split = hts_name.split('_')
             hts_author = hts_split[0] if hts_split else hts_name

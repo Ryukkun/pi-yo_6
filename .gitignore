@@ -1,7 +1,9 @@
 config.ini
 __pycache__
 dic
-voice
+pi_yo_6/open_jtalk/voice/*
+!pi_yo_6/open_jtalk/voice/mei/
+!pi_yo_6/open_jtalk/voice/takumi/
 .DS_Store
 /config.py
 guild_config
