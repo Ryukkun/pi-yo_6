@@ -171,6 +171,8 @@ class AudioMixer:
         send_audio = self.vc.send_audio_packet
         self._set_speaking(SpeakingState.voice)
         _start = time.perf_counter()
+        audio_frames = 0
+        silence_frames = 0
         try:
             while self.enable_loop:
                 byte_list: list[bytes] = []
@@ -201,8 +203,10 @@ class AudioMixer:
                     time.sleep(delay)
 
                 if audio_bytes:
+                    audio_frames += 1
                     send_audio(audio_bytes, encode=self.encode_pcm)
                 else:
+                    silence_frames += 1
                     send_audio(opus.OPUS_SILENCE, encode=False)
                     if not any(not p.is_paused() for p in self.tracks):
                         self._set_speaking(SpeakingState.none)
@@ -210,6 +214,16 @@ class AudioMixer:
         except Exception:
             _log.exception(f"func:_run_loop  guild:{self.guild_name}")
         finally:
+            conn = getattr(self.vc, '_connection', None)
+            _log.debug(
+                "AudioMixer loop ended: guild=%s audio_frames=%d silence_frames=%d mode=%s dave=%s can_encrypt=%s",
+                self.guild_name,
+                audio_frames,
+                silence_frames,
+                getattr(self.vc, 'mode', None),
+                bool(getattr(conn, 'dave_session', None)),
+                getattr(conn, 'can_encrypt', None),
+            )
             with self._thread_lock:
                 self._is_running = False
 

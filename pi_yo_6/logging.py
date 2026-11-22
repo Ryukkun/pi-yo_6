@@ -20,7 +20,7 @@ def setup_logger(level: int = logging.INFO) -> None:
         player_logger.addHandler(handler)
 
     if level == logging.DEBUG:
-        for name in ("discord.voice_client", "discord.voice_state"):
+        for name in ("discord.voice_client", "discord.voice_state", "discord.gateway"):
             v_logger = logging.getLogger(name)
             v_logger.setLevel(logging.DEBUG)
             if not v_logger.handlers:
