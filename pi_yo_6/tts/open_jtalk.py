@@ -1,7 +1,7 @@
 import asyncio
 import io
 import logging
-import threading
+import queue
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager, contextmanager
@@ -18,18 +18,20 @@ from pi_yo_6.models import EngineType, NoMetasError, SpeakerMeta, VoiceSetting
 _log = logging.getLogger(__name__)
 
 
-def _lazy_hts_manager(voice_path: bytes) -> Callable[[], AbstractContextManager[HTSEngine]]:
-    """HTSEngineインスタンスをスレッドセーフかつ遅延初期化するマネージャー"""
-    instance: HTSEngine | None = None
-    mutex = threading.Lock()
+def _hts_pool_manager(voice_path: bytes) -> Callable[[], AbstractContextManager[HTSEngine]]:
+    """HTSEngineインスタンスをロック競合なしで並列利用するためのプールマネージャー"""
+    pool: queue.SimpleQueue[HTSEngine] = queue.SimpleQueue()
 
     @contextmanager
     def manager() -> Generator[HTSEngine]:
-        nonlocal instance
-        with mutex:
-            if instance is None:
-                instance = HTSEngine(voice_path)
+        try:
+            instance = pool.get_nowait()
+        except queue.Empty:
+            instance = HTSEngine(voice_path)
+        try:
             yield instance
+        finally:
+            pool.put(instance)
 
     return manager
 
@@ -54,7 +56,7 @@ class OpenJTalkEngine:
             for style in meta['styles']:
                 path = style['id']
                 voice_bytes = str(Path(path).resolve()).encode("utf-8")
-                self.hts[path] = _lazy_hts_manager(voice_bytes)
+                self.hts[path] = _hts_pool_manager(voice_bytes)
 
     async def run_test(self) -> None:
         default_voice = VoiceSetting(
