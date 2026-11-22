@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 import alkana
 
 from pi_yo_6 import config
-from pi_yo_6.models import VoiceSetting
+from pi_yo_6.models import EngineType, VoiceSetting
 from pi_yo_6.text.romaji import RomajiConverter
 
 if TYPE_CHECKING:
@@ -81,7 +81,8 @@ class TextNormalizer:
         text = _RE_EMOJI.sub('', text)
         text = TextNormalizer._replace_mentions(text, guild)
         text = TextNormalizer._apply_dictionaries(text, gid)
-        text = TextNormalizer._replace_english_kana(text)
+        if updated_voice.type == EngineType.OPEN_JTALK:
+            text = TextNormalizer._replace_english_kana(text)
         text = TextNormalizer._replace_w(text)
 
         limit = config.app_config.text_limit
