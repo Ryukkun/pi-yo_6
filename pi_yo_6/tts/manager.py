@@ -103,12 +103,31 @@ class TTSManager:
             await self._session.close()
         OpenJTalkEngine.shutdown_executor()
 
+    async def warmup_voice(self, voice: VoiceSetting) -> None:
+        """VOICEVOX/COEIROINK 話者モデルを事前ロードする"""
+        engine = self.get_engine(voice.type)
+        if isinstance(engine, VoicevoxEngine):
+            await engine.warmup_speaker(voice)
+
     async def _init_voicevox(self) -> None:
         try:
             session = await self._get_session()
             engine = VoicevoxEngine(app_config.VOICEVOX, session=session)
             await engine.initialize()
             self.voicevox = engine
+
+            devices_str = ""
+            try:
+                async with session.get(
+                    f'{engine.url_base}/supported_devices', timeout=aiohttp.ClientTimeout(total=1.0)
+                ) as r:
+                    if r.status == 200:
+                        devices = await r.json()
+                        enabled = [k for k, v in devices.items() if v]
+                        if enabled:
+                            devices_str = f" (devices: {', '.join(enabled)})"
+            except Exception:
+                pass
 
             try:
                 async with session.get(
@@ -120,13 +139,13 @@ class TTSManager:
                     timeout=aiohttp.ClientTimeout(total=1.5),
                 ) as r:
                     latest = (await r.json())['tag_name']
-                _log.info(f'Loaded Voicevox!! - Ver.{ver}')
+                _log.info(f'Loaded Voicevox!! - Ver.{ver}{devices_str}')
                 if ver == latest:
                     _log.info('最新バージョンです')
                 else:
                     _log.warning(f'最新バージョンは {latest} です')
             except Exception as e:
-                _log.info('Loaded Voicevox!!')
+                _log.info(f'Loaded Voicevox!!{devices_str}')
                 _log.debug(f'Voicevox バージョン確認をスキップしました: {e}')
         except Exception as e:
             _log.warning(f'VoiceVoxの読み込みに失敗しました。 : {e}')

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 from typing import TYPE_CHECKING, TypedDict
@@ -182,6 +183,7 @@ class VoiceSelectorContainer(ui.Container):
         if interaction.message:
             self.voice.name = self.voice_authors_selection.values[0]
             self.refresh_select_options()
+            asyncio.create_task(self.tts.warmup_voice(self.voice.model_copy()))
             await interaction.response.edit_message(view=self.view)
 
     row2 = ui.ActionRow()
@@ -193,6 +195,7 @@ class VoiceSelectorContainer(ui.Container):
             self.voice.name = style['author']
             self.voice.style = style['name']
             self.refresh_select_options()
+            asyncio.create_task(self.tts.warmup_voice(self.voice.model_copy()))
             await interaction.response.edit_message(view=self.view)
             return
         except Exception as e:
@@ -282,6 +285,7 @@ class EngineButton(ui.Button):
             self.root.voice.style = ""
             self.root.refresh_select_options()
             self.root._update_params_button_label()
+            asyncio.create_task(self.root.tts.warmup_voice(self.root.voice.model_copy()))
             await interaction.response.edit_message(view=self.view)
         else:
             await interaction.response.defer()

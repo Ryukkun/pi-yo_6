@@ -3,6 +3,7 @@ import io
 import logging
 import threading
 import time
+import wave
 from collections import deque
 from collections.abc import Callable
 from math import sqrt
@@ -42,7 +43,18 @@ class StreamAudioData:
             source, before_options=before_option, options=option, pipe=is_pipe
         )
 
-    def open_reader(self, use_opus: bool) -> 'FFmpegReader':
+    def open_reader(self, use_opus: bool) -> 'FFmpegReader | WavPCMReader':
+        if not use_opus and self.volume is None and isinstance(self.source, io.BytesIO):
+            try:
+                self.source.seek(0)
+                with wave.open(self.source, 'rb') as wf:
+                    if wf.getnchannels() == 2 and wf.getsampwidth() == 2 and wf.getframerate() == 48000:
+                        pcm_data = wf.readframes(wf.getnframes())
+                        return WavPCMReader(pcm_data)
+            except Exception:
+                pass
+            self.source.seek(0)
+
         before_options: list[str] = []
         options = ['-vn', '-loglevel', 'error']
         if use_opus:
@@ -113,6 +125,28 @@ class FFmpegReader:
         except Exception:
             pass
         self.next_q.clear()
+
+
+class WavPCMReader:
+    """48kHz 16bit ステレオ PCM を FFmpeg を介さず直接 20ms (3840 bytes) ずつ読み出すリーダー"""
+
+    _CHUNK_SIZE = 3840
+
+    def __init__(self, pcm_data: bytes) -> None:
+        self._pcm = pcm_data
+        self._offset = 0
+
+    def read(self) -> bytes:
+        if self._offset >= len(self._pcm):
+            return b''
+        chunk = self._pcm[self._offset : self._offset + self._CHUNK_SIZE]
+        self._offset += self._CHUNK_SIZE
+        if len(chunk) < self._CHUNK_SIZE:
+            chunk = chunk.ljust(self._CHUNK_SIZE, b'\x00')
+        return chunk
+
+    def cleanup(self) -> None:
+        self._pcm = b''
 
 
 class AudioMixer:
@@ -230,7 +264,7 @@ class AudioMixer:
 
 class AudioTrack:
     def __init__(self, use_opus: bool, mixer: AudioMixer) -> None:
-        self.ffmpeg_audio: FFmpegReader | None = None
+        self.ffmpeg_audio: FFmpegReader | WavPCMReader | None = None
         self.audio_data: StreamAudioData | None = None
         self.pausing: bool = True
         self.mixer = mixer

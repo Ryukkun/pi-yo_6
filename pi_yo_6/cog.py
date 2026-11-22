@@ -324,6 +324,8 @@ class TTSCog(commands.Cog):
 
         if before.channel != bot_channel and after.channel == bot_channel:
             text = f"{member.display_name}さんが入室しました"
+            uc = user_configs.get(member.id)
+            asyncio.create_task(self.tts.warmup_voice(uc.data.voice.model_copy()))
         elif before.channel == bot_channel and after.channel != bot_channel:
             text = f"{member.display_name}さんが退室しました"
         else:
